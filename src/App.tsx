@@ -2,8 +2,21 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+
+// Pages
+import Auth from "./pages/Auth";
+import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
+import ClientsManagement from "./pages/SuperAdmin/Clients";
+import ClientAdminDashboard from "./pages/ClientAdmin/Dashboard";
+import StudentsManagement from "./pages/ClientAdmin/Students";
+import QuestionsManagement from "./pages/ClientAdmin/Questions";
+import TestsManagement from "./pages/ClientAdmin/Tests";
+import StudentDashboard from "./pages/Student/Dashboard";
+import TestEngine from "./pages/Student/TestEngine";
+import TestHistory from "./pages/Student/History";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -14,11 +27,92 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/auth" replace />} />
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Super Admin Routes */}
+            <Route
+              path="/superadmin"
+              element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <SuperAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/superadmin/clients"
+              element={
+                <ProtectedRoute allowedRoles={['superadmin']}>
+                  <ClientsManagement />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Client Admin Routes */}
+            <Route
+              path="/client-admin"
+              element={
+                <ProtectedRoute allowedRoles={['clientadmin']}>
+                  <ClientAdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client-admin/students"
+              element={
+                <ProtectedRoute allowedRoles={['clientadmin']}>
+                  <StudentsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client-admin/questions"
+              element={
+                <ProtectedRoute allowedRoles={['clientadmin']}>
+                  <QuestionsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client-admin/tests"
+              element={
+                <ProtectedRoute allowedRoles={['clientadmin']}>
+                  <TestsManagement />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Student Routes */}
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/test/:testId"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <TestEngine />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/history"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <TestHistory />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
