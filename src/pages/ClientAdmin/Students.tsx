@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,10 +31,25 @@ export default function StudentsManagement() {
   }, [clientId]);
 
   const fetchStudents = async () => {
+    // Get all student user_ids for this client
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('client_id', clientId)
+      .eq('role', 'student');
+
+    if (!roleData || roleData.length === 0) {
+      setStudents([]);
+      return;
+    }
+
+    const studentIds = roleData.map(r => r.user_id);
+
     const { data, error } = await supabase
       .from('profiles')
-      .select('*, user_roles(role)')
+      .select('*')
       .eq('client_id', clientId)
+      .in('id', studentIds)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -44,7 +59,7 @@ export default function StudentsManagement() {
         variant: 'destructive',
       });
     } else {
-      setStudents(data?.filter(s => s.user_roles?.some((r: any) => r.role === 'student')) || []);
+      setStudents(data || []);
     }
   };
 
