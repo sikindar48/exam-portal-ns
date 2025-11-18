@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Users, FileQuestion, ClipboardList } from 'lucide-react';
+import { LogOut, Users, FileQuestion, ClipboardList, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function ClientAdminDashboard() {
@@ -95,7 +95,7 @@ export default function ClientAdminDashboard() {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Button onClick={() => navigate('/client-admin/students')} className="h-20">
             <Users className="mr-2 h-5 w-5" />
             Manage Students
@@ -107,6 +107,10 @@ export default function ClientAdminDashboard() {
           <Button onClick={() => navigate('/client-admin/tests')} className="h-20">
             <ClipboardList className="mr-2 h-5 w-5" />
             Manage Tests
+          </Button>
+          <Button onClick={() => navigate('/client-admin/settings')} variant="outline" className="h-20">
+            <Settings className="mr-2 h-5 w-5" />
+            Organization Settings
           </Button>
         </div>
       </main>

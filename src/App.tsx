@@ -14,6 +14,7 @@ import ClientAdminDashboard from "./pages/ClientAdmin/Dashboard";
 import StudentsManagement from "./pages/ClientAdmin/Students";
 import QuestionsManagement from "./pages/ClientAdmin/Questions";
 import TestsManagement from "./pages/ClientAdmin/Tests";
+import ClientSettings from "./pages/ClientAdmin/Settings";
 import StudentDashboard from "./pages/Student/Dashboard";
 import TestEngine from "./pages/Student/TestEngine";
 import TestHistory from "./pages/Student/History";
@@ -80,6 +81,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['clientadmin']}>
                   <TestsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client-admin/settings"
+              element={
+                <ProtectedRoute allowedRoles={['clientadmin']}>
+                  <ClientSettings />
                 </ProtectedRoute>
               }
             />
