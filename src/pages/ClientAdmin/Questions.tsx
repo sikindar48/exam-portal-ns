@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import CSVImport from '@/components/QuestionImport/CSVImport';
 
 export default function QuestionsManagement() {
   const [questions, setQuestions] = useState<any[]>([]);
@@ -168,13 +169,15 @@ export default function QuestionsManagement() {
             </Button>
             <h1 className="text-2xl font-bold text-primary">Manage Questions</h1>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Question
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <CSVImport clientId={clientId!} onImportComplete={fetchQuestions} />
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Question
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingQuestion ? 'Edit Question' : 'Add New Question'}</DialogTitle>
@@ -277,6 +280,7 @@ export default function QuestionsManagement() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </header>
 
