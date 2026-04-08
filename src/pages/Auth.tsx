@@ -142,6 +142,9 @@ export default function Auth() {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
+                <Button variant="link" type="button" className="w-full" onClick={() => navigate('/forgot-password')}>
+                  Forgot Password?
+                </Button>
               </form>
             </TabsContent>
             <TabsContent value="signup">
