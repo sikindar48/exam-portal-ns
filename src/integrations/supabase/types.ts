@@ -255,7 +255,9 @@ export type Database = {
           id: string
           negative_marking: boolean | null
           negative_marks: number | null
+          public_link_enabled: boolean | null
           restrict_navigation: boolean | null
+          share_code: string | null
           shuffle: boolean | null
           test_name: string
           timer: number
@@ -270,7 +272,9 @@ export type Database = {
           id?: string
           negative_marking?: boolean | null
           negative_marks?: number | null
+          public_link_enabled?: boolean | null
           restrict_navigation?: boolean | null
+          share_code?: string | null
           shuffle?: boolean | null
           test_name: string
           timer: number
@@ -285,7 +289,9 @@ export type Database = {
           id?: string
           negative_marking?: boolean | null
           negative_marks?: number | null
+          public_link_enabled?: boolean | null
           restrict_navigation?: boolean | null
+          share_code?: string | null
           shuffle?: boolean | null
           test_name?: string
           timer?: number
@@ -335,6 +341,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_test_questions_for_student: {
+        Args: { _student_id: string; _test_id: string }
+        Returns: {
+          difficulty: string
+          id: string
+          marks: number
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question_text: string
+        }[]
+      }
       get_user_client_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
