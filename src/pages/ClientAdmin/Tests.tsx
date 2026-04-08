@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Trash2, Settings } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import TestSharing from '@/components/TestSharing';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Switch } from '@/components/ui/switch';
@@ -326,13 +327,16 @@ export default function TestsManagement() {
                     </TableCell>
                     <TableCell>{new Date(test.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(test.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <TestSharing test={test} onUpdate={fetchTests} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(test.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -8,6 +8,9 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 
 // Pages
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import JoinTest from "./pages/JoinTest";
 import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
 import ClientsManagement from "./pages/SuperAdmin/Clients";
 import ClientAdminDashboard from "./pages/ClientAdmin/Dashboard";
@@ -32,92 +35,26 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/join/:code" element={<JoinTest />} />
+            <Route path="/join" element={<JoinTest />} />
             
             {/* Super Admin Routes */}
-            <Route
-              path="/superadmin"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <SuperAdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/superadmin/clients"
-              element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                  <ClientsManagement />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/superadmin" element={<ProtectedRoute allowedRoles={['superadmin']}><SuperAdminDashboard /></ProtectedRoute>} />
+            <Route path="/superadmin/clients" element={<ProtectedRoute allowedRoles={['superadmin']}><ClientsManagement /></ProtectedRoute>} />
             
             {/* Client Admin Routes */}
-            <Route
-              path="/client-admin"
-              element={
-                <ProtectedRoute allowedRoles={['clientadmin']}>
-                  <ClientAdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/client-admin/students"
-              element={
-                <ProtectedRoute allowedRoles={['clientadmin']}>
-                  <StudentsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/client-admin/questions"
-              element={
-                <ProtectedRoute allowedRoles={['clientadmin']}>
-                  <QuestionsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/client-admin/tests"
-              element={
-                <ProtectedRoute allowedRoles={['clientadmin']}>
-                  <TestsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/client-admin/settings"
-              element={
-                <ProtectedRoute allowedRoles={['clientadmin']}>
-                  <ClientSettings />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/client-admin" element={<ProtectedRoute allowedRoles={['clientadmin']}><ClientAdminDashboard /></ProtectedRoute>} />
+            <Route path="/client-admin/students" element={<ProtectedRoute allowedRoles={['clientadmin']}><StudentsManagement /></ProtectedRoute>} />
+            <Route path="/client-admin/questions" element={<ProtectedRoute allowedRoles={['clientadmin']}><QuestionsManagement /></ProtectedRoute>} />
+            <Route path="/client-admin/tests" element={<ProtectedRoute allowedRoles={['clientadmin']}><TestsManagement /></ProtectedRoute>} />
+            <Route path="/client-admin/settings" element={<ProtectedRoute allowedRoles={['clientadmin']}><ClientSettings /></ProtectedRoute>} />
             
             {/* Student Routes */}
-            <Route
-              path="/student"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/test/:testId"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <TestEngine />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/history"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <TestHistory />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/student/test/:testId" element={<ProtectedRoute allowedRoles={['student']}><TestEngine /></ProtectedRoute>} />
+            <Route path="/student/history" element={<ProtectedRoute allowedRoles={['student']}><TestHistory /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

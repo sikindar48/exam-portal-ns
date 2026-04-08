@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Clock, Flag, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Clock, Flag, ArrowLeft, ArrowRight, Maximize, AlertTriangle } from 'lucide-react';
 
 export default function TestEngine() {
   const { testId } = useParams();
@@ -26,7 +26,80 @@ export default function TestEngine() {
   const [loading, setLoading] = useState(true);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
+  const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSubmitTriggered = useRef(false);
+
+  const handleSubmit = useCallback(async (autoSubmit = false) => {
+    if (!autoSubmit) {
+      setShowSubmitDialog(true);
+      return;
+    }
+
+    if (autoSubmitTriggered.current) return;
+    autoSubmitTriggered.current = true;
+
+    // Exit fullscreen on submit
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+
+    // Fetch correct answers server-side for scoring
+    const { data: testQuestions } = await supabase
+      .from('test_questions')
+      .select('question_id, questions(id, correct_answer, marks)')
+      .eq('test_id', testId);
+
+    let score = 0;
+    let totalMarks = 0;
+
+    if (testQuestions) {
+      for (const tq of testQuestions) {
+        const q = tq.questions as any;
+        if (!q) continue;
+        totalMarks += q.marks || 1;
+        if (answers[q.id] === q.correct_answer) {
+          score += q.marks || 1;
+        } else if (test?.negative_marking && answers[q.id]) {
+          score -= test.negative_marks || 0;
+        }
+      }
+    }
+
+    await supabase
+      .from('attempts')
+      .update({
+        score,
+        total_marks: totalMarks,
+        status: 'submitted',
+        time_taken: (test?.timer * 60) - timeLeft,
+      })
+      .eq('id', attemptId);
+
+    toast({
+      title: 'Test Submitted',
+      description: `Your score: ${score.toFixed(2)}/${totalMarks}`,
+    });
+
+    navigate('/student');
+  }, [answers, test, timeLeft, attemptId, testId, navigate, toast]);
+
+  // Fullscreen management
+  const enterFullscreen = useCallback(async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+      setShowFullscreenWarning(false);
+    } catch {
+      toast({
+        title: 'Fullscreen Required',
+        description: 'Please allow fullscreen mode to take the test.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (user && testId) {
@@ -40,20 +113,44 @@ export default function TestEngine() {
           const newCount = prev + 1;
           if (newCount >= 3) {
             toast({
-              title: 'Warning',
-              description: 'Too many tab switches detected. Test will be auto-submitted.',
+              title: '⚠️ Test Auto-Submitted',
+              description: 'Too many tab switches detected. Your test has been auto-submitted.',
               variant: 'destructive',
             });
-            setTimeout(() => handleSubmit(true), 2000);
+            setTimeout(() => handleSubmit(true), 1000);
           } else {
             toast({
-              title: 'Warning',
-              description: `Tab switch detected (${newCount}/3). Please stay on this page.`,
+              title: `⚠️ Tab Switch Warning (${newCount}/3)`,
+              description: `Switching tabs is not allowed. ${3 - newCount} warnings remaining before auto-submit.`,
               variant: 'destructive',
             });
           }
           return newCount;
         });
+      }
+    };
+
+    // Fullscreen change detection
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+        setFullscreenExitCount(prev => {
+          const newCount = prev + 1;
+          if (newCount >= 3) {
+            toast({
+              title: '⚠️ Test Auto-Submitted',
+              description: 'Exited fullscreen too many times. Test auto-submitted.',
+              variant: 'destructive',
+            });
+            setTimeout(() => handleSubmit(true), 1000);
+          } else {
+            setShowFullscreenWarning(true);
+          }
+          return newCount;
+        });
+      } else {
+        setIsFullscreen(true);
+        setShowFullscreenWarning(false);
       }
     };
 
@@ -72,20 +169,54 @@ export default function TestEngine() {
       e.preventDefault();
     };
 
+    // Prevent keyboard shortcuts
+    const preventShortcuts = (e: KeyboardEvent) => {
+      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+P, F12, Ctrl+Shift+I
+      if (
+        (e.ctrlKey && ['c', 'v', 'x', 'a', 'p', 'u'].includes(e.key.toLowerCase())) ||
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && ['i', 'j'].includes(e.key.toLowerCase())) ||
+        (e.ctrlKey && e.key === 'F5')
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    // Prevent print screen
+    const preventPrintScreen = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        navigator.clipboard.writeText('').catch(() => {});
+        toast({
+          title: 'Action Blocked',
+          description: 'Screenshots are not allowed during the test.',
+          variant: 'destructive',
+        });
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('copy', preventCopy);
     document.addEventListener('cut', preventCopy);
     document.addEventListener('paste', preventCopy);
     document.addEventListener('contextmenu', preventContextMenu);
+    document.addEventListener('keydown', preventShortcuts);
+    document.addEventListener('keyup', preventPrintScreen);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('copy', preventCopy);
       document.removeEventListener('cut', preventCopy);
       document.removeEventListener('paste', preventCopy);
       document.removeEventListener('contextmenu', preventContextMenu);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+      document.removeEventListener('keydown', preventShortcuts);
+      document.removeEventListener('keyup', preventPrintScreen);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
       }
     };
   }, [user, testId]);
@@ -102,18 +233,14 @@ export default function TestEngine() {
         });
       }, 1000);
     }
-
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timeLeft]);
+  }, [timeLeft, handleSubmit]);
 
   const initializeTest = async () => {
     setLoading(true);
 
-    // Fetch test details
     const { data: testData, error: testError } = await supabase
       .from('tests')
       .select('*')
@@ -121,11 +248,7 @@ export default function TestEngine() {
       .single();
 
     if (testError || !testData) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load test',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to load test', variant: 'destructive' });
       navigate('/student');
       return;
     }
@@ -133,113 +256,61 @@ export default function TestEngine() {
     setTest(testData);
     setTimeLeft(testData.timer * 60);
 
-    // Fetch test questions
-    const { data: testQuestions, error: questionsError } = await supabase
-      .from('test_questions')
-      .select('question_id, questions(*)')
-      .eq('test_id', testId);
-
-    if (questionsError) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load questions',
-        variant: 'destructive',
+    // Use secure function to get questions without correct_answer
+    const { data: questionData, error: questionsError } = await supabase
+      .rpc('get_test_questions_for_student', {
+        _test_id: testId!,
+        _student_id: user!.id,
       });
+
+    if (questionsError || !questionData) {
+      toast({ title: 'Error', description: 'Failed to load questions', variant: 'destructive' });
       navigate('/student');
       return;
     }
 
-    const questionsList = testQuestions.map(tq => tq.questions);
-    
+    let questionsList = questionData as any[];
     if (testData.shuffle) {
-      questionsList.sort(() => Math.random() - 0.5);
+      questionsList = [...questionsList].sort(() => Math.random() - 0.5);
     }
-
     setQuestions(questionsList);
 
-    // Create attempt record
     const { data: attemptData, error: attemptError } = await supabase
       .from('attempts')
-      .insert({
-        student_id: user?.id,
-        test_id: testId,
-        status: 'in_progress',
-      })
+      .insert({ student_id: user?.id, test_id: testId, status: 'in_progress' })
       .select()
       .single();
 
     if (attemptError || !attemptData) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create attempt',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to create attempt', variant: 'destructive' });
       navigate('/student');
       return;
     }
 
     setAttemptId(attemptData.id);
     setLoading(false);
+
+    // Enter fullscreen after loading
+    setTimeout(() => {
+      document.documentElement.requestFullscreen().catch(() => {
+        setShowFullscreenWarning(true);
+      });
+    }, 500);
   };
 
   const handleAnswerChange = async (questionId: string, answer: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
-
-    // Auto-save answer
     await supabase
       .from('attempt_answers')
       .upsert({
         attempt_id: attemptId,
         question_id: questionId,
         selected_option: answer,
-      }, {
-        onConflict: 'attempt_id,question_id'
-      });
+      }, { onConflict: 'attempt_id,question_id' });
   };
 
   const handleMarkForReview = (questionId: string) => {
-    setMarkedForReview(prev => ({
-      ...prev,
-      [questionId]: !prev[questionId]
-    }));
-  };
-
-  const handleSubmit = async (autoSubmit = false) => {
-    if (!autoSubmit) {
-      setShowSubmitDialog(true);
-      return;
-    }
-
-    // Calculate score
-    let score = 0;
-    let totalMarks = 0;
-
-    for (const question of questions) {
-      totalMarks += question.marks || 1;
-      if (answers[question.id] === question.correct_answer) {
-        score += question.marks || 1;
-      } else if (test.negative_marking && answers[question.id]) {
-        score -= test.negative_marks || 0;
-      }
-    }
-
-    // Update attempt
-    await supabase
-      .from('attempts')
-      .update({
-        score,
-        total_marks: totalMarks,
-        status: 'submitted',
-        time_taken: (test.timer * 60) - timeLeft,
-      })
-      .eq('id', attemptId);
-
-    toast({
-      title: 'Test Submitted',
-      description: `Your score: ${score.toFixed(2)}/${totalMarks}`,
-    });
-
-    navigate('/student');
+    setMarkedForReview(prev => ({ ...prev, [questionId]: !prev[questionId] }));
   };
 
   const formatTime = (seconds: number) => {
@@ -259,15 +330,46 @@ export default function TestEngine() {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-muted select-none" style={{ userSelect: 'none' }}>
+      {/* Fullscreen Warning Overlay */}
+      {showFullscreenWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <Card className="mx-4 max-w-md">
+            <CardContent className="p-6 text-center space-y-4">
+              <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+              <h2 className="text-xl font-bold">Fullscreen Required</h2>
+              <p className="text-muted-foreground">
+                You have exited fullscreen mode ({fullscreenExitCount}/3 warnings). 
+                Please return to fullscreen to continue the test. 
+                {3 - fullscreenExitCount > 0 && ` ${3 - fullscreenExitCount} warnings remaining before auto-submit.`}
+              </p>
+              <Button onClick={enterFullscreen} className="w-full">
+                <Maximize className="mr-2 h-4 w-4" />
+                Return to Fullscreen
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <h1 className="text-xl font-bold text-primary">{test.test_name}</h1>
+          <h1 className="text-xl font-bold text-primary">{test?.test_name}</h1>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-destructive">
+            {!isFullscreen && (
+              <Button variant="ghost" size="sm" onClick={enterFullscreen}>
+                <Maximize className="h-4 w-4" />
+              </Button>
+            )}
+            <div className={`flex items-center gap-2 ${timeLeft <= 60 ? 'text-destructive animate-pulse' : 'text-destructive'}`}>
               <Clock className="h-5 w-5" />
               <span className="text-lg font-bold">{formatTime(timeLeft)}</span>
             </div>
+            {tabSwitchCount > 0 && (
+              <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                Warnings: {tabSwitchCount}/3
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -281,18 +383,18 @@ export default function TestEngine() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <p className="text-lg">{currentQuestion.question_text}</p>
+              <p className="text-lg">{currentQuestion?.question_text}</p>
 
               <RadioGroup
-                value={answers[currentQuestion.id] || ''}
+                value={answers[currentQuestion?.id] || ''}
                 onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
               >
                 <div className="space-y-4">
                   {['A', 'B', 'C', 'D'].map((option) => (
-                    <div key={option} className="flex items-center space-x-2 rounded-lg border p-4">
+                    <div key={option} className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-muted/50 transition-colors">
                       <RadioGroupItem value={option} id={option} />
                       <Label htmlFor={option} className="flex-1 cursor-pointer">
-                        {currentQuestion[`option_${option.toLowerCase()}`]}
+                        {currentQuestion?.[`option_${option.toLowerCase()}`]}
                       </Label>
                     </div>
                   ))}
@@ -313,8 +415,8 @@ export default function TestEngine() {
                   variant="outline"
                   onClick={() => handleMarkForReview(currentQuestion.id)}
                 >
-                  <Flag className={`mr-2 h-4 w-4 ${markedForReview[currentQuestion.id] ? 'fill-current text-warning' : ''}`} />
-                  {markedForReview[currentQuestion.id] ? 'Marked' : 'Mark for Review'}
+                  <Flag className={`mr-2 h-4 w-4 ${markedForReview[currentQuestion?.id] ? 'fill-current text-warning' : ''}`} />
+                  {markedForReview[currentQuestion?.id] ? 'Marked' : 'Mark for Review'}
                 </Button>
 
                 <Button
@@ -374,7 +476,11 @@ export default function TestEngine() {
           <AlertDialogHeader>
             <AlertDialogTitle>Submit Test?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to submit the test? You cannot change your answers after submission.
+              You have answered {Object.keys(answers).length} of {questions.length} questions.
+              {Object.keys(markedForReview).filter(k => markedForReview[k]).length > 0 && 
+                ` ${Object.keys(markedForReview).filter(k => markedForReview[k]).length} question(s) are marked for review.`
+              }
+              <br />Are you sure you want to submit?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
