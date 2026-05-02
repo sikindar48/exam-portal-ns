@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Exam Portal</title>
     <meta name="description" content="Exam Portal Application" />
+    <script>
+      // Restore path encoded by 404.html redirect
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var p = params.get('p');
+        if (p) {
+          var base = '/exam-portal-ns';
+          var restored = base + decodeURIComponent(p);
+          var h = params.get('h');
+          window.history.replaceState(null, '', restored + (h ? decodeURIComponent(h) : ''));
+        }
+      })();
+    </script>
   </head>
 
   <body>

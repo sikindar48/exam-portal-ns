@@ -1,39 +1,28 @@
-import { ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
+
+type AppRole = "superadmin" | "clientadmin" | "student";
+
+const ROLE_ROUTES: Record<AppRole, string> = {
+  superadmin: "/superadmin",
+  clientadmin: "/client-admin",
+  student: "/student",
+};
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedRoles?: ('superadmin' | 'clientadmin' | 'student')[];
+  allowedRoles?: AppRole[];
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) {
   const { user, loading, role } = useAuth();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        navigate('/auth');
-      } else if (allowedRoles && role && !allowedRoles.includes(role)) {
-        switch (role) {
-          case 'superadmin':
-            navigate('/superadmin');
-            break;
-          case 'clientadmin':
-            navigate('/client-admin');
-            break;
-          case 'student':
-            navigate('/student');
-            break;
-          default:
-            navigate('/auth');
-        }
-      }
-    }
-  }, [user, loading, role, allowedRoles, navigate]);
-
+  // Still initializing auth
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -42,8 +31,21 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     );
   }
 
-  if (!user || (allowedRoles && role && !allowedRoles.includes(role))) {
-    return null;
+  // Not logged in
+  if (!user) return <Navigate to="/auth" replace />;
+
+  // Logged in but role not yet loaded — wait briefly
+  if (allowedRoles && !role) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Logged in with wrong role — redirect to their dashboard
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to={ROLE_ROUTES[role] ?? "/auth"} replace />;
   }
 
   return <>{children}</>;

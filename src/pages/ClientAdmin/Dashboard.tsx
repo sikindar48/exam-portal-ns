@@ -1,11 +1,29 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Users, FileQuestion, ClipboardList, Settings, TrendingUp, Target, Award } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import {
+  LogOut,
+  Users,
+  FileQuestion,
+  ClipboardList,
+  Settings,
+  TrendingUp,
+  Target,
+  Award,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
 export default function ClientAdminDashboard() {
   const { signOut, clientId } = useAuth();
@@ -28,28 +46,49 @@ export default function ClientAdminDashboard() {
   const fetchStats = async () => {
     if (!clientId) return;
 
-    const [students, questions, tests, attempts] = await Promise.all([
-      supabase.from('profiles').select('id, name', { count: 'exact' }).eq('client_id', clientId),
-      supabase.from('questions').select('id', { count: 'exact', head: true }).eq('client_id', clientId),
-      supabase.from('tests').select('id, test_name').eq('client_id', clientId),
-      supabase.from('attempts').select('id, student_id, score, total_marks, status, test_id, tests(test_name)').eq('status', 'submitted'),
+    const [students, questions, tests] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, name", { count: "exact" })
+        .eq("client_id", clientId),
+      supabase
+        .from("questions")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", clientId),
+      supabase.from("tests").select("id, test_name").eq("client_id", clientId),
     ]);
 
-    const testIds = new Set(tests.data?.map(t => t.id) || []);
-    const clientAttempts = (attempts.data || []).filter(a => testIds.has(a.test_id));
+    const testIds = (tests.data || []).map((t) => t.id);
+
+    // Only fetch attempts for this client's tests — avoids full-table scan
+    const attempts =
+      testIds.length > 0
+        ? await supabase
+            .from("attempts")
+            .select(
+              "id, student_id, score, total_marks, test_id, tests(test_name)",
+            )
+            .eq("status", "submitted")
+            .in("test_id", testIds)
+        : { data: [] };
+
+    const clientAttempts = attempts.data || [];
 
     let totalScore = 0;
     let totalMaxScore = 0;
     let passCount = 0;
 
-    clientAttempts.forEach(a => {
+    clientAttempts.forEach((a) => {
       totalScore += a.score || 0;
       totalMaxScore += a.total_marks || 0;
-      if (a.total_marks && a.score && (a.score / a.total_marks) >= 0.4) passCount++;
+      if (a.total_marks && a.score && a.score / a.total_marks >= 0.4)
+        passCount++;
     });
 
-    const avgScore = clientAttempts.length > 0 ? (totalScore / totalMaxScore) * 100 : 0;
-    const passRate = clientAttempts.length > 0 ? (passCount / clientAttempts.length) * 100 : 0;
+    const avgScore =
+      clientAttempts.length > 0 ? (totalScore / totalMaxScore) * 100 : 0;
+    const passRate =
+      clientAttempts.length > 0 ? (passCount / clientAttempts.length) * 100 : 0;
 
     setStats({
       totalStudents: students.count || 0,
@@ -61,37 +100,57 @@ export default function ClientAdminDashboard() {
     });
 
     // Top performers
-    const studentScores = new Map<string, { name: string; totalScore: number; count: number }>();
-    const studentMap = new Map((students.data || []).map(s => [s.id, s.name]));
+    const studentScores = new Map<
+      string,
+      { name: string; totalScore: number; count: number }
+    >();
+    const studentMap = new Map(
+      (students.data || []).map((s) => [s.id, s.name]),
+    );
 
-    clientAttempts.forEach(a => {
-      const name = studentMap.get(a.student_id) || 'Unknown';
-      const existing = studentScores.get(a.student_id) || { name, totalScore: 0, count: 0 };
-      existing.totalScore += (a.total_marks ? (a.score || 0) / a.total_marks * 100 : 0);
+    clientAttempts.forEach((a) => {
+      const name = studentMap.get(a.student_id) || "Unknown";
+      const existing = studentScores.get(a.student_id) || {
+        name,
+        totalScore: 0,
+        count: 0,
+      };
+      existing.totalScore += a.total_marks
+        ? ((a.score || 0) / a.total_marks) * 100
+        : 0;
       existing.count += 1;
       studentScores.set(a.student_id, existing);
     });
 
     const sorted = Array.from(studentScores.values())
-      .map(s => ({ name: s.name, avg: Math.round(s.totalScore / s.count) }))
+      .map((s) => ({ name: s.name, avg: Math.round(s.totalScore / s.count) }))
       .sort((a, b) => b.avg - a.avg)
       .slice(0, 5);
     setTopPerformers(sorted);
 
     // Test performance chart
-    const testScores = new Map<string, { name: string; totalPct: number; count: number }>();
-    clientAttempts.forEach(a => {
-      const tName = (a.tests as any)?.test_name || 'Test';
-      const existing = testScores.get(a.test_id) || { name: tName, totalPct: 0, count: 0 };
-      existing.totalPct += a.total_marks ? (a.score || 0) / a.total_marks * 100 : 0;
+    const testScores = new Map<
+      string,
+      { name: string; totalPct: number; count: number }
+    >();
+    clientAttempts.forEach((a) => {
+      const tName = (a.tests as any)?.test_name || "Test";
+      const existing = testScores.get(a.test_id) || {
+        name: tName,
+        totalPct: 0,
+        count: 0,
+      };
+      existing.totalPct += a.total_marks
+        ? ((a.score || 0) / a.total_marks) * 100
+        : 0;
       existing.count += 1;
       testScores.set(a.test_id, existing);
     });
     setTestPerformance(
-      Array.from(testScores.values()).map(t => ({
-        name: t.name.length > 15 ? t.name.slice(0, 15) + '…' : t.name,
+      Array.from(testScores.values()).map((t) => ({
+        name: t.name.length > 15 ? t.name.slice(0, 15) + "…" : t.name,
         avgScore: Math.round(t.totalPct / t.count),
-      }))
+      })),
     );
   };
 
@@ -99,7 +158,9 @@ export default function ClientAdminDashboard() {
     <div className="min-h-screen bg-muted">
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <h1 className="text-2xl font-bold text-primary">Client Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-primary">
+            Client Admin Dashboard
+          </h1>
           <Button variant="outline" onClick={signOut}>
             <LogOut className="mr-2 h-4 w-4" />
             Logout
@@ -111,12 +172,16 @@ export default function ClientAdminDashboard() {
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
-            { label: 'Students', value: stats.totalStudents, icon: Users },
-            { label: 'Questions', value: stats.totalQuestions, icon: FileQuestion },
-            { label: 'Tests', value: stats.totalTests, icon: ClipboardList },
-            { label: 'Attempts', value: stats.totalAttempts, icon: TrendingUp },
-            { label: 'Avg Score', value: `${stats.avgScore}%`, icon: Target },
-            { label: 'Pass Rate', value: `${stats.passRate}%`, icon: Award },
+            { label: "Students", value: stats.totalStudents, icon: Users },
+            {
+              label: "Questions",
+              value: stats.totalQuestions,
+              icon: FileQuestion,
+            },
+            { label: "Tests", value: stats.totalTests, icon: ClipboardList },
+            { label: "Attempts", value: stats.totalAttempts, icon: TrendingUp },
+            { label: "Avg Score", value: `${stats.avgScore}%`, icon: Target },
+            { label: "Pass Rate", value: `${stats.passRate}%`, icon: Award },
           ].map(({ label, value, icon: Icon }) => (
             <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -143,11 +208,17 @@ export default function ClientAdminDashboard() {
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} />
                     <Tooltip formatter={(value: number) => `${value}%`} />
-                    <Bar dataKey="avgScore" fill="hsl(210, 95%, 45%)" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      dataKey="avgScore"
+                      fill="hsl(210, 95%, 45%)"
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-muted-foreground py-8">No test data yet</p>
+                <p className="text-center text-muted-foreground py-8">
+                  No test data yet
+                </p>
               )}
             </CardContent>
           </Card>
@@ -160,19 +231,28 @@ export default function ClientAdminDashboard() {
               {topPerformers.length > 0 ? (
                 <div className="space-y-3">
                   {topPerformers.map((student, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
                       <div className="flex items-center gap-3">
-                        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${i === 0 ? 'bg-warning text-warning-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${i === 0 ? "bg-warning text-warning-foreground" : "bg-muted text-muted-foreground"}`}
+                        >
                           {i + 1}
                         </span>
                         <span className="font-medium">{student.name}</span>
                       </div>
-                      <span className="font-bold text-primary">{student.avg}%</span>
+                      <span className="font-bold text-primary">
+                        {student.avg}%
+                      </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8">No student data yet</p>
+                <p className="text-center text-muted-foreground py-8">
+                  No student data yet
+                </p>
               )}
             </CardContent>
           </Card>
@@ -180,19 +260,32 @@ export default function ClientAdminDashboard() {
 
         {/* Quick Actions */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Button onClick={() => navigate('/client-admin/students')} className="h-20">
+          <Button
+            onClick={() => navigate("/client-admin/students")}
+            className="h-20"
+          >
             <Users className="mr-2 h-5 w-5" />
             Manage Students
           </Button>
-          <Button onClick={() => navigate('/client-admin/questions')} className="h-20">
+          <Button
+            onClick={() => navigate("/client-admin/questions")}
+            className="h-20"
+          >
             <FileQuestion className="mr-2 h-5 w-5" />
             Manage Questions
           </Button>
-          <Button onClick={() => navigate('/client-admin/tests')} className="h-20">
+          <Button
+            onClick={() => navigate("/client-admin/tests")}
+            className="h-20"
+          >
             <ClipboardList className="mr-2 h-5 w-5" />
             Manage Tests
           </Button>
-          <Button onClick={() => navigate('/client-admin/settings')} variant="outline" className="h-20">
+          <Button
+            onClick={() => navigate("/client-admin/settings")}
+            variant="outline"
+            className="h-20"
+          >
             <Settings className="mr-2 h-5 w-5" />
             Organization Settings
           </Button>

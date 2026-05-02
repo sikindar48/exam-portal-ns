@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ThemeProvider } from "./components/theme-provider";
 
 // Pages
 import Auth from "./pages/Auth";
@@ -27,40 +28,112 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/auth" replace />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/join/:code" element={<JoinTest />} />
-            <Route path="/join" element={<JoinTest />} />
-            
-            {/* Super Admin Routes */}
-            <Route path="/superadmin" element={<ProtectedRoute allowedRoles={['superadmin']}><SuperAdminDashboard /></ProtectedRoute>} />
-            <Route path="/superadmin/clients" element={<ProtectedRoute allowedRoles={['superadmin']}><ClientsManagement /></ProtectedRoute>} />
-            
-            {/* Client Admin Routes */}
-            <Route path="/client-admin" element={<ProtectedRoute allowedRoles={['clientadmin']}><ClientAdminDashboard /></ProtectedRoute>} />
-            <Route path="/client-admin/students" element={<ProtectedRoute allowedRoles={['clientadmin']}><StudentsManagement /></ProtectedRoute>} />
-            <Route path="/client-admin/questions" element={<ProtectedRoute allowedRoles={['clientadmin']}><QuestionsManagement /></ProtectedRoute>} />
-            <Route path="/client-admin/tests" element={<ProtectedRoute allowedRoles={['clientadmin']}><TestsManagement /></ProtectedRoute>} />
-            <Route path="/client-admin/settings" element={<ProtectedRoute allowedRoles={['clientadmin']}><ClientSettings /></ProtectedRoute>} />
-            
-            {/* Student Routes */}
-            <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
-            <Route path="/student/test/:testId" element={<ProtectedRoute allowedRoles={['student']}><TestEngine /></ProtectedRoute>} />
-            <Route path="/student/history" element={<ProtectedRoute allowedRoles={['student']}><TestHistory /></ProtectedRoute>} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider defaultTheme="system" storageKey="exam-portal-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter basename="/exam-portal-ns">
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/auth" replace />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/join/:code" element={<JoinTest />} />
+              <Route path="/join" element={<JoinTest />} />
+
+              {/* Super Admin Routes */}
+              <Route
+                path="/superadmin"
+                element={
+                  <ProtectedRoute allowedRoles={["superadmin"]}>
+                    <SuperAdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/clients"
+                element={
+                  <ProtectedRoute allowedRoles={["superadmin"]}>
+                    <ClientsManagement />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Client Admin Routes */}
+              <Route
+                path="/client-admin"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <ClientAdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client-admin/students"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <StudentsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client-admin/questions"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <QuestionsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client-admin/tests"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <TestsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client-admin/settings"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <ClientSettings />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Student Routes */}
+              <Route
+                path="/student"
+                element={
+                  <ProtectedRoute allowedRoles={["student"]}>
+                    <StudentDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/test/:testId"
+                element={
+                  <ProtectedRoute allowedRoles={["student"]}>
+                    <TestEngine />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/history"
+                element={
+                  <ProtectedRoute allowedRoles={["student"]}>
+                    <TestHistory />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

@@ -1,24 +1,52 @@
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function StudentsManagement() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCredentialsDialogOpen, setIsCredentialsDialogOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    email: string;
+    password: string;
+    name: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
+    name: "",
+    email: "",
+    password: "",
   });
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -33,30 +61,30 @@ export default function StudentsManagement() {
   const fetchStudents = async () => {
     // Get all student user_ids for this client
     const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('client_id', clientId)
-      .eq('role', 'student');
+      .from("user_roles")
+      .select("user_id")
+      .eq("client_id", clientId)
+      .eq("role", "student");
 
     if (!roleData || roleData.length === 0) {
       setStudents([]);
       return;
     }
 
-    const studentIds = roleData.map(r => r.user_id);
+    const studentIds = roleData.map((r) => r.user_id);
 
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('client_id', clientId)
-      .in('id', studentIds)
-      .order('created_at', { ascending: false });
+      .from("profiles")
+      .select("*")
+      .eq("client_id", clientId)
+      .in("id", studentIds)
+      .order("created_at", { ascending: false });
 
     if (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch students',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to fetch students",
+        variant: "destructive",
       });
     } else {
       setStudents(data || []);
@@ -67,68 +95,67 @@ export default function StudentsManagement() {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          name: formData.name,
-        }
-      }
-    });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-      setLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      await Promise.all([
-        supabase.from('profiles').insert({
-          id: data.user.id,
-          name: formData.name,
-          email: formData.email,
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+          name: formData.name.trim(),
           client_id: clientId,
+          role: "student",
         }),
-        supabase.from('user_roles').insert({
-          user_id: data.user.id,
-          role: 'student',
-          client_id: clientId,
-        })
-      ]);
+      },
+    );
 
+    const result = await res.json();
+
+    if (!res.ok) {
       toast({
-        title: 'Success',
-        description: 'Student added successfully',
+        title: "Error",
+        description: result.error,
+        variant: "destructive",
       });
+    } else {
+      setCreatedCredentials({
+        email: formData.email.trim(),
+        password: formData.password,
+        name: formData.name.trim(),
+      });
+      setIsCredentialsDialogOpen(true);
       setIsDialogOpen(false);
       fetchStudents();
-      setFormData({ name: '', email: '', password: '' });
+      setFormData({ name: "", email: "", password: "" });
     }
 
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this student?')) return;
+    if (!confirm("Are you sure you want to delete this student?")) return;
 
-    const { error } = await supabase.auth.admin.deleteUser(id);
+    const { error } = await supabase.rpc("delete_student", { _student_id: id });
 
     if (error) {
       toast({
-        title: 'Error',
+        title: "Error",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } else {
       toast({
-        title: 'Success',
-        description: 'Student deleted successfully',
+        title: "Success",
+        description: "Student deleted successfully",
       });
       fetchStudents();
     }
@@ -139,7 +166,7 @@ export default function StudentsManagement() {
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/client-admin')}>
+            <Button variant="ghost" onClick={() => navigate("/client-admin")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-2xl font-bold text-primary">Manage Students</h1>
@@ -161,7 +188,9 @@ export default function StudentsManagement() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -171,7 +200,9 @@ export default function StudentsManagement() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -181,18 +212,140 @@ export default function StudentsManagement() {
                     id="password"
                     type="password"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                     required
                   />
                 </div>
                 <Button type="submit" disabled={loading}>
-                  {loading ? 'Adding...' : 'Add Student'}
+                  {loading ? "Adding..." : "Add Student"}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </header>
+
+      {/* Credentials Display Dialog */}
+      <Dialog
+        open={isCredentialsDialogOpen}
+        onOpenChange={setIsCredentialsDialogOpen}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-success">
+              <Check className="h-5 w-5" />
+              Student Created Successfully
+            </DialogTitle>
+          </DialogHeader>
+          {createdCredentials && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Save these credentials now. The password cannot be retrieved
+                later.
+              </p>
+              <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Name</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={createdCredentials.name}
+                      readOnly
+                      className="font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdCredentials.name);
+                        toast({
+                          title: "Copied",
+                          description: "Name copied to clipboard",
+                        });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={createdCredentials.email}
+                      readOnly
+                      className="font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdCredentials.email);
+                        toast({
+                          title: "Copied",
+                          description: "Email copied to clipboard",
+                        });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Password
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={createdCredentials.password}
+                      readOnly
+                      className="font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          createdCredentials.password,
+                        );
+                        toast({
+                          title: "Copied",
+                          description: "Password copied to clipboard",
+                        });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  setIsCredentialsDialogOpen(false);
+                  setCreatedCredentials(null);
+                  setShowPassword(false);
+                }}
+                className="w-full"
+              >
+                Done
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <main className="container mx-auto p-6">
         <Card>
@@ -212,9 +365,13 @@ export default function StudentsManagement() {
               <TableBody>
                 {students.map((student) => (
                   <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {student.name}
+                    </TableCell>
                     <TableCell>{student.email}</TableCell>
-                    <TableCell>{new Date(student.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {new Date(student.created_at).toLocaleDateString()}
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"

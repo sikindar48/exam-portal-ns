@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Exam Platform</title>
+    <script>
+      // GitHub Pages SPA redirect trick.
+      // Encodes the full path into a query string so index.html can restore it.
+      var base = '/exam-portal-ns';
+      var path = window.location.pathname.replace(base, '') || '/';
+      var search = window.location.search;
+      var hash = window.location.hash;
+      var redirectUrl =
+        window.location.origin +
+        base +
+        '/?p=' +
+        encodeURIComponent(path + search) +
+        (hash ? '&h=' + encodeURIComponent(hash) : '');
+      window.location.replace(redirectUrl);
+    </script>
+  </head>
+  <body></body>
+</html>
