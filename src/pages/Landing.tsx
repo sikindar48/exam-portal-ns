@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,9 +12,9 @@ import {
   ArrowRight,
   BookOpen,
   Award,
-  Monitor,
-  FileText,
-  Settings,
+  Zap,
+  Globe,
+  Lock,
 } from "lucide-react";
 
 export default function Landing() {
@@ -22,78 +22,72 @@ export default function Landing() {
 
   const features = [
     {
-      icon: <Shield className="h-8 w-8" />,
-      title: "Secure Testing Environment",
+      icon: <Shield className="h-6 w-6" />,
+      title: "Secure Testing",
       description:
-        "Advanced proctoring and anti-cheating measures ensure exam integrity with real-time monitoring and secure browser technology.",
+        "Advanced security measures to ensure exam integrity and prevent cheating",
     },
     {
-      icon: <Clock className="h-8 w-8" />,
-      title: "Flexible Scheduling",
+      icon: <Clock className="h-6 w-6" />,
+      title: "Timed Assessments",
       description:
-        "Schedule exams with custom time limits, multiple attempts, and automated start/end times for seamless administration.",
+        "Flexible timing controls with auto-submission and time tracking",
     },
     {
-      icon: <BarChart3 className="h-8 w-8" />,
-      title: "Comprehensive Analytics",
+      icon: <Users className="h-6 w-6" />,
+      title: "Multi-User Management",
       description:
-        "Detailed performance reports, question analysis, and student progress tracking with exportable data insights.",
+        "Separate dashboards for administrators, instructors, and students",
     },
     {
-      icon: <BookOpen className="h-8 w-8" />,
-      title: "Question Bank Management",
+      icon: <BarChart3 className="h-6 w-6" />,
+      title: "Detailed Analytics",
       description:
-        "Organize questions by categories, difficulty levels, and subjects with bulk import/export capabilities.",
+        "Comprehensive reports and analytics for performance tracking",
     },
     {
-      icon: <Users className="h-8 w-8" />,
-      title: "Multi-Role Access",
+      icon: <BookOpen className="h-6 w-6" />,
+      title: "Question Bank",
       description:
-        "Separate dashboards for super admins, client admins, instructors, and students with role-based permissions.",
+        "Organize questions by categories with bulk import capabilities",
     },
     {
-      icon: <Award className="h-8 w-8" />,
-      title: "Automated Grading",
+      icon: <Award className="h-6 w-6" />,
+      title: "Instant Results",
       description:
-        "Instant result calculation with detailed scorecards, performance analytics, and automated certificate generation.",
+        "Automated grading with immediate feedback and detailed scorecards",
     },
   ];
 
+  const benefits = [
+    "Easy test creation and management",
+    "Real-time test monitoring",
+    "Automated grading and scoring",
+    "Mobile-friendly interface",
+    "CSV question import support",
+    "Customizable test settings",
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
+      <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-slate-900/80 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-600 rounded-lg">
-                <GraduationCap className="h-7 w-7 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
+                <GraduationCap className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                   NS Exam Portal
                 </h1>
-                <p className="text-sm text-gray-600">
-                  Professional Online Testing Platform
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  by NS Software Solutions
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/auth")}
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              >
-                Sign In
-              </Button>
-              <Button
-                onClick={() => navigate("/join")}
-                variant="outline"
-                className="border-blue-600 text-blue-600 hover:bg-blue-50"
-              >
-                <Users className="mr-2 h-4 w-4" />
-                Take a Test
-              </Button>
+            <div className="flex items-center gap-3">
               <Button
                 onClick={() => navigate("/auth")}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -107,115 +101,82 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="container mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <Badge
-                variant="secondary"
-                className="mb-6 bg-blue-100 text-blue-800 border-blue-200"
-              >
-                <Monitor className="h-3 w-3 mr-2" />
-                Enterprise-Grade Testing Platform
-              </Badge>
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-6xl text-center">
+          <Badge
+            variant="secondary"
+            className="mb-6 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+          >
+            <Zap className="h-3 w-3 mr-1" />
+            Professional Online Testing Platform
+          </Badge>
 
-              <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Professional
-                <br />
-                <span className="text-blue-600">Online Examinations</span>
-              </h1>
+          <h1 className="text-5xl md:text-6xl font-bold text-slate-900 dark:text-slate-100 mb-6 leading-tight">
+            Conduct Secure
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+              {" "}
+              Online Exams
+            </span>
+          </h1>
 
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Streamline your assessment process with our comprehensive exam
-                management platform. Trusted by educational institutions and
-                corporations worldwide for secure, reliable testing.
-              </p>
+          <p className="text-xl text-slate-600 dark:text-slate-400 mb-8 max-w-3xl mx-auto leading-relaxed">
+            A comprehensive online examination platform designed for educational
+            institutions. Create, manage, and conduct secure assessments with
+            ease.
+          </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-12">
-                <Button
-                  size="lg"
-                  onClick={() => navigate("/auth")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg"
-                >
-                  Start Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => navigate("/join")}
-                  className="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg"
-                >
-                  <Users className="mr-2 h-5 w-5" />
-                  Join Test Session
-                </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <Button
+              size="lg"
+              onClick={() => navigate("/auth")}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-6 w-full sm:w-auto"
+            >
+              Get Started
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => navigate("/join")}
+              className="text-lg px-8 py-6 border-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-400 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white w-full sm:w-auto"
+            >
+              <Users className="mr-2 h-5 w-5" />
+              Join Test
+            </Button>
+          </div>
+
+          {/* Key Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12">
+            <div className="text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-400 mx-auto mb-3">
+                <Shield className="h-6 w-6" />
               </div>
-
-              {/* Trust Indicators */}
-              <div className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">
-                    15,000+
-                  </div>
-                  <div className="text-sm text-gray-600">Tests Conducted</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">
-                    99.9%
-                  </div>
-                  <div className="text-sm text-gray-600">Uptime SLA</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">
-                    500+
-                  </div>
-                  <div className="text-sm text-gray-600">Organizations</div>
-                </div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                Secure Testing
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Advanced security measures
               </div>
             </div>
-
-            <div className="relative">
-              <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-200">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      Live Exam Dashboard
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Real-time monitoring
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                    <span className="text-sm font-medium text-gray-900">
-                      Active Students
-                    </span>
-                    <span className="text-lg font-bold text-green-600">
-                      247
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <span className="text-sm font-medium text-gray-900">
-                      Completed Tests
-                    </span>
-                    <span className="text-lg font-bold text-blue-600">
-                      1,834
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-                    <span className="text-sm font-medium text-gray-900">
-                      Average Score
-                    </span>
-                    <span className="text-lg font-bold text-orange-600">
-                      87.3%
-                    </span>
-                  </div>
-                </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg text-indigo-600 dark:text-indigo-400 mx-auto mb-3">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                Flexible Timing
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Custom time controls
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg text-green-600 dark:text-green-400 mx-auto mb-3">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                Detailed Analytics
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Comprehensive reports
               </div>
             </div>
           </div>
@@ -223,15 +184,15 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-6 bg-white">
-        <div className="container mx-auto max-w-7xl">
+      <section className="py-20 px-6 bg-white dark:bg-slate-800">
+        <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Complete Testing Solution
+            <h2 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+              Powerful Features for Modern Education
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Everything you need to create, manage, and analyze professional
-              online assessments with enterprise-grade security and reliability.
+            <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Everything you need to create, manage, and analyze online
+              assessments
             </p>
           </div>
 
@@ -239,56 +200,116 @@ export default function Landing() {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className="border border-gray-200 hover:shadow-lg transition-shadow duration-300 bg-white"
+                className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex items-center justify-center w-16 h-16 bg-blue-50 rounded-xl text-blue-600 flex-shrink-0">
+                    <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-400 flex-shrink-0">
                       {feature.icon}
                     </div>
-                    <div>
-                      <CardTitle className="text-xl text-gray-900 mb-2">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg mb-2">
                         {feature.title}
                       </CardTitle>
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
+                        {feature.description}
+                      </p>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </CardContent>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Benefits Section */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+                Why Choose NS Exam Portal?
+              </h2>
+              <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+                A modern platform designed to simplify online testing for
+                schools, colleges, and training institutes.
+              </p>
+
+              <div className="space-y-4">
+                {benefits.map((benefit, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <CheckCircle className="h-6 w-6 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {benefit}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-8 text-white">
+                <div className="flex items-center gap-3 mb-6">
+                  <Globe className="h-8 w-8" />
+                  <div>
+                    <h3 className="text-xl font-semibold">
+                      Accessible Anywhere
+                    </h3>
+                    <p className="text-blue-100">
+                      Access from any device, anytime
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mb-6">
+                  <Lock className="h-8 w-8" />
+                  <div>
+                    <h3 className="text-xl font-semibold">Secure Platform</h3>
+                    <p className="text-blue-100">
+                      Protected data and secure testing
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-8 w-8" />
+                  <div>
+                    <h3 className="text-xl font-semibold">
+                      Performance Insights
+                    </h3>
+                    <p className="text-blue-100">Track and analyze results</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-blue-600">
+      <section className="py-20 px-6 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Get Started?
           </h2>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of educators and organizations who trust NS Exam
-            Portal for their assessment needs. Start your free trial today.
+            Create your account and start conducting online assessments today.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               size="lg"
               onClick={() => navigate("/auth")}
-              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold"
+              className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6 w-full sm:w-auto"
             >
-              Start Free Trial
+              Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button
               size="lg"
-              variant="outline"
               onClick={() => navigate("/join")}
-              className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold"
+              className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6 w-full sm:w-auto"
             >
               <Users className="mr-2 h-5 w-5" />
               Take a Test
@@ -298,91 +319,68 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 bg-gray-900 text-gray-400">
-        <div className="container mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div className="md:col-span-2">
+      <footer className="py-12 px-6 bg-slate-900 text-slate-400">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {/* Brand Section */}
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
-                  <GraduationCap className="h-6 w-6 text-white" />
+                <div className="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-lg flex-shrink-0">
+                  <GraduationCap className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <div className="font-bold text-white text-lg">
-                    NS Exam Portal
-                  </div>
+                <div className="text-left">
+                  <div className="font-semibold text-white">NS Exam Portal</div>
                   <div className="text-sm">by NS Software Solutions</div>
                 </div>
               </div>
-              <p className="text-gray-400 max-w-md">
-                Professional online testing platform trusted by educational
-                institutions and corporations worldwide for secure, reliable
-                assessments.
-              </p>
+              <p className="text-sm">Professional Online Testing Platform</p>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-white mb-4">Platform</h3>
+            {/* Quick Links */}
+            <div className="text-center md:text-left">
+              <h3 className="font-semibold text-white mb-3">Quick Links</h3>
               <ul className="space-y-2 text-sm">
                 <li>
                   <a
-                    href="/auth"
-                    className="hover:text-white transition-colors"
-                  >
-                    Admin Dashboard
-                  </a>
-                </li>
-                <li>
-                  <a
                     href="/join"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-white transition-colors inline-block"
                   >
-                    Take Test
+                    Join Test
                   </a>
                 </li>
                 <li>
                   <a
                     href="/auth"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-white transition-colors inline-block"
                   >
-                    Create Account
+                    Get Started
                   </a>
                 </li>
               </ul>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-white mb-4">Company</h3>
+            {/* Company Links */}
+            <div className="text-center md:text-left">
+              <h3 className="font-semibold text-white mb-3">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li>
                   <a
                     href="https://www.nssoftwaresolutions.in"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-white transition-colors"
+                    className="hover:text-white transition-colors inline-block"
                   >
                     NS Software Solutions
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://internships.nssoftwaresolutions.in"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-white transition-colors"
-                  >
-                    Internships
                   </a>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+          {/* Bottom Bar */}
+          <div className="border-t border-slate-800 pt-6 text-center">
             <p className="text-sm">
               © 2024 NS Software Solutions. All rights reserved.
-            </p>
-            <p className="text-sm mt-2 md:mt-0">
-              Professional Online Testing Platform
             </p>
           </div>
         </div>

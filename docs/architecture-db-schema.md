@@ -5,13 +5,13 @@
 | Layer          | Technology                                     |
 | -------------- | ---------------------------------------------- |
 | Frontend       | React 18, TypeScript, Vite                     |
-| Routing        | React Router v6 (basename: `/exam-portal-ns`)  |
+| Routing        | React Router v6                                |
 | UI Components  | shadcn/ui (Radix UI primitives + Tailwind CSS) |
-| State / Data   | TanStack Query v5, React Context (Auth)        |
+| State / Data   | React Context (Auth), TanStack Query (future)  |
 | Backend        | Supabase (PostgreSQL 15, Auth, Edge Functions) |
 | Edge Functions | Deno (TypeScript)                              |
-| Hosting        | GitHub Pages (frontend), Supabase (backend)    |
-| CI             | GitHub Actions                                 |
+| Hosting        | Vercel (frontend), Supabase (backend)          |
+| CI/CD          | GitHub Actions (keep-alive workflow)           |
 
 ---
 
@@ -22,51 +22,62 @@ exam-portal-ns/
 ├── src/
 │   ├── App.tsx                        # Root router, providers
 │   ├── main.tsx                       # React entry point
-│   ├── index.css                      # Tailwind + HSL design tokens
+│   ├── index.css                      # Tailwind + design tokens
 │   ├── components/
+│   │   ├── BrandFooter.tsx            # Footer with NS branding
+│   │   ├── NavLink.tsx                # Active link component
 │   │   ├── ProtectedRoute.tsx         # Role-based route guard
 │   │   ├── TestSharing.tsx            # Share code + QR dialog
-│   │   ├── theme-provider.tsx         # Light/dark/system theme context
-│   │   ├── theme-toggle.tsx           # Theme switcher dropdown
+│   │   ├── theme-provider.tsx         # Light/dark/system theme
+│   │   ├── theme-toggle.tsx           # Theme switcher
+│   │   ├── QuestionImport/
+│   │   │   └── CSVImport.tsx          # CSV question import UI
 │   │   └── ui/                        # shadcn/ui components
 │   ├── contexts/
 │   │   └── AuthContext.tsx            # Auth state, role, clientId
 │   ├── hooks/
-│   │   ├── use-mobile.tsx
-│   │   └── use-toast.ts
+│   │   ├── use-mobile.tsx             # Mobile detection hook
+│   │   └── use-toast.ts               # Toast notification hook
 │   ├── integrations/
 │   │   └── supabase/
 │   │       ├── client.ts              # Supabase client init
 │   │       └── types.ts               # Auto-generated DB types
 │   ├── pages/
 │   │   ├── Auth.tsx                   # Sign in / Sign up
-│   │   ├── ForgotPassword.tsx
-│   │   ├── ResetPassword.tsx
+│   │   ├── Landing.tsx                # Public landing page
+│   │   ├── ForgotPassword.tsx         # Password reset request
+│   │   ├── ResetPassword.tsx          # Password reset form
 │   │   ├── JoinTest.tsx               # Public test join page
+│   │   ├── NotFound.tsx               # 404 page
 │   │   ├── SuperAdmin/
-│   │   │   ├── Dashboard.tsx
-│   │   │   └── Clients.tsx
+│   │   │   ├── Dashboard.tsx          # Platform stats
+│   │   │   └── Clients.tsx            # Client management
 │   │   ├── ClientAdmin/
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── Students.tsx
-│   │   │   ├── Questions.tsx
-│   │   │   ├── Tests.tsx
-│   │   │   └── Settings.tsx
+│   │   │   ├── Dashboard.tsx          # Org stats & analytics
+│   │   │   ├── Students.tsx           # Student management
+│   │   │   ├── Questions.tsx          # Question bank
+│   │   │   ├── Tests.tsx              # Test management
+│   │   │   ├── TestBuilder.tsx        # Test creation/edit
+│   │   │   └── Settings.tsx           # Org settings
 │   │   └── Student/
-│   │       ├── Dashboard.tsx
-│   │       ├── TestEngine.tsx
-│   │       └── History.tsx
+│   │       ├── Dashboard.tsx          # Available tests
+│   │       ├── TestEngine.tsx         # Test taking interface
+│   │       └── History.tsx            # Test history
 │   └── utils/
-│       ├── csvParser.ts               # CSV question import parser
-│       └── questionValidator.ts       # Question validation rules
+│       ├── csvParser.ts               # CSV parsing utility
+│       └── questionValidator.ts       # Question validation
 ├── supabase/
 │   ├── functions/
-│   │   └── create-user/index.ts       # Edge Function: create admin/student
-│   └── migrations/                    # Ordered SQL migration files
-├── docs/                              # This folder
+│   │   └── create-user/index.ts       # Edge Function: user creation
+│   └── migrations/                    # SQL migration files
+├── docs/                              # Documentation
+│   ├── architecture-db-schema.md      # This file
+│   └── features-flow.md               # User flows
 ├── public/
-│   └── 404.html                       # GitHub Pages SPA redirect
-├── complete-setup.sql                 # Full DB bootstrap (run once)
+│   ├── 404.html                       # SPA fallback
+│   ├── favicon.ico
+│   └── robots.txt
+├── complete-setup.sql                 # Full DB bootstrap
 ├── .github/workflows/keep-alive.yml   # Supabase ping cron
 └── .env                               # Local env vars (gitignored)
 ```
@@ -79,13 +90,14 @@ exam-portal-ns/
 ┌─────────────────────────────────────────────────────┐
 │                    Browser (React)                   │
 │                                                      │
-│  ThemeProvider → QueryClientProvider → AuthProvider  │
+│  ThemeProvider → AuthProvider → Router               │
 │                         │                            │
-│              BrowserRouter (basename /exam-portal-ns)│
+│              BrowserRouter (React Router v6)         │
 │                         │                            │
 │   ┌──────────┬──────────┼──────────┬──────────┐     │
 │   │SuperAdmin│ClientAdmin│  Student │  Public  │     │
-│   │ Dashboard│ Dashboard │Dashboard │ JoinTest │     │
+│   │ Dashboard│ Dashboard │Dashboard │ Landing  │     │
+│   │  Clients │  Tests    │ History  │ JoinTest │     │
 │   └──────────┴──────────┴──────────┴──────────┘     │
 └─────────────────────┬───────────────────────────────┘
                       │ HTTPS (REST / Realtime)
@@ -181,12 +193,13 @@ MCQ questions belonging to a client.
 
 #### `tests`
 
-A test created by a client admin.
+A test created by a client admin. Supports folders, scheduling, and flexible attempt limits.
 
 | Column                | Type          | Notes                                     |
 | --------------------- | ------------- | ----------------------------------------- |
 | `id`                  | `uuid` PK     |                                           |
 | `client_id`           | `uuid`        | FK → `clients(id)` CASCADE                |
+| `folder_id`           | `uuid`        | FK → `test_folders(id)` SET NULL          |
 | `test_name`           | `text`        |                                           |
 | `timer`               | `integer`     | Duration in minutes                       |
 | `shuffle`             | `boolean`     | Randomize question order                  |
@@ -194,8 +207,10 @@ A test created by a client admin.
 | `negative_marking`    | `boolean`     | Enable score deduction                    |
 | `negative_marks`      | `decimal`     | Marks deducted per wrong answer           |
 | `restrict_navigation` | `boolean`     | Prevent going back                        |
-| `attempts_allowed`    | `integer`     | Default `1`                               |
-| `active`              | `boolean`     | Visible to students                       |
+| `attempts_allowed`    | `integer`     | NULL = unlimited, else 1-100              |
+| `status`              | `text`        | `draft` or `published`                    |
+| `start_datetime`      | `timestamptz` | Optional scheduled start                  |
+| `end_datetime`        | `timestamptz` | Optional scheduled end                    |
 | `share_code`          | `text`        | UNIQUE, 8-char, auto-generated by trigger |
 | `public_link_enabled` | `boolean`     | Enables public join URL                   |
 | `created_at`          | `timestamptz` | Auto                                      |

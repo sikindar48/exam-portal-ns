@@ -758,7 +758,7 @@ export default function TestsManagement() {
         </div>
       </header>
 
-      <main className="container mx-auto space-y-6 p-6">
+      <main className="container mx-auto space-y-6 p-6 flex-1">
         {openFolderId ? (
           <Card>
             <CardHeader>

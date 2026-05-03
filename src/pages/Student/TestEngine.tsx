@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,15 @@ export default function TestEngine() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  // Check if this is a guest session
+  const isGuest = searchParams.get("guest") === "true";
+  const guestName =
+    searchParams.get("name") || sessionStorage.getItem("guestStudentName");
+  const currentUserId =
+    user?.id ||
+    `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   const [test, setTest] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
@@ -91,24 +100,50 @@ export default function TestEngine() {
       // Clamp score to 0 minimum
       score = Math.max(0, score);
 
-      await supabase
-        .from("attempts")
-        .update({
+      if (isGuest) {
+        // For guest users, store results in localStorage and show results
+        const guestResult = {
+          testName: test?.test_name,
+          studentName: guestName,
           score,
-          total_marks: totalMarks,
-          status: "submitted",
-          time_taken: test?.timer * 60 - timeLeftRef.current,
-        })
-        .eq("id", attemptId);
+          totalMarks,
+          timeTaken: test?.timer * 60 - timeLeftRef.current,
+          completedAt: new Date().toISOString(),
+        };
 
-      toast({
-        title: "Test Submitted",
-        description: `Your score: ${score.toFixed(2)}/${totalMarks}`,
-      });
+        localStorage.setItem(
+          `guest_result_${testId}`,
+          JSON.stringify(guestResult),
+        );
 
-      navigate("/student");
+        toast({
+          title: "Test Completed",
+          description: `Thank you ${guestName}! Your score: ${score.toFixed(2)}/${totalMarks}`,
+        });
+
+        // Navigate to a results page or back to join
+        navigate("/join");
+      } else {
+        // For registered users, update the attempt in database
+        await supabase
+          .from("attempts")
+          .update({
+            score,
+            total_marks: totalMarks,
+            status: "submitted",
+            time_taken: test?.timer * 60 - timeLeftRef.current,
+          })
+          .eq("id", attemptId);
+
+        toast({
+          title: "Test Submitted",
+          description: `Your score: ${score.toFixed(2)}/${totalMarks}`,
+        });
+
+        navigate("/student");
+      }
     },
-    [answers, test, attemptId, testId, navigate, toast],
+    [answers, test, attemptId, testId, navigate, toast, isGuest, guestName],
   );
 
   // Fullscreen management
@@ -127,11 +162,13 @@ export default function TestEngine() {
   }, [toast]);
 
   useEffect(() => {
-    if (user && testId) {
+    if ((user || isGuest) && testId) {
       initializeTest();
     }
+  }, [initializeTest, user, isGuest, testId]);
 
-    // Tab switch detection
+  // Tab switch detection
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         setTabSwitchCount((prev) => {
@@ -247,7 +284,7 @@ export default function TestEngine() {
         document.exitFullscreen().catch(() => {});
       }
     };
-  }, [user, testId]);
+  }, [user, testId, isGuest]);
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -291,37 +328,100 @@ export default function TestEngine() {
         description: "Failed to load test",
         variant: "destructive",
       });
-      navigate("/student");
+      navigate(isGuest ? "/join" : "/student");
       return;
     }
 
-    // Check attempts_allowed
-    const attemptsAllowed = testData.attempts_allowed ?? 1;
-    const { count: submittedCount } = await supabase
-      .from("attempts")
-      .select("id", { count: "exact", head: true })
-      .eq("test_id", testId)
-      .eq("student_id", user!.id)
-      .eq("status", "submitted");
+    if (!isGuest) {
+      // Check attempts_allowed for registered users only
+      const attemptsAllowed = testData.attempts_allowed ?? 1;
+      const { count: submittedCount } = await supabase
+        .from("attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("test_id", testId)
+        .eq("student_id", user!.id)
+        .eq("status", "submitted");
 
-    if ((submittedCount ?? 0) >= attemptsAllowed) {
-      toast({
-        title: "Attempts Exhausted",
-        description: `You have already used all ${attemptsAllowed} attempt(s) for this test.`,
-        variant: "destructive",
-      });
-      navigate("/student");
-      return;
+      if ((submittedCount ?? 0) >= attemptsAllowed) {
+        toast({
+          title: "Attempts Exhausted",
+          description: `You have already used all ${attemptsAllowed} attempt(s) for this test.`,
+          variant: "destructive",
+        });
+        navigate("/student");
+        return;
+      }
+
+      // Resume an existing in_progress attempt if one exists (registered users only)
+      const { data: existingAttempt } = await supabase
+        .from("attempts")
+        .select("*")
+        .eq("test_id", testId)
+        .eq("student_id", user!.id)
+        .eq("status", "in_progress")
+        .maybeSingle();
+
+      if (existingAttempt) {
+        setAttemptId(existingAttempt.id);
+        // Restore saved answers
+        const { data: savedAnswers } = await supabase
+          .from("attempt_answers")
+          .select("question_id, selected_option, marked_for_review")
+          .eq("attempt_id", existingAttempt.id);
+
+        if (savedAnswers) {
+          const restoredAnswers: Record<string, string> = {};
+          const restoredReview: Record<string, boolean> = {};
+          savedAnswers.forEach((a) => {
+            if (a.selected_option)
+              restoredAnswers[a.question_id] = a.selected_option;
+            if (a.marked_for_review) restoredReview[a.question_id] = true;
+          });
+          setAnswers(restoredAnswers);
+          setMarkedForReview(restoredReview);
+        }
+      } else {
+        // Create new attempt for registered users
+        const { data: attemptData, error: attemptError } = await supabase
+          .from("attempts")
+          .insert({
+            student_id: user?.id,
+            test_id: testId,
+            status: "in_progress",
+          })
+          .select()
+          .single();
+
+        if (attemptError || !attemptData) {
+          toast({
+            title: "Error",
+            description: "Failed to create attempt",
+            variant: "destructive",
+          });
+          navigate("/student");
+          return;
+        }
+        setAttemptId(attemptData.id);
+      }
+    } else {
+      // For guest users, create a temporary attempt ID for local storage
+      setAttemptId(`guest_${currentUserId}_${testId}`);
+
+      // Check if there are saved answers in localStorage for this guest session
+      const savedGuestData = localStorage.getItem(
+        `guest_answers_${testId}_${currentUserId}`,
+      );
+      if (savedGuestData) {
+        try {
+          const { answers: savedAnswers, markedForReview: savedReview } =
+            JSON.parse(savedGuestData);
+          setAnswers(savedAnswers || {});
+          setMarkedForReview(savedReview || {});
+        } catch (e) {
+          console.warn("Failed to restore guest answers:", e);
+        }
+      }
     }
-
-    // Resume an existing in_progress attempt if one exists
-    const { data: existingAttempt } = await supabase
-      .from("attempts")
-      .select("*")
-      .eq("test_id", testId)
-      .eq("student_id", user!.id)
-      .eq("status", "in_progress")
-      .maybeSingle();
 
     setTest(testData);
     setTimeLeft(testData.timer * 60);
@@ -331,7 +431,7 @@ export default function TestEngine() {
       "get_test_questions_for_student",
       {
         _test_id: testId!,
-        _student_id: user!.id,
+        _student_id: currentUserId,
       },
     );
 
@@ -341,7 +441,7 @@ export default function TestEngine() {
         description: "Failed to load questions",
         variant: "destructive",
       });
-      navigate("/student");
+      navigate(isGuest ? "/join" : "/student");
       return;
     }
 
@@ -351,51 +451,6 @@ export default function TestEngine() {
     }
     setQuestions(questionsList);
 
-    let currentAttemptId: string;
-
-    if (existingAttempt) {
-      currentAttemptId = existingAttempt.id;
-      // Restore saved answers
-      const { data: savedAnswers } = await supabase
-        .from("attempt_answers")
-        .select("question_id, selected_option, marked_for_review")
-        .eq("attempt_id", existingAttempt.id);
-
-      if (savedAnswers) {
-        const restoredAnswers: Record<string, string> = {};
-        const restoredReview: Record<string, boolean> = {};
-        savedAnswers.forEach((a) => {
-          if (a.selected_option)
-            restoredAnswers[a.question_id] = a.selected_option;
-          if (a.marked_for_review) restoredReview[a.question_id] = true;
-        });
-        setAnswers(restoredAnswers);
-        setMarkedForReview(restoredReview);
-      }
-    } else {
-      const { data: attemptData, error: attemptError } = await supabase
-        .from("attempts")
-        .insert({
-          student_id: user?.id,
-          test_id: testId,
-          status: "in_progress",
-        })
-        .select()
-        .single();
-
-      if (attemptError || !attemptData) {
-        toast({
-          title: "Error",
-          description: "Failed to create attempt",
-          variant: "destructive",
-        });
-        navigate("/student");
-        return;
-      }
-      currentAttemptId = attemptData.id;
-    }
-
-    setAttemptId(currentAttemptId);
     setLoading(false);
 
     // Enter fullscreen after loading
@@ -408,21 +463,48 @@ export default function TestEngine() {
 
   const handleAnswerChange = async (questionId: string, answer: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
-    await supabase.from("attempt_answers").upsert(
-      {
-        attempt_id: attemptId,
-        question_id: questionId,
-        selected_option: answer,
-      },
-      { onConflict: "attempt_id,question_id" },
-    );
+
+    if (isGuest) {
+      // For guest users, save to localStorage
+      const guestData = {
+        answers: { ...answers, [questionId]: answer },
+        markedForReview,
+      };
+      localStorage.setItem(
+        `guest_answers_${testId}_${currentUserId}`,
+        JSON.stringify(guestData),
+      );
+    } else {
+      // For registered users, save to database
+      await supabase.from("attempt_answers").upsert(
+        {
+          attempt_id: attemptId,
+          question_id: questionId,
+          selected_option: answer,
+        },
+        { onConflict: "attempt_id,question_id" },
+      );
+    }
   };
 
   const handleMarkForReview = (questionId: string) => {
-    setMarkedForReview((prev) => ({
-      ...prev,
-      [questionId]: !prev[questionId],
-    }));
+    const newMarkedForReview = {
+      ...markedForReview,
+      [questionId]: !markedForReview[questionId],
+    };
+    setMarkedForReview(newMarkedForReview);
+
+    if (isGuest) {
+      // For guest users, save to localStorage
+      const guestData = {
+        answers,
+        markedForReview: newMarkedForReview,
+      };
+      localStorage.setItem(
+        `guest_answers_${testId}_${currentUserId}`,
+        JSON.stringify(guestData),
+      );
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -470,7 +552,16 @@ export default function TestEngine() {
 
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <h1 className="text-xl font-bold text-primary">{test?.test_name}</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-primary">
+              {test?.test_name}
+            </h1>
+            {isGuest && guestName && (
+              <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+                Guest: {guestName}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             {!isFullscreen && (
               <Button variant="ghost" size="sm" onClick={enterFullscreen}>

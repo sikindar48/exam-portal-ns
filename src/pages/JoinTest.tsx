@@ -13,8 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardList, LogIn } from "lucide-react";
-import { BrandFooter } from "@/components/BrandFooter";
+import { ClipboardList, User, ArrowLeft } from "lucide-react";
 
 export default function JoinTest() {
   const { code } = useParams();
@@ -24,6 +23,8 @@ export default function JoinTest() {
   const [test, setTest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [manualCode, setManualCode] = useState(code || "");
+  const [studentName, setStudentName] = useState("");
+  const [showNameForm, setShowNameForm] = useState(false);
 
   useEffect(() => {
     if (code) {
@@ -56,15 +57,34 @@ export default function JoinTest() {
   };
 
   const handleJoin = () => {
-    if (!user) {
-      navigate(`/auth?redirect=/join/${test.share_code}`);
+    if (user && role === "student") {
+      // Logged in student
+      navigate(`/student/test/${test.id}`);
+    } else if (user && role !== "student") {
+      toast({ title: "Info", description: "Only students can take tests." });
+    } else {
+      // Guest student - show name form
+      setShowNameForm(true);
+    }
+  };
+
+  const handleGuestJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter your name to continue.",
+        variant: "destructive",
+      });
       return;
     }
-    if (role === "student") {
-      navigate(`/student/test/${test.id}`);
-    } else {
-      toast({ title: "Info", description: "Only students can take tests." });
-    }
+
+    // Store guest info in sessionStorage and navigate to test
+    sessionStorage.setItem("guestStudentName", studentName.trim());
+    sessionStorage.setItem("guestTestId", test.id);
+    navigate(
+      `/student/test/${test.id}?guest=true&name=${encodeURIComponent(studentName.trim())}`,
+    );
   };
 
   const handleCodeSubmit = (e: React.FormEvent) => {
@@ -75,14 +95,19 @@ export default function JoinTest() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4">
       <div className="flex flex-1 w-full items-center justify-center">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-lg border-0 dark:border dark:border-slate-800">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-primary">
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-600 rounded-lg">
+                <ClipboardList className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {test ? test.test_name : "Join Test"}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
               {test
                 ? `Duration: ${test.timer} minutes`
                 : "Enter a test invite code to get started"}
@@ -90,53 +115,149 @@ export default function JoinTest() {
           </CardHeader>
           <CardContent>
             {!test ? (
-              <form onSubmit={handleCodeSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Invite Code</Label>
-                  <Input
-                    value={manualCode}
-                    onChange={(e) =>
-                      setManualCode(e.target.value.toUpperCase())
-                    }
-                    placeholder="Enter invite code"
-                    className="font-mono text-center text-lg tracking-widest"
-                    maxLength={8}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Looking up..." : "Find Test"}
-                </Button>
-              </form>
-            ) : (
               <div className="space-y-4">
-                <div className="rounded-lg bg-muted p-4 text-center">
-                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-primary" />
-                  <p className="font-semibold">{test.test_name}</p>
-                  <p className="text-sm text-muted-foreground">
+                <form onSubmit={handleCodeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-700 dark:text-slate-300">
+                      Test Invite Code
+                    </Label>
+                    <Input
+                      value={manualCode}
+                      onChange={(e) =>
+                        setManualCode(e.target.value.toUpperCase())
+                      }
+                      placeholder="Enter invite code"
+                      className="font-mono text-center text-lg tracking-widest"
+                      maxLength={8}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={loading}
+                  >
+                    {loading ? "Looking up..." : "Find Test"}
+                  </Button>
+                </form>
+
+                <div className="text-center">
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate("/")}
+                    className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Home
+                  </Button>
+                </div>
+              </div>
+            ) : showNameForm ? (
+              <form onSubmit={handleGuestJoin} className="space-y-4">
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4 text-center border border-blue-200 dark:border-blue-800">
+                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">
+                    {test.test_name}
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     {test.timer} minutes
                   </p>
                 </div>
-                {user ? (
-                  <Button onClick={handleJoin} className="w-full">
+
+                <div className="space-y-2">
+                  <Label className="text-slate-700 dark:text-slate-300">
+                    Your Name
+                  </Label>
+                  <Input
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="text-center"
+                    required
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                    This will be used to identify your test submission
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowNameForm(false)}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
                     Start Test
                   </Button>
-                ) : (
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4 text-center border border-blue-200 dark:border-blue-800">
+                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">
+                    {test.test_name}
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {test.timer} minutes
+                  </p>
+                </div>
+
+                {user && role === "student" ? (
                   <Button
-                    onClick={() =>
-                      navigate(`/auth?redirect=/join/${test.share_code}`)
-                    }
-                    className="w-full"
+                    onClick={handleJoin}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
                   >
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Sign In to Take Test
+                    Start Test
                   </Button>
+                ) : user && role !== "student" ? (
+                  <div className="text-center space-y-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Only students can take tests
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate("/")}
+                      className="w-full"
+                    >
+                      Back to Home
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleJoin}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      Take Test as Guest
+                    </Button>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                        Already have an account?
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          navigate(`/auth?redirect=/join/${test.share_code}`)
+                        }
+                        className="w-full"
+                      >
+                        Sign In
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-      <BrandFooter />
     </div>
   );
 }

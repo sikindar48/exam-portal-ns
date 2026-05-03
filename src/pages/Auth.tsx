@@ -21,9 +21,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowLeft, GraduationCap } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BrandFooter } from "@/components/BrandFooter";
 
 const ROLE_ROUTES = {
   superadmin: "/superadmin",
@@ -39,6 +38,7 @@ export default function Auth() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState("signin");
 
   const { signIn, signUp, user, role } = useAuth();
   const { toast } = useToast();
@@ -51,6 +51,7 @@ export default function Auth() {
       .from("clients")
       .select("id, name")
       .eq("active_status", true)
+      .order("name")
       .then(({ data }) => {
         setClients(data ?? []);
       });
@@ -102,54 +103,103 @@ export default function Auth() {
         variant: "destructive",
       });
     } else {
-      toast({ title: "Account created", description: "You can now sign in." });
+      toast({
+        title: "Account created successfully!",
+        description: "Please sign in with your credentials.",
+      });
+      setActiveTab("signin");
+      setPassword("");
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted p-4">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4">
+      <div className="absolute top-4 left-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/")}
+          className="gap-2 bg-white/80 hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 backdrop-blur-sm"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Home
+        </Button>
+      </div>
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <div className="flex flex-1 w-full items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-primary">
-              Exam Platform
+      <div className="flex flex-1 w-full items-center justify-center px-4">
+        <Card className="w-full max-w-md shadow-xl border-0 dark:border dark:border-slate-800">
+          <CardHeader className="text-center space-y-3 pb-6">
+            <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mx-auto mb-2">
+              <GraduationCap className="h-8 w-8 text-white" />
+            </div>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              NS Exam Portal
             </CardTitle>
-            <CardDescription>Sign in or create an account</CardDescription>
+            <CardDescription className="text-base">
+              {activeTab === "signin"
+                ? "Welcome back! Sign in to continue"
+                : "Create your account to get started"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
+                <TabsTrigger value="signin" className="text-sm font-medium">
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="text-sm font-medium">
+                  Sign Up
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4 mt-4">
+                <form onSubmit={handleSignIn} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label
+                      htmlFor="signin-email"
+                      className="text-sm font-medium"
+                    >
+                      Email Address
+                    </Label>
                     <Input
                       id="signin-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="email@example.com"
+                      placeholder="you@example.com"
                       autoComplete="email"
+                      className="h-11"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="signin-password"
+                        className="text-sm font-medium"
+                      >
+                        Password
+                      </Label>
+                      <Button
+                        variant="link"
+                        type="button"
+                        className="px-0 h-auto text-xs text-blue-600 hover:text-blue-700"
+                        onClick={() => navigate("/forgot-password")}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                     <div className="relative">
                       <Input
                         id="signin-password"
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
+                        placeholder="Enter your password"
                         autoComplete="current-password"
+                        className="h-11 pr-10"
                         required
                       />
                       <Button
@@ -170,7 +220,11 @@ export default function Auth() {
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button
+                    type="submit"
+                    className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-base font-semibold"
+                    disabled={loading}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -180,21 +234,18 @@ export default function Auth() {
                       "Sign In"
                     )}
                   </Button>
-                  <Button
-                    variant="link"
-                    type="button"
-                    className="w-full"
-                    onClick={() => navigate("/forgot-password")}
-                  >
-                    Forgot Password?
-                  </Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+                <form onSubmit={handleSignUp} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Label
+                      htmlFor="signup-name"
+                      className="text-sm font-medium"
+                    >
+                      Full Name
+                    </Label>
                     <Input
                       id="signup-name"
                       type="text"
@@ -202,32 +253,46 @@ export default function Auth() {
                       onChange={(e) => setName(e.target.value)}
                       placeholder="John Doe"
                       autoComplete="name"
+                      className="h-11"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label
+                      htmlFor="signup-email"
+                      className="text-sm font-medium"
+                    >
+                      Email Address
+                    </Label>
                     <Input
                       id="signup-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="email@example.com"
+                      placeholder="you@example.com"
                       autoComplete="email"
+                      className="h-11"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label
+                      htmlFor="signup-password"
+                      className="text-sm font-medium"
+                    >
+                      Password
+                    </Label>
                     <div className="relative">
                       <Input
                         id="signup-password"
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
+                        placeholder="Create a strong password"
                         autoComplete="new-password"
+                        className="h-11 pr-10"
                         required
+                        minLength={6}
                       />
                       <Button
                         type="button"
@@ -246,34 +311,49 @@ export default function Auth() {
                         )}
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Must be at least 6 characters long
+                    </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="client">Organization</Label>
+                    <Label htmlFor="client" className="text-sm font-medium">
+                      Organization
+                    </Label>
                     <Select
                       value={selectedClient}
                       onValueChange={setSelectedClient}
                       required
                     >
-                      <SelectTrigger id="client">
-                        <SelectValue placeholder="Choose your organization" />
+                      <SelectTrigger id="client" className="h-11">
+                        <SelectValue placeholder="Select your organization" />
                       </SelectTrigger>
                       <SelectContent>
-                        {clients.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
+                        {clients.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            No organizations available
                           </SelectItem>
-                        ))}
+                        ) : (
+                          clients.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button
+                    type="submit"
+                    className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-base font-semibold"
+                    disabled={loading}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating account...
                       </>
                     ) : (
-                      "Sign Up"
+                      "Create Account"
                     )}
                   </Button>
                 </form>
@@ -282,7 +362,6 @@ export default function Auth() {
           </CardContent>
         </Card>
       </div>
-      <BrandFooter />
     </div>
   );
 }

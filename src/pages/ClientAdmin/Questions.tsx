@@ -345,7 +345,7 @@ export default function QuestionsManagement() {
         </div>
       </header>
 
-      <main className="container mx-auto p-6">
+      <main className="container mx-auto p-6 flex-1">
         <Card>
           <CardHeader>
             <CardTitle>All Questions ({questions.length})</CardTitle>

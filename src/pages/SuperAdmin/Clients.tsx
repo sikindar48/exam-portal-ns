@@ -602,7 +602,7 @@ export default function ClientsManagement() {
         </DialogContent>
       </Dialog>
 
-      <main className="container mx-auto p-6">
+      <main className="container mx-auto p-6 flex-1">
         <Card>
           <CardHeader>
             <CardTitle>All Clients ({clients.length})</CardTitle>

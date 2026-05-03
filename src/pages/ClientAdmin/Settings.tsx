@@ -96,7 +96,7 @@ export default function ClientSettings() {
         </div>
       </header>
 
-      <main className="container mx-auto p-6">
+      <main className="container mx-auto p-6 flex-1">
         <Card className="max-w-2xl">
           <CardHeader>
             <CardTitle>Organization Information</CardTitle>

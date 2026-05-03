@@ -84,7 +84,7 @@ export default function StudentDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto p-6">
+      <main className="container mx-auto p-6 flex-1">
         <div className="mb-8">
           <h2 className="mb-4 text-xl font-bold">Available Tests</h2>
           {loading ? (

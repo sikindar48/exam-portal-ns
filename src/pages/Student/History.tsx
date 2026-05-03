@@ -61,7 +61,7 @@ export default function TestHistory() {
         </div>
       </header>
 
-      <main className="container mx-auto p-6">
+      <main className="container mx-auto p-6 flex-1">
         {loading ? (
           <p>Loading...</p>
         ) : attempts.length === 0 ? (

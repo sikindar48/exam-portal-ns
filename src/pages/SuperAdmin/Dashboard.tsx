@@ -125,7 +125,7 @@ export default function SuperAdminDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto p-6 space-y-6">
+      <main className="container mx-auto p-6 space-y-6 flex-1">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {[
             {
