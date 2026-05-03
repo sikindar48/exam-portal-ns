@@ -14,31 +14,31 @@ export function validateQuestion(question: ParsedQuestion): ValidationError[] {
     errors.push({
       row: question.rowNumber,
       field: 'question_text',
-      message: 'Question text is required'
+      message: 'Question text is required',
     });
   } else if (question.question_text.length > 1000) {
     errors.push({
       row: question.rowNumber,
       field: 'question_text',
-      message: 'Question text must be less than 1000 characters'
+      message: 'Question text must be less than 1000 characters',
     });
   }
 
   // Validate options
-  const options = ['option_a', 'option_b', 'option_c', 'option_d'];
+  const options = ['option_a', 'option_b', 'option_c', 'option_d'] as const;
   options.forEach(opt => {
-    const value = question[opt as keyof ParsedQuestion];
-    if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+    const value = question[opt];
+    if (!value || value.trim().length === 0) {
       errors.push({
         row: question.rowNumber,
         field: opt,
-        message: `${opt.replace('_', ' ')} is required`
+        message: `${opt.replace('_', ' ')} is required`,
       });
-    } else if (typeof value === 'string' && value.length > 500) {
+    } else if (value.length > 500) {
       errors.push({
         row: question.rowNumber,
         field: opt,
-        message: `${opt.replace('_', ' ')} must be less than 500 characters`
+        message: `${opt.replace('_', ' ')} must be less than 500 characters`,
       });
     }
   });
@@ -49,17 +49,7 @@ export function validateQuestion(question: ParsedQuestion): ValidationError[] {
     errors.push({
       row: question.rowNumber,
       field: 'correct_answer',
-      message: 'Correct answer must be A, B, C, or D'
-    });
-  }
-
-  // Validate difficulty
-  const validDifficulties = ['easy', 'medium', 'hard'];
-  if (!validDifficulties.includes(question.difficulty)) {
-    errors.push({
-      row: question.rowNumber,
-      field: 'difficulty',
-      message: 'Difficulty must be easy, medium, or hard'
+      message: 'Correct answer must be A, B, C, or D',
     });
   }
 
@@ -68,7 +58,7 @@ export function validateQuestion(question: ParsedQuestion): ValidationError[] {
     errors.push({
       row: question.rowNumber,
       field: 'marks',
-      message: 'Marks must be a number between 1 and 100'
+      message: 'Marks must be a number between 1 and 100',
     });
   }
 
@@ -76,12 +66,5 @@ export function validateQuestion(question: ParsedQuestion): ValidationError[] {
 }
 
 export function validateQuestions(questions: ParsedQuestion[]): ValidationError[] {
-  const allErrors: ValidationError[] = [];
-
-  questions.forEach(question => {
-    const errors = validateQuestion(question);
-    allErrors.push(...errors);
-  });
-
-  return allErrors;
+  return questions.flatMap(q => validateQuestion(q));
 }

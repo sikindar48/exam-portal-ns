@@ -13,7 +13,9 @@ import {
   Target,
   Award,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandFooter } from "@/components/BrandFooter";
 import {
   BarChart,
   Bar,
@@ -48,9 +50,10 @@ export default function ClientAdminDashboard() {
 
     const [students, questions, tests] = await Promise.all([
       supabase
-        .from("profiles")
-        .select("id, name", { count: "exact" })
-        .eq("client_id", clientId),
+        .from("user_roles")
+        .select("user_id", { count: "exact", head: true })
+        .eq("client_id", clientId)
+        .eq("role", "student"),
       supabase
         .from("questions")
         .select("id", { count: "exact", head: true })
@@ -99,14 +102,27 @@ export default function ClientAdminDashboard() {
       passRate: Math.round(passRate),
     });
 
+    // For top performers: fetch names directly from profiles
+    // (RLS fixed to allow clientadmin to read profiles of users in their client)
+    const uniqueStudentIds = [
+      ...new Set(clientAttempts.map((a) => a.student_id)),
+    ];
+
+    let studentMap = new Map<string, string>();
+    if (uniqueStudentIds.length > 0) {
+      const { data: profileRows } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", uniqueStudentIds);
+
+      studentMap = new Map((profileRows || []).map((r: any) => [r.id, r.name]));
+    }
+
     // Top performers
     const studentScores = new Map<
       string,
       { name: string; totalScore: number; count: number }
     >();
-    const studentMap = new Map(
-      (students.data || []).map((s) => [s.id, s.name]),
-    );
 
     clientAttempts.forEach((a) => {
       const name = studentMap.get(a.student_id) || "Unknown";
@@ -155,16 +171,19 @@ export default function ClientAdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-muted flex flex-col">
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <h1 className="text-2xl font-bold text-primary">
             Client Admin Dashboard
           </h1>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -291,6 +310,7 @@ export default function ClientAdminDashboard() {
           </Button>
         </div>
       </main>
+      <BrandFooter />
     </div>
   );
 }

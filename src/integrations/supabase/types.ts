@@ -207,6 +207,38 @@ export type Database = {
           },
         ]
       }
+      test_folders: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_questions: {
         Row: {
           id: string
@@ -247,6 +279,7 @@ export type Database = {
           attempts_allowed: number | null
           client_id: string
           created_at: string | null
+          folder_id: string | null
           id: string
           negative_marking: boolean | null
           negative_marks: number | null
@@ -264,6 +297,7 @@ export type Database = {
           attempts_allowed?: number | null
           client_id: string
           created_at?: string | null
+          folder_id?: string | null
           id?: string
           negative_marking?: boolean | null
           negative_marks?: number | null
@@ -281,6 +315,7 @@ export type Database = {
           attempts_allowed?: number | null
           client_id?: string
           created_at?: string | null
+          folder_id?: string | null
           id?: string
           negative_marking?: boolean | null
           negative_marks?: number | null
@@ -298,6 +333,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "test_folders"
             referencedColumns: ["id"]
           },
         ]

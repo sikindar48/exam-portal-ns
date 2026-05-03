@@ -22,7 +22,7 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, loading, role } = useAuth();
 
-  // Still initializing auth
+  // Only shown on first-ever visit (no cache) while we fetch role from Supabase
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -31,19 +31,10 @@ export function ProtectedRoute({
     );
   }
 
-  // Not logged in
-  if (!user) return <Navigate to="/auth" replace />;
+  // No session and no cached role → go to login
+  if (!user && !role) return <Navigate to="/auth" replace />;
 
-  // Logged in but role not yet loaded — wait briefly
-  if (allowedRoles && !role) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Logged in with wrong role — redirect to their dashboard
+  // Wrong role → redirect to their own dashboard
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to={ROLE_ROUTES[role] ?? "/auth"} replace />;
   }

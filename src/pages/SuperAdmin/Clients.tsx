@@ -31,9 +31,22 @@ import {
   EyeOff,
   Copy,
   Check,
+  Building,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { BrandFooter } from "@/components/BrandFooter";
 
 export default function ClientsManagement() {
   const [clients, setClients] = useState<any[]>([]);
@@ -46,6 +59,12 @@ export default function ClientsManagement() {
   const [clientAdmins, setClientAdmins] = useState<any[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [deleteClientTarget, setDeleteClientTarget] = useState<string | null>(
+    null,
+  );
+  const [deleteAdminTarget, setDeleteAdminTarget] = useState<string | null>(
+    null,
+  );
   const [createdCredentials, setCreatedCredentials] = useState<{
     email: string;
     password: string;
@@ -203,8 +222,6 @@ export default function ClientsManagement() {
   };
 
   const handleDeleteAdmin = async (adminId: string) => {
-    if (!confirm("Are you sure you want to remove this admin?")) return;
-
     // Remove role first, then profile cascade handles the rest
     const { error } = await supabase
       .from("user_roles")
@@ -222,16 +239,10 @@ export default function ClientsManagement() {
       toast({ title: "Success", description: "Admin removed" });
       fetchClientAdmins(selectedClient.id);
     }
+    setDeleteAdminTarget(null);
   };
 
   const handleDeleteClient = async (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this client? All associated data will be deleted.",
-      )
-    )
-      return;
-
     const { error } = await supabase.from("clients").delete().eq("id", id);
 
     if (error) {
@@ -244,6 +255,7 @@ export default function ClientsManagement() {
       toast({ title: "Success", description: "Client deleted successfully" });
       fetchClients();
     }
+    setDeleteClientTarget(null);
   };
 
   const handleEditClient = (client: any) => {
@@ -269,7 +281,7 @@ export default function ClientsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-muted flex flex-col">
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-4">
@@ -278,72 +290,80 @@ export default function ClientsManagement() {
             </Button>
             <h1 className="text-2xl font-bold text-primary">Manage Clients</h1>
           </div>
-
-          {/* Add Client Dialog */}
-          <Dialog
-            open={isClientDialogOpen}
-            onOpenChange={setIsClientDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button onClick={resetClientForm}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Client
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingClient ? "Edit Client" : "Add New Client"}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleClientSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    value={clientForm.name}
-                    onChange={(e) =>
-                      setClientForm({ ...clientForm, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={clientForm.address}
-                    onChange={(e) =>
-                      setClientForm({ ...clientForm, address: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logo_url">Logo URL</Label>
-                  <Input
-                    id="logo_url"
-                    value={clientForm.logo_url}
-                    onChange={(e) =>
-                      setClientForm({ ...clientForm, logo_url: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="active"
-                    checked={clientForm.active_status}
-                    onCheckedChange={(checked) =>
-                      setClientForm({ ...clientForm, active_status: checked })
-                    }
-                  />
-                  <Label htmlFor="active">Active</Label>
-                </div>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Saving..." : editingClient ? "Update" : "Add"}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {/* Add Client Dialog */}
+            <Dialog
+              open={isClientDialogOpen}
+              onOpenChange={setIsClientDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button onClick={resetClientForm}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Client
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingClient ? "Edit Client" : "Add New Client"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleClientSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      value={clientForm.name}
+                      onChange={(e) =>
+                        setClientForm({ ...clientForm, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      value={clientForm.address}
+                      onChange={(e) =>
+                        setClientForm({
+                          ...clientForm,
+                          address: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="logo_url">Logo URL</Label>
+                    <Input
+                      id="logo_url"
+                      value={clientForm.logo_url}
+                      onChange={(e) =>
+                        setClientForm({
+                          ...clientForm,
+                          logo_url: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="active"
+                      checked={clientForm.active_status}
+                      onCheckedChange={(checked) =>
+                        setClientForm({ ...clientForm, active_status: checked })
+                      }
+                    />
+                    <Label htmlFor="active">Active</Label>
+                  </div>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Saving..." : editingClient ? "Update" : "Add"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </header>
 
@@ -448,7 +468,7 @@ export default function ClientsManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteAdmin(admin.id)}
+                          onClick={() => setDeleteAdminTarget(admin.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -598,52 +618,123 @@ export default function ClientsManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>{client.address || "-"}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${client.active_status ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
-                      >
-                        {client.active_status ? "Active" : "Inactive"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleManageAdmins(client)}
-                          title="Manage Admins"
-                        >
-                          <UserCog className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClient(client)}
-                          title="Edit Client"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClient(client.id)}
-                          title="Delete Client"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                {clients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Building className="h-10 w-10 opacity-30" />
+                        <p className="font-medium">No clients yet</p>
+                        <p className="text-sm">
+                          Add your first client using the button above.
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  clients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell className="font-medium">
+                        {client.name}
+                      </TableCell>
+                      <TableCell>{client.address || "-"}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs ${client.active_status ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
+                        >
+                          {client.active_status ? "Active" : "Inactive"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleManageAdmins(client)}
+                            title="Manage Admins"
+                          >
+                            <UserCog className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditClient(client)}
+                            title="Edit Client"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteClientTarget(client.id)}
+                            title="Delete Client"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </main>
+
+      {/* Delete Client Confirmation */}
+      <AlertDialog
+        open={!!deleteClientTarget}
+        onOpenChange={(open) => !open && setDeleteClientTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the client and all associated data
+              including students, questions, and tests. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() =>
+                deleteClientTarget && handleDeleteClient(deleteClientTarget)
+              }
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Admin Confirmation */}
+      <AlertDialog
+        open={!!deleteAdminTarget}
+        onOpenChange={(open) => !open && setDeleteAdminTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the admin's access to this organization.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() =>
+                deleteAdminTarget && handleDeleteAdmin(deleteAdminTarget)
+              }
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <BrandFooter />
     </div>
   );
 }

@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { LogOut, ClipboardList, History, Trophy } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandFooter } from "@/components/BrandFooter";
 
 export default function StudentDashboard() {
   const { signOut, user, clientId } = useAuth();
@@ -68,14 +70,17 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-muted flex flex-col">
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <h1 className="text-2xl font-bold text-primary">Student Dashboard</h1>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -181,6 +186,7 @@ export default function StudentDashboard() {
           </Button>
         </div>
       </main>
+      <BrandFooter />
     </div>
   );
 }

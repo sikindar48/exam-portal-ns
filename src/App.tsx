@@ -18,6 +18,7 @@ import ClientAdminDashboard from "./pages/ClientAdmin/Dashboard";
 import StudentsManagement from "./pages/ClientAdmin/Students";
 import QuestionsManagement from "./pages/ClientAdmin/Questions";
 import TestsManagement from "./pages/ClientAdmin/Tests";
+import TestBuilder from "./pages/ClientAdmin/TestBuilder";
 import ClientSettings from "./pages/ClientAdmin/Settings";
 import StudentDashboard from "./pages/Student/Dashboard";
 import TestEngine from "./pages/Student/TestEngine";
@@ -90,6 +91,22 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["clientadmin"]}>
                     <TestsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client-admin/tests/builder"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <TestBuilder />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client-admin/tests/builder/:testId"
+                element={
+                  <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <TestBuilder />
                   </ProtectedRoute>
                 }
               />

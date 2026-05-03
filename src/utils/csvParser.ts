@@ -5,7 +5,6 @@ export interface ParsedQuestion {
   option_c: string;
   option_d: string;
   correct_answer: string;
-  difficulty: string;
   marks: number;
   rowNumber: number;
 }
@@ -27,23 +26,22 @@ export function parseCSV(csvText: string): CSVParseResult {
 
   // Parse header
   const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const expectedHeaders = [
+  const requiredHeaders = [
     'question_text',
     'option_a',
     'option_b',
     'option_c',
     'option_d',
     'correct_answer',
-    'difficulty',
-    'marks'
+    'marks',
   ];
 
-  // Validate header
-  const missingHeaders = expectedHeaders.filter(h => !header.includes(h));
+  // Validate header (difficulty is optional / ignored if present)
+  const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
   if (missingHeaders.length > 0) {
     errors.push({
       row: 1,
-      message: `Missing required columns: ${missingHeaders.join(', ')}`
+      message: `Missing required columns: ${missingHeaders.join(', ')}`,
     });
     return { questions, errors };
   }
@@ -55,11 +53,12 @@ export function parseCSV(csvText: string): CSVParseResult {
 
     try {
       const values = parseCSVLine(line);
-      
-      if (values.length !== expectedHeaders.length) {
+
+      // Allow rows with extra columns (e.g. old CSVs that still have difficulty)
+      if (values.length < requiredHeaders.length) {
         errors.push({
           row: i + 1,
-          message: `Expected ${expectedHeaders.length} columns, found ${values.length}`
+          message: `Expected at least ${requiredHeaders.length} columns, found ${values.length}`,
         });
         continue;
       }
@@ -71,16 +70,15 @@ export function parseCSV(csvText: string): CSVParseResult {
         option_c: values[header.indexOf('option_c')]?.trim() || '',
         option_d: values[header.indexOf('option_d')]?.trim() || '',
         correct_answer: values[header.indexOf('correct_answer')]?.trim().toUpperCase() || '',
-        difficulty: values[header.indexOf('difficulty')]?.trim().toLowerCase() || '',
-        marks: parseInt(values[header.indexOf('marks')]?.trim() || '1'),
-        rowNumber: i + 1
+        marks: parseInt(values[header.indexOf('marks')]?.trim() || '1') || 1,
+        rowNumber: i + 1,
       };
 
       questions.push(question);
     } catch (error) {
       errors.push({
         row: i + 1,
-        message: `Failed to parse row: ${error instanceof Error ? error.message : 'Unknown error'}`
+        message: `Failed to parse row: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }
   }
@@ -112,11 +110,11 @@ function parseCSVLine(line: string): string[] {
 }
 
 export function generateCSVTemplate(): string {
-  const header = 'question_text,option_a,option_b,option_c,option_d,correct_answer,difficulty,marks';
-  const example1 = '"What is 2+2?","3","4","5","6","B","easy","1"';
-  const example2 = '"What is the capital of France?","London","Berlin","Paris","Madrid","C","medium","2"';
-  const example3 = '"Which programming language is this?","Python","JavaScript","Java","C++","B","hard","3"';
-  
+  const header = 'question_text,option_a,option_b,option_c,option_d,correct_answer,marks';
+  const example1 = '"What is 2+2?","3","4","5","6","B","1"';
+  const example2 = '"What is the capital of France?","London","Berlin","Paris","Madrid","C","2"';
+  const example3 = '"Which language runs in the browser natively?","Python","JavaScript","Java","C++","B","1"';
+
   return [header, example1, example2, example3].join('\n');
 }
 
