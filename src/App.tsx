@@ -33,7 +33,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter basename="/exam-portal-ns">
+        <BrowserRouter basename="/">
           <AuthProvider>
             <Routes>
               <Route path="/" element={<Navigate to="/auth" replace />} />
