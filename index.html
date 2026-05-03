@@ -11,7 +11,7 @@
         var params = new URLSearchParams(window.location.search);
         var p = params.get('p');
         if (p) {
-          var base = '/exam-portal-ns';
+          var base = '';
           var restored = base + decodeURIComponent(p);
           var h = params.get('h');
           window.history.replaceState(null, '', restored + (h ? decodeURIComponent(h) : ''));
