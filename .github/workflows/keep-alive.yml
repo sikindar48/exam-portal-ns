@@ -11,15 +11,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "❌ Secrets not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in repo Settings → Secrets → Actions"
+            exit 1
+          fi
+
+          echo "Pinging $SUPABASE_URL ..."
+
           response=$(curl -s -o /dev/null -w "%{http_code}" \
-            "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/clients?select=id&limit=1" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}")
-          echo "Response code: $response"
-          if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
-            echo "✅ Supabase is alive"
+            --max-time 15 \
+            "${SUPABASE_URL}/rest/v1/clients?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}")
+
+          echo "HTTP response: $response"
+
+          if [ "$response" -ge 200 ] && [ "$response" -lt 500 ]; then
+            echo "✅ Supabase is alive (HTTP $response)"
           else
-            echo "⚠️ Unexpected response: $response"
+            echo "❌ Supabase returned HTTP $response"
             exit 1
           fi
