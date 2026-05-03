@@ -1,13 +1,18 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Copy, Link, QrCode, Share2 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Copy, Link, QrCode, Share2 } from "lucide-react";
+import QRCode from "qrcode";
 
 interface TestSharingProps {
   test: {
@@ -22,21 +27,38 @@ interface TestSharingProps {
 export default function TestSharing({ test, onUpdate }: TestSharingProps) {
   const [open, setOpen] = useState(false);
   const [publicEnabled, setPublicEnabled] = useState(test.public_link_enabled);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const { toast } = useToast();
 
   const testLink = `${window.location.origin}/join/${test.share_code}`;
 
+  // Generate QR code when dialog opens and public link is enabled
+  useEffect(() => {
+    if (open && publicEnabled) {
+      QRCode.toDataURL(testLink, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      })
+        .then(setQrCodeUrl)
+        .catch(console.error);
+    }
+  }, [open, publicEnabled, testLink]);
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: 'Copied!', description: `${label} copied to clipboard.` });
+    toast({ title: "Copied!", description: `${label} copied to clipboard.` });
   };
 
   const togglePublicLink = async (enabled: boolean) => {
     setPublicEnabled(enabled);
     await supabase
-      .from('tests')
+      .from("tests")
       .update({ public_link_enabled: enabled })
-      .eq('id', test.id);
+      .eq("id", test.id);
     onUpdate();
   };
 
@@ -51,30 +73,47 @@ export default function TestSharing({ test, onUpdate }: TestSharingProps) {
           <DialogHeader>
             <DialogTitle>Share: {test.test_name}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {/* Invite Code */}
             <div className="space-y-2">
               <Label>Invite Code</Label>
               <div className="flex gap-2">
-                <Input value={test.share_code} readOnly className="font-mono text-lg tracking-widest" />
-                <Button variant="outline" onClick={() => copyToClipboard(test.share_code, 'Invite code')}>
+                <Input
+                  value={test.share_code}
+                  readOnly
+                  className="font-mono text-lg tracking-widest"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    copyToClipboard(test.share_code, "Invite code")
+                  }
+                >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Students can enter this code to join the test</p>
+              <p className="text-xs text-muted-foreground">
+                Students can enter this code to join the test
+              </p>
             </div>
 
             {/* Public Link */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Public Link</Label>
-                <Switch checked={publicEnabled} onCheckedChange={togglePublicLink} />
+                <Switch
+                  checked={publicEnabled}
+                  onCheckedChange={togglePublicLink}
+                />
               </div>
               {publicEnabled && (
                 <div className="flex gap-2">
                   <Input value={testLink} readOnly className="text-sm" />
-                  <Button variant="outline" onClick={() => copyToClipboard(testLink, 'Test link')}>
+                  <Button
+                    variant="outline"
+                    onClick={() => copyToClipboard(testLink, "Test link")}
+                  >
                     <Link className="h-4 w-4" />
                   </Button>
                 </div>
@@ -89,7 +128,13 @@ export default function TestSharing({ test, onUpdate }: TestSharingProps) {
                   QR Code
                 </Label>
                 <div className="flex justify-center rounded-lg border bg-background p-4">
-                  <QRCodeSVG value={testLink} size={200} level="M" />
+                  {qrCodeUrl && (
+                    <img
+                      src={qrCodeUrl}
+                      alt="QR Code for test link"
+                      className="rounded"
+                    />
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground text-center">
                   Students can scan this QR code to access the test
