@@ -393,6 +393,8 @@ export type Database = {
           option_c: string
           option_d: string
           question_text: string
+          section_id: string
+          section_name: string
         }[]
       }
       get_user_client_id: { Args: { _user_id: string }; Returns: string }

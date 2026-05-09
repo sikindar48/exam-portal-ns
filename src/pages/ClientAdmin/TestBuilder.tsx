@@ -52,6 +52,7 @@ interface TestData {
   id?: string;
   test_name: string;
   timer: number;
+  attempts_allowed: number | null;
   questions: Question[];
 }
 
@@ -66,6 +67,7 @@ export default function TestBuilder() {
   const [testData, setTestData] = useState<TestData>({
     test_name: "",
     timer: 60,
+    attempts_allowed: 1,
     questions: [],
   });
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
@@ -108,6 +110,7 @@ export default function TestBuilder() {
         id: test.id,
         test_name: test.test_name,
         timer: test.timer,
+        attempts_allowed: test.attempts_allowed,
         questions: questions,
       });
     } catch (error) {
@@ -224,6 +227,7 @@ export default function TestBuilder() {
           .update({
             test_name: testData.test_name,
             timer: testData.timer,
+            attempts_allowed: testData.attempts_allowed,
           })
           .eq("id", testData.id)
           .select()
@@ -238,6 +242,7 @@ export default function TestBuilder() {
           .insert({
             test_name: testData.test_name,
             timer: testData.timer,
+            attempts_allowed: testData.attempts_allowed,
             active: false,
             client_id: clientId,
           })
@@ -430,10 +435,34 @@ export default function TestBuilder() {
                       />
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                        <Target className="h-4 w-4" />
-                        Total Marks
+                      <Label
+                        htmlFor="attempts"
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Attempts
                       </Label>
+                      <Input
+                        id="attempts"
+                        type="number"
+                        min="1"
+                        value={testData.attempts_allowed || ""}
+                        onChange={(e) =>
+                          setTestData((prev) => ({
+                            ...prev,
+                            attempts_allowed: e.target.value === "" ? null : Number(e.target.value),
+                          }))
+                        }
+                        placeholder="Unlimited"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Target className="h-4 w-4" />
+                      Total Marks
+                    </Label>
                       <div className="flex items-center h-10 px-3 border rounded-md bg-slate-50 dark:bg-slate-800 mt-1">
                         <Badge
                           variant="secondary"
