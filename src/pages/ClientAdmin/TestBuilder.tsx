@@ -463,20 +463,20 @@ export default function TestBuilder() {
                       <Target className="h-4 w-4" />
                       Total Marks
                     </Label>
-                      <div className="flex items-center h-10 px-3 border rounded-md bg-slate-50 dark:bg-slate-800 mt-1">
-                        <Badge
-                          variant="secondary"
-                          className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                        >
-                          {totalMarks}
-                        </Badge>
-                        <span className="ml-2 text-xs text-slate-500">
-                          (auto-calculated)
-                        </span>
-                      </div>
+                    <div className="flex items-center h-10 px-3 border rounded-md bg-slate-50 dark:bg-slate-800 mt-1">
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      >
+                        {totalMarks}
+                      </Badge>
+                      <span className="ml-2 text-xs text-slate-500">
+                        (auto-calculated)
+                      </span>
                     </div>
                   </div>
                 </CardContent>
+                <CardFooter className="p-0" />
               </Card>
 
               {/* Quick Stats */}
