@@ -11,15 +11,15 @@ const ROLE_ROUTES: Record<AppRole, string> = {
   student: "/student",
 };
 
-interface ProtectedRouteProps {
+interface ProtectedProps {
   children: ReactNode;
   allowedRoles?: AppRole[];
 }
 
-export function ProtectedRoute({
+export function Protected({
   children,
   allowedRoles,
-}: ProtectedRouteProps) {
+}: ProtectedProps) {
   const { user, loading, role } = useAuth();
 
   // Only shown on first-ever visit (no cache) while we fetch role from Supabase

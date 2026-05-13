@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Toggle } from "@/components/Theme/Toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Footer } from "@/components/Brand/Footer";
 
 export default function StudentsManagement() {
   const [students, setStudents] = useState<any[]>([]);
@@ -199,7 +199,7 @@ export default function StudentsManagement() {
             <h1 className="text-2xl font-bold text-primary">Manage Students</h1>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <Toggle />
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -474,7 +474,7 @@ export default function StudentsManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }

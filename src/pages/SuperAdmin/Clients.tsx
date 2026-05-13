@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Toggle } from "@/components/Theme/Toggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Footer } from "@/components/Brand/Footer";
 
 export default function ClientsManagement() {
   const [clients, setClients] = useState<any[]>([]);
@@ -291,7 +291,7 @@ export default function ClientsManagement() {
             <h1 className="text-2xl font-bold text-primary">Manage Clients</h1>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <Toggle />
             {/* Add Client Dialog */}
             <Dialog
               open={isClientDialogOpen}
@@ -734,7 +734,7 @@ export default function ClientsManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }

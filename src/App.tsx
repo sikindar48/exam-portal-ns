@@ -4,16 +4,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { ThemeProvider } from "./components/theme-provider";
+import { Protected } from "./components/Auth/Protected";
+import { Provider } from "./components/Theme/Provider";
 import { Suspense, lazy } from "react";
 
 // Lazy load pages for code splitting
-const Landing = lazy(() => import("./pages/Landing"));
-const Auth = lazy(() => import("./pages/Auth"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const JoinTest = lazy(() => import("./pages/JoinTest"));
+const Home = lazy(() => import("./pages/Home/Page"));
+const Auth = lazy(() => import("./pages/Auth/Page"));
+const Forgot = lazy(() => import("./pages/Auth/Forgot"));
+const Reset = lazy(() => import("./pages/Auth/Reset"));
+const Join = lazy(() => import("./pages/Test/Join"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Super Admin Pages
@@ -27,12 +27,12 @@ const ClientAdminDashboard = lazy(
 const StudentsManagement = lazy(() => import("./pages/ClientAdmin/Students"));
 const QuestionsManagement = lazy(() => import("./pages/ClientAdmin/Questions"));
 const TestsManagement = lazy(() => import("./pages/ClientAdmin/Tests"));
-const TestBuilder = lazy(() => import("./pages/ClientAdmin/TestBuilder"));
+const Builder = lazy(() => import("./pages/ClientAdmin/Builder"));
 const ClientSettings = lazy(() => import("./pages/ClientAdmin/Settings"));
 
 // Student Pages
 const StudentDashboard = lazy(() => import("./pages/Student/Dashboard"));
-const TestEngine = lazy(() => import("./pages/Student/TestEngine"));
+const Engine = lazy(() => import("./pages/Student/Engine"));
 const TestHistory = lazy(() => import("./pages/Student/History"));
 
 const queryClient = new QueryClient();
@@ -46,7 +46,7 @@ const LoadingSpinner = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="exam-portal-theme">
+    <Provider defaultTheme="system" storageKey="exam-portal-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -54,28 +54,28 @@ const App = () => (
           <AuthProvider>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
-                <Route path="/" element={<Landing />} />
+                <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/join/:code" element={<JoinTest />} />
-                <Route path="/join" element={<JoinTest />} />
+                <Route path="/forgot-password" element={<Forgot />} />
+                <Route path="/reset-password" element={<Reset />} />
+                <Route path="/join/:code" element={<Join />} />
+                <Route path="/join" element={<Join />} />
 
                 {/* Super Admin Routes */}
                 <Route
                   path="/superadmin"
                   element={
-                    <ProtectedRoute allowedRoles={["superadmin"]}>
+                    <Protected allowedRoles={["superadmin"]}>
                       <SuperAdminDashboard />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
                 <Route
                   path="/superadmin/clients"
                   element={
-                    <ProtectedRoute allowedRoles={["superadmin"]}>
+                    <Protected allowedRoles={["superadmin"]}>
                       <ClientsManagement />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
 
@@ -83,57 +83,57 @@ const App = () => (
                 <Route
                   path="/client-admin"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <Protected allowedRoles={["clientadmin"]}>
                       <ClientAdminDashboard />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
                 <Route
                   path="/client-admin/students"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <Protected allowedRoles={["clientadmin"]}>
                       <StudentsManagement />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
                 <Route
                   path="/client-admin/questions"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <Protected allowedRoles={["clientadmin"]}>
                       <QuestionsManagement />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
                 <Route
                   path="/client-admin/tests"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <Protected allowedRoles={["clientadmin"]}>
                       <TestsManagement />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
                 <Route
                   path="/client-admin/tests/builder"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
-                      <TestBuilder />
-                    </ProtectedRoute>
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <Builder />
+                    </Protected>
                   }
                 />
                 <Route
                   path="/client-admin/tests/builder/:testId"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
-                      <TestBuilder />
-                    </ProtectedRoute>
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <Builder />
+                    </Protected>
                   }
                 />
                 <Route
                   path="/client-admin/settings"
                   element={
-                    <ProtectedRoute allowedRoles={["clientadmin"]}>
+                    <Protected allowedRoles={["clientadmin"]}>
                       <ClientSettings />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
 
@@ -141,25 +141,25 @@ const App = () => (
                 <Route
                   path="/student"
                   element={
-                    <ProtectedRoute allowedRoles={["student"]}>
+                    <Protected allowedRoles={["student"]}>
                       <StudentDashboard />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
                 <Route
                   path="/student/test/:testId"
                   element={
-                    <ProtectedRoute allowedRoles={["student"]}>
-                      <TestEngine />
-                    </ProtectedRoute>
+                    <Protected allowedRoles={["student"]}>
+                      <Engine />
+                    </Protected>
                   }
                 />
                 <Route
                   path="/student/history"
                   element={
-                    <ProtectedRoute allowedRoles={["student"]}>
+                    <Protected allowedRoles={["student"]}>
                       <TestHistory />
-                    </ProtectedRoute>
+                    </Protected>
                   }
                 />
 
@@ -169,7 +169,7 @@ const App = () => (
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </ThemeProvider>
+    </Provider>
   </QueryClientProvider>
 );
 

@@ -11,9 +11,9 @@ import {
   ClipboardList,
   TrendingUp,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Toggle } from "@/components/Theme/Toggle";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Footer } from "@/components/Brand/Footer";
 import {
   BarChart,
   Bar,
@@ -116,7 +116,7 @@ export default function SuperAdminDashboard() {
             Super Admin Dashboard
           </h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <Toggle />
             <Button variant="outline" onClick={signOut}>
               <LogOut className="mr-2 h-4 w-4" />
               Logout
@@ -237,7 +237,7 @@ export default function SuperAdminDashboard() {
           Manage Clients
         </Button>
       </main>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }

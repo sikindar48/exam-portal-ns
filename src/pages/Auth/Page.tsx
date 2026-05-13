@@ -22,7 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Loader2, ArrowLeft, GraduationCap } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Toggle } from "@/components/Theme/Toggle";
 
 const ROLE_ROUTES = {
   superadmin: "/superadmin",
@@ -30,7 +30,7 @@ const ROLE_ROUTES = {
   student: "/student",
 } as const;
 
-export default function Auth() {
+export default function Page() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -126,7 +126,7 @@ export default function Auth() {
         </Button>
       </div>
       <div className="absolute top-4 right-4">
-        <ThemeToggle />
+        <Toggle />
       </div>
       <div className="flex flex-1 w-full items-center justify-center px-4">
         <Card className="w-full max-w-md shadow-xl border-0 dark:border dark:border-slate-800">

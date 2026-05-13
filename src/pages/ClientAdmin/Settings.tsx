@@ -9,9 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Toggle } from "@/components/Theme/Toggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Footer } from "@/components/Brand/Footer";
 
 export default function ClientSettings() {
   const [loading, setLoading] = useState(false);
@@ -92,7 +92,7 @@ export default function ClientSettings() {
               Organization Settings
             </h1>
           </div>
-          <ThemeToggle />
+          <Toggle />
         </div>
       </header>
 
@@ -175,7 +175,7 @@ export default function ClientSettings() {
           </CardContent>
         </Card>
       </main>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }

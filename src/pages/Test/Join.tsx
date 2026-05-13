@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ClipboardList, User, ArrowLeft } from "lucide-react";
 
-export default function JoinTest() {
+export default function Join() {
   const { code } = useParams();
   const { user, role } = useAuth();
   const navigate = useNavigate();
@@ -36,34 +36,61 @@ export default function JoinTest() {
 
   const fetchTest = async (shareCode: string) => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("tests")
-      .select("id, test_name, timer, share_code, public_link_enabled")
-      .eq("share_code", shareCode.toUpperCase())
-      .eq("active", true)
-      .single();
+    try {
+      // First, find the test by code regardless of active status
+      const { data, error } = await supabase
+        .from("tests")
+        .select("id, test_name, timer, share_code, active, public_link_enabled, allow_guests")
+        .eq("share_code", shareCode.toUpperCase())
+        .maybeSingle();
 
-    if (error || !data) {
+      if (error) throw error;
+
+      if (!data) {
+        toast({
+          title: "Not Found",
+          description: `Test with code "${shareCode}" was not found.`,
+          variant: "destructive",
+        });
+        setTest(null);
+      } else if (data.active === false) {
+        toast({
+          title: "Test Unavailable",
+          description: "This test is currently in Draft mode or not yet published.",
+          variant: "warning",
+        });
+        setTest(null);
+      } else {
+        setTest(data);
+      }
+    } catch (err) {
+      console.error("Error fetching test:", err);
       toast({
-        title: "Not Found",
-        description: "Invalid or inactive test code.",
+        title: "Error",
+        description: "Failed to look up test code.",
         variant: "destructive",
       });
-      setTest(null);
-    } else {
-      setTest(data);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleJoin = () => {
     if (user && role === "student") {
-      // Logged in student
+      // Logged in student — always allowed
       navigate(`/student/test/${test.id}`);
     } else if (user && role !== "student") {
       toast({ title: "Info", description: "Only students can take tests." });
     } else {
-      // Guest student - show name form
+      // Guest — check if test allows guests
+      if (!test.allow_guests) {
+        toast({
+          title: "Sign in Required",
+          description: "This test does not allow guest access. Please sign in to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
       setShowNameForm(true);
     }
   };
@@ -230,13 +257,20 @@ export default function JoinTest() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <Button
-                      onClick={handleJoin}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <User className="mr-2 h-4 w-4" />
-                      Take Test as Guest
-                    </Button>
+                    {test.allow_guests ? (
+                      <Button
+                        onClick={handleJoin}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <User className="mr-2 h-4 w-4" />
+                        Take Test as Guest
+                      </Button>
+                    ) : (
+                      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-center">
+                        <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">Guest access is not allowed for this test.</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">Please sign in with a student account to continue.</p>
+                      </div>
+                    )}
                     <div className="text-center">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
                         Already have an account?

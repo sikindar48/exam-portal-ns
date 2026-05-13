@@ -1,6 +1,6 @@
 import { Mail } from "lucide-react";
 
-export function BrandFooter() {
+export function Footer() {
   return (
     <footer className="w-full border-t bg-card mt-auto shrink-0">
       <div className="w-full px-6 py-3">

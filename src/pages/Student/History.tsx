@@ -11,8 +11,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Trophy, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Toggle } from "@/components/Theme/Toggle";
+import { Footer } from "@/components/Brand/Footer";
 
 export default function TestHistory() {
   const { user } = useAuth();
@@ -57,7 +57,7 @@ export default function TestHistory() {
             </Button>
             <h1 className="text-2xl font-bold text-primary">Test History</h1>
           </div>
-          <ThemeToggle />
+          <Toggle />
         </div>
       </header>
 
@@ -152,7 +152,7 @@ export default function TestHistory() {
           </div>
         )}
       </main>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }

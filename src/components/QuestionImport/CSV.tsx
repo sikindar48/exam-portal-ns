@@ -26,10 +26,10 @@ import {
 import { validateQuestions, ValidationError } from "@/utils/questionValidator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface CSVImportProps {
-  clientId: string;
-  onImportComplete: (importedIds?: string[]) => void;
+interface CSVProps {
+  onImportSuccess: (importedIds?: string[]) => void;
   /** If provided, imported questions are also linked to this test */
   testId?: string;
   /** If provided, imported questions are placed in this section */
@@ -38,13 +38,12 @@ interface CSVImportProps {
   trigger?: React.ReactNode;
 }
 
-export default function CSVImport({
-  clientId,
-  onImportComplete,
+export default function CSV({
+  onImportSuccess,
   testId,
   sectionId,
   trigger,
-}: CSVImportProps) {
+}: CSVProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [questions, setQuestions] = useState<ParsedQuestion[]>([]);
@@ -60,6 +59,7 @@ export default function CSVImport({
     success: number;
     failed: number;
   } | null>(null);
+  const { clientId } = useAuth();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,23 +141,9 @@ export default function CSVImport({
 
     // If linked to a test, create test_questions rows
     if (testId && insertedIds.length > 0) {
-      const { data: existingRows } = await supabase
-        .from("test_questions")
-        .select("position")
-        .eq("test_id", testId)
-        .order("position", { ascending: false })
-        .limit(1);
-
-      const startPosition =
-        existingRows && existingRows.length > 0
-          ? (existingRows[0].position as number) + 1
-          : 0;
-
-      const linkRows = insertedIds.map((qId, idx) => ({
+      const linkRows = insertedIds.map((qId) => ({
         test_id: testId,
         question_id: qId,
-        section_id: sectionId ?? null,
-        position: startPosition + idx,
       }));
 
       await supabase.from("test_questions").insert(linkRows);
@@ -171,7 +157,7 @@ export default function CSVImport({
         title: "Import Complete",
         description: `${successCount} question${successCount !== 1 ? "s" : ""} imported${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
       });
-      onImportComplete(insertedIds);
+      onImportSuccess(insertedIds);
     }
 
     if (failedCount === questionsToInsert.length) {

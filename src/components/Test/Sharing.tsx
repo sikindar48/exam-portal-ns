@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Copy, Link, QrCode, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 
-interface TestSharingProps {
+interface SharingProps {
   test: {
     id: string;
     test_name: string;
@@ -24,7 +24,7 @@ interface TestSharingProps {
   onUpdate: () => void;
 }
 
-export default function TestSharing({ test, onUpdate }: TestSharingProps) {
+export default function Sharing({ test, onUpdate }: SharingProps) {
   const [open, setOpen] = useState(false);
   const [publicEnabled, setPublicEnabled] = useState(test.public_link_enabled);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");

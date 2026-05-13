@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { LogOut, ClipboardList, History, Trophy } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Toggle } from "@/components/Theme/Toggle";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Footer } from "@/components/Brand/Footer";
 
 export default function StudentDashboard() {
   const { signOut, user, clientId } = useAuth();
@@ -33,36 +33,43 @@ export default function StudentDashboard() {
   const fetchData = async () => {
     setLoading(true);
 
-    const [testsData, attemptsData] = await Promise.all([
-      supabase
-        .from("tests")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("active", true)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("attempts")
-        .select(
-          "id, test_id, score, total_marks, submitted_at, tests(test_name)",
-        )
-        .eq("student_id", user?.id)
-        .eq("status", "submitted")
-        .order("submitted_at", { ascending: false }),
-    ]);
+    try {
+      const [testsData, attemptsData] = await Promise.all([
+        supabase
+          .from("tests")
+          .select("*")
+          .eq("client_id", clientId)
+          .eq("active", true)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("attempts")
+          .select(
+            "id, test_id, score, total_marks, submitted_at, tests(test_name)",
+          )
+          .eq("student_id", user?.id)
+          .eq("status", "submitted")
+          .order("submitted_at", { ascending: false }),
+      ]);
 
-    const allAttempts = attemptsData.data || [];
+      if (testsData.error) console.error("Tests fetch error:", testsData.error);
+      if (attemptsData.error) console.error("Attempts fetch error:", attemptsData.error);
 
-    // Count per test and grab 5 most recent for display — single query
-    const counts: Record<string, number> = {};
-    allAttempts.forEach((a) => {
-      counts[a.test_id] = (counts[a.test_id] || 0) + 1;
-    });
+      const allAttempts = attemptsData.data || [];
 
-    setTests(testsData.data || []);
-    setAttempts(allAttempts.slice(0, 5));
-    setAttemptCounts(counts);
+      // Count per test and grab 5 most recent for display — single query
+      const counts: Record<string, number> = {};
+      allAttempts.forEach((a) => {
+        counts[a.test_id] = (counts[a.test_id] || 0) + 1;
+      });
 
-    setLoading(false);
+      setTests(testsData.data || []);
+      setAttempts(allAttempts.slice(0, 5));
+      setAttemptCounts(counts);
+    } catch (error) {
+      console.error("fetchData error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStartTest = (testId: string) => {
@@ -75,7 +82,7 @@ export default function StudentDashboard() {
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <h1 className="text-2xl font-bold text-primary">Student Dashboard</h1>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <Toggle />
             <Button variant="outline" onClick={signOut}>
               <LogOut className="mr-2 h-4 w-4" />
               Logout
@@ -186,7 +193,7 @@ export default function StudentDashboard() {
           </Button>
         </div>
       </main>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }

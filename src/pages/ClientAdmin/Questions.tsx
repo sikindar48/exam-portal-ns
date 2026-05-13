@@ -31,8 +31,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Plus, Pencil, Trash2, FileQuestion } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import CSVImport from "@/components/QuestionImport/CSVImport";
-import { ThemeToggle } from "@/components/theme-toggle";
+import CSVImport from "@/components/QuestionImport/CSV";
+import { Toggle } from "@/components/Theme/Toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BrandFooter } from "@/components/BrandFooter";
+import { Footer } from "@/components/Brand/Footer";
 
 export default function QuestionsManagement() {
   const [questions, setQuestions] = useState<any[]>([]);
@@ -204,7 +204,7 @@ export default function QuestionsManagement() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <Toggle />
             <CSVImport clientId={clientId!} onImportComplete={fetchQuestions} />
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -469,7 +469,7 @@ export default function QuestionsManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <BrandFooter />
+      <Footer />
     </div>
   );
 }
