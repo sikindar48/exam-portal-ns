@@ -391,7 +391,7 @@ export default function Engine() {
         </main>
 
         <Sidebar 
-          studentName={isGuest ? guestName : user?.email || "Student"} 
+          studentName={isGuest ? guestName : user?.user_metadata?.full_name || user?.email || "Student"} 
           sections={sections} 
           currentQuestionIndex={currentQuestionIndex} 
           answers={answers} 

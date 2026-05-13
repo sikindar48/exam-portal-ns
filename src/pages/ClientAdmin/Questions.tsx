@@ -192,28 +192,36 @@ export default function QuestionsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/client-admin")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold text-primary">
-              Manage Questions
-            </h1>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      {/* Premium Header */}
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/client-admin")}
+            className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex flex-col">
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Question Repository</h1>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Master Database / Item Management</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Toggle />
-            <CSVImport clientId={clientId!} onImportComplete={fetchQuestions} />
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Question
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Toggle />
+          <CSVImport clientId={clientId!} onImportComplete={fetchQuestions} />
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={resetForm}
+                className="h-9 px-6 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg"
+              >
+                <Plus className="mr-2 h-3.5 w-3.5" /> Add Question
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto rounded-none border-t-4 border-t-blue-600">
                 <DialogHeader>
                   <DialogTitle>
                     {editingQuestion ? "Edit Question" : "Add New Question"}
@@ -345,104 +353,105 @@ export default function QuestionsManagement() {
         </div>
       </header>
 
-      <main className="container mx-auto p-6 flex-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>All Questions ({questions.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Question</TableHead>
-                  <TableHead>Correct Answer</TableHead>
-                  <TableHead>Difficulty</TableHead>
-                  <TableHead>Marks</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fetchLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-64" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-8" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-16 rounded-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-8" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : questions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-12 text-center">
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <FileQuestion className="h-10 w-10 opacity-30" />
-                        <p className="font-medium">No questions yet</p>
-                        <p className="text-sm">
-                          Add your first question or import via CSV.
-                        </p>
-                      </div>
-                    </TableCell>
+      <main className="flex-1 overflow-y-auto">
+        <div className="container max-w-7xl mx-auto p-8 space-y-10">
+          
+          <section>
+            <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-900 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <FileQuestion className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                  Item Inventory
+                </h2>
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                  {questions.length} Records
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-xl">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2 border-slate-200 dark:border-slate-800">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Question Content</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Key</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Complexity</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Weightage</TableHead>
+                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest py-4">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  questions.map((question) => (
-                    <TableRow key={question.id}>
-                      <TableCell className="max-w-md truncate font-medium">
-                        {question.question_text}
-                      </TableCell>
-                      <TableCell>{question.correct_answer}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs capitalize ${
-                            question.difficulty === "easy"
-                              ? "bg-success/10 text-success"
-                              : question.difficulty === "hard"
-                                ? "bg-destructive/10 text-destructive"
-                                : "bg-warning/10 text-warning"
-                          }`}
-                        >
-                          {question.difficulty}
-                        </span>
-                      </TableCell>
-                      <TableCell>{question.marks}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(question)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteTarget(question.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                </TableHeader>
+                <TableBody>
+                  {fetchLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-64" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : questions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-4 text-slate-400">
+                          <FileQuestion className="h-12 w-12 opacity-20" />
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-widest">No Assessment Items Found</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Initialize your repository by adding questions manually or via CSV.</p>
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ) : (
+                    questions.map((question) => (
+                      <TableRow key={question.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800">
+                        <TableCell className="max-w-md truncate text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight py-4">
+                          {question.question_text}
+                        </TableCell>
+                        <TableCell className="text-xs font-black text-blue-600 py-4">{question.correct_answer}</TableCell>
+                        <TableCell className="py-4">
+                          <span
+                            className={`text-[9px] font-black px-2 py-0.5 border uppercase tracking-widest ${
+                              question.difficulty === "easy"
+                                ? "bg-green-50 text-green-600 border-green-100"
+                                : question.difficulty === "hard"
+                                  ? "bg-red-50 text-red-600 border-red-100"
+                                  : "bg-amber-50 text-amber-600 border-amber-100"
+                            }`}
+                          >
+                            {question.difficulty}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs font-black text-slate-900 dark:text-white tabular-nums py-4">{question.marks || 1} PT</TableCell>
+                        <TableCell className="py-4 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(question)}
+                              className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all p-0"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget(question.id)}
+                              className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-red-600 hover:border-red-200 transition-all p-0"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        </div>
       </main>
 
       {/* Delete Confirmation Dialog */}

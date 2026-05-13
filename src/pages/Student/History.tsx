@@ -48,109 +48,108 @@ export default function TestHistory() {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/student")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold text-primary">Test History</h1>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      {/* Professional Header */}
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/student")}
+            className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex flex-col">
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Examination History</h1>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Performance Record</p>
           </div>
-          <Toggle />
         </div>
+        <Toggle />
       </header>
 
-      <main className="container mx-auto p-6 flex-1">
-        {loading ? (
-          <p>Loading...</p>
-        ) : attempts.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                <Trophy className="h-12 w-12 opacity-30" />
-                <p className="text-lg font-medium">No attempts yet</p>
-                <p className="text-sm">
-                  Complete a test to see your history here.
-                </p>
-                <Button
-                  variant="outline"
-                  className="mt-2"
-                  onClick={() => navigate("/student")}
-                >
-                  Browse Tests
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {attempts.map((attempt) => {
-              const pct =
-                attempt.total_marks > 0
-                  ? (attempt.score / attempt.total_marks) * 100
-                  : 0;
-              const passed = pct >= 40;
-              return (
-                <Card key={attempt.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle>
-                          {attempt.tests?.test_name || "Test"}
-                        </CardTitle>
-                        <CardDescription>
-                          Submitted:{" "}
-                          {new Date(attempt.submitted_at).toLocaleString()}
-                        </CardDescription>
+      <main className="flex-1 overflow-y-auto">
+        <div className="container max-w-5xl mx-auto p-8 space-y-8">
+          
+          <div className="flex items-center gap-3 mb-8 border-b-2 border-slate-900 dark:border-slate-800 pb-4">
+            <Trophy className="h-5 w-5 text-slate-400" />
+            <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Performance Archives</h2>
+          </div>
+
+          {loading ? (
+            <div className="space-y-4">
+              {[1,2,3].map(i => <div key={i} className="h-32 bg-slate-100 dark:bg-slate-900 animate-pulse rounded-none" />)}
+            </div>
+          ) : attempts.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-20 text-center">
+              <Trophy className="h-16 w-16 text-slate-200 mx-auto mb-6" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">No Records Found</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-8">Complete your first examination to generate a performance transcript.</p>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/student")}
+                className="h-11 rounded-none border-2 border-slate-900 dark:border-slate-700 font-black uppercase tracking-widest text-xs px-8 hover:bg-slate-900 hover:text-white transition-all"
+              >
+                Launch Available Tests
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {attempts.map((attempt) => {
+                const pct = attempt.total_marks > 0 ? (attempt.score / attempt.total_marks) * 100 : 0;
+                const passed = pct >= 40;
+                return (
+                  <div 
+                    key={attempt.id}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row group"
+                  >
+                    <div className={`w-2 shrink-0 ${passed ? "bg-green-500" : "bg-red-500"}`} />
+                    
+                    <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`text-[9px] font-black px-2 py-0.5 border uppercase tracking-widest ${
+                            passed 
+                              ? "bg-green-50 text-green-600 border-green-100" 
+                              : "bg-red-50 text-red-600 border-red-100"
+                          }`}>
+                            {passed ? "Qualified" : "Not Qualified"}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            {new Date(attempt.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+                          {attempt.tests?.test_name || "Examination Paper"}
+                        </h4>
                       </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
-                      >
-                        {passed ? "Passed" : "Failed"}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="h-5 w-5 text-warning" />
+
+                      <div className="grid grid-cols-3 gap-8 md:gap-12 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-6 md:pt-0 md:pl-8">
                         <div>
-                          <p className="text-sm text-muted-foreground">Score</p>
-                          <p className="text-lg font-bold">
-                            {attempt.score?.toFixed(2) || 0} /{" "}
-                            {attempt.total_marks || 0}
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Score</p>
+                          <p className="text-base font-black text-slate-900 dark:text-white tabular-nums">
+                            {attempt.score?.toFixed(1) || 0} <span className="text-[10px] text-slate-400">/ {attempt.total_marks || 0}</span>
                           </p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-primary" />
                         <div>
-                          <p className="text-sm text-muted-foreground">
-                            Time Taken
-                          </p>
-                          <p className="text-lg font-bold">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                          <p className="text-base font-black text-slate-900 dark:text-white tabular-nums">
                             {formatTime(attempt.time_taken || 0)}
                           </p>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Percentage
-                        </p>
-                        <p
-                          className={`text-lg font-bold ${pct >= 40 ? "text-success" : "text-destructive"}`}
-                        >
-                          {pct.toFixed(1)}%
-                        </p>
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Accuracy</p>
+                          <p className={`text-base font-black tabular-nums ${passed ? "text-green-600" : "text-red-600"}`}>
+                            {pct.toFixed(1)}%
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </main>
       <Footer />
     </div>

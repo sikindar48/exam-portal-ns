@@ -398,87 +398,124 @@ export default function TestsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-2">
-            {openFolderId ? (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => setOpenFolderId(null)}><ArrowLeft className="h-4 w-4" /></Button>
-                <span className="text-muted-foreground text-sm">Tests</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                <h1 className="text-2xl font-bold text-primary">{openFolder?.name}</h1>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" onClick={() => navigate("/client-admin")}><ArrowLeft className="h-4 w-4" /></Button>
-                <h1 className="text-2xl font-bold text-primary">Manage Tests</h1>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {!openFolderId && (
-              <Button variant="outline" onClick={() => setIsCreateFolderOpen(true)}>
-                <FolderPlus className="mr-2 h-4 w-4" /> New Folder
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      {/* Premium Header */}
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+        <div className="flex items-center gap-4">
+          {openFolderId ? (
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setOpenFolderId(null)}
+                className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
+              >
+                <ArrowLeft className="h-4 w-4" />
               </Button>
-            )}
-            <Button onClick={() => navigate("/client-admin/tests/builder")}>
-              <Plus className="mr-2 h-4 w-4" /> Create Test
+              <div className="flex flex-col">
+                <h1 className="text-sm font-black uppercase tracking-[0.2em]">{openFolder?.name}</h1>
+                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Test Repository / Folder View</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate("/client-admin")}
+                className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex flex-col">
+                <h1 className="text-sm font-black uppercase tracking-[0.2em]">Tests Management</h1>
+                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Examination & Assessment Controls</p>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {!openFolderId && (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateFolderOpen(true)}
+              className="h-9 px-4 rounded-none border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest"
+            >
+              <FolderPlus className="mr-2 h-3.5 w-3.5" /> New Folder
             </Button>
-          </div>
+          )}
+          <Button 
+            onClick={() => navigate("/client-admin/tests/builder")}
+            className="h-9 px-6 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg"
+          >
+            <Plus className="mr-2 h-3.5 w-3.5" /> Create Test
+          </Button>
         </div>
       </header>
 
-      <main className="container mx-auto space-y-6 p-6 flex-1">
-        {!openFolderId && folders.length > 0 && (
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Folders</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {folders.map((folder) => (
-                <div
-                  key={folder.id}
-                  className="group relative flex cursor-pointer flex-col items-center gap-2 rounded-lg border bg-card p-4 shadow-sm hover:border-primary transition-colors"
-                  onClick={() => setOpenFolderId(folder.id)}
-                >
-                  <Folder className="h-8 w-8 text-primary" />
-                  <span className="text-center text-sm font-medium">{folder.name}</span>
-                  <span className="text-xs text-muted-foreground">{testsInFolder(folder.id)} tests</span>
-                  <button
-                    className="absolute right-1 top-1 hidden group-hover:flex p-1 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => { e.stopPropagation(); setDeleteFolderTarget(folder.id); }}
+      <main className="flex-1 overflow-y-auto">
+        <div className="container max-w-7xl mx-auto p-8 space-y-10">
+          
+          {!openFolderId && folders.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-6 pb-2 border-b border-slate-200 dark:border-slate-800">
+                <FolderOpen className="h-4 w-4 text-slate-400" />
+                <h2 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Categorized Repositories</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {folders.map((folder) => (
+                  <div
+                    key={folder.id}
+                    className="group relative flex cursor-pointer flex-col p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm hover:border-blue-500 transition-all"
+                    onClick={() => setOpenFolderId(folder.id)}
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                    <Folder className="h-8 w-8 text-blue-600 mb-3" />
+                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">{folder.name}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{testsInFolder(folder.id)} Papers</span>
+                    <button
+                      className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 p-1.5 text-slate-300 hover:text-red-500 transition-all bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800"
+                      onClick={(e) => { e.stopPropagation(); setDeleteFolderTarget(folder.id); }}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              {openFolderId ? openFolder?.name : "Independent Tests"}
-              <Badge variant="secondary">{openFolderId ? folderTests.length : independentTests.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Test Name</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Attempts</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>{renderTestRows(openFolderId ? folderTests : independentTests)}</TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+          <section>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-slate-900 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <ClipboardList className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                  {openFolderId ? openFolder?.name : "General Examination Papers"}
+                </h2>
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                  {openFolderId ? folderTests.length : independentTests.length} Records
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-xl">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2 border-slate-200 dark:border-slate-800">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Examination Title</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Duration</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Attempts</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Status & Visibility</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Created On</TableHead>
+                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest py-4">Control Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {renderTestRows(openFolderId ? folderTests : independentTests)}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        </div>
       </main>
 
       <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>

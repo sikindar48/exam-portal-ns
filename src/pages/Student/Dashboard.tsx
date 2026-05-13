@@ -77,120 +77,181 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <h1 className="text-2xl font-bold text-primary">Student Dashboard</h1>
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      {/* Professional Header */}
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+        <div className="flex items-center gap-4">
+          <div className="bg-blue-600 p-1.5 rounded-sm">
+            <ClipboardList className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Student Portal</h1>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Examination Management System</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          <div className="hidden md:block text-right border-r border-slate-700 pr-6">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Logged in as</p>
+            <p className="text-xs font-bold text-slate-200">{user?.email}</p>
+          </div>
+          <div className="flex items-center gap-3">
             <Toggle />
-            <Button variant="outline" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
+            <Button 
+              variant="ghost" 
+              onClick={signOut}
+              className="h-9 px-4 rounded-none border border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white transition-all text-xs font-bold uppercase tracking-widest"
+            >
+              <LogOut className="mr-2 h-3.5 w-3.5" />
+              Sign Out
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto p-6 flex-1">
-        <div className="mb-8">
-          <h2 className="mb-4 text-xl font-bold">Available Tests</h2>
-          {loading ? (
-            <p>Loading...</p>
-          ) : tests.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">
-                  No tests available at the moment.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tests.map((test) => {
-                const used = attemptCounts[test.id] || 0;
-                const allowed = test.attempts_allowed ?? 1;
-                const exhausted = used >= allowed;
-                return (
-                  <Card key={test.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">
-                        {test.test_name}
-                      </CardTitle>
-                      <CardDescription>
-                        {test.timer} minutes · {used}/{allowed} attempt
-                        {allowed !== 1 ? "s" : ""} used
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        onClick={() => handleStartTest(test.id)}
-                        className="w-full"
-                        disabled={exhausted}
-                      >
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        {exhausted ? "No Attempts Left" : "Start Test"}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+      <main className="flex-1 overflow-y-auto">
+        <div className="container max-w-7xl mx-auto p-8 space-y-12">
+          
+          {/* Section: Available Tests */}
+          <section>
+            <div className="flex items-end justify-between mb-8 border-b-2 border-slate-900 dark:border-slate-800 pb-4">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Available Examinations</h2>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select a paper to begin your session</p>
+              </div>
+              <div className="text-right hidden sm:block">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Papers</span>
+                <p className="text-xl font-black text-blue-600">{tests.length}</p>
+              </div>
             </div>
-          )}
-        </div>
 
-        <div>
-          <h2 className="mb-4 text-xl font-bold">Recent Attempts</h2>
-          {attempts.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground">No test attempts yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {attempts.map((attempt) => (
-                <Card key={attempt.id}>
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      {attempt.tests?.test_name || "Test"}
-                    </CardTitle>
-                    <CardDescription>
-                      Submitted:{" "}
-                      {new Date(attempt.submitted_at).toLocaleDateString()}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="h-4 w-4 text-warning" />
-                        <span className="font-bold">
-                          Score: {attempt.score?.toFixed(2) || 0} /{" "}
-                          {attempt.total_marks || 0}
-                        </span>
+            {loading ? (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 dark:bg-slate-900 animate-pulse rounded-none" />)}
+              </div>
+            ) : tests.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center">
+                <ClipboardList className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">No examinations are currently scheduled for you.</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {tests.map((test) => {
+                  const used = attemptCounts[test.id] || 0;
+                  const allowed = test.attempts_allowed ?? 1;
+                  const exhausted = used >= allowed;
+                  return (
+                    <div 
+                      key={test.id} 
+                      className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none hover:border-blue-500 transition-all flex flex-col h-full"
+                    >
+                      <div className="p-6 flex-1">
+                        <div className="flex justify-between items-start mb-4">
+                          <span className={`text-[10px] font-black px-2 py-1 uppercase tracking-widest ${exhausted ? "bg-slate-100 text-slate-400" : "bg-blue-50 text-blue-600"}`}>
+                            {exhausted ? "Exhausted" : "Active"}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            {test.timer} Min
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
+                          {test.test_name}
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          Attempts: <span className={exhausted ? "text-red-500" : "text-slate-600"}>{used} / {allowed}</span>
+                        </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate("/student/history")}
-                      >
-                        View Details
-                      </Button>
+                      <div className="p-6 pt-0 mt-auto">
+                        <Button
+                          onClick={() => handleStartTest(test.id)}
+                          disabled={exhausted}
+                          className={`w-full h-11 rounded-none font-bold uppercase tracking-widest transition-all ${
+                            exhausted 
+                              ? "bg-slate-100 dark:bg-slate-800 text-slate-400" 
+                              : "bg-slate-900 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-md"
+                          }`}
+                        >
+                          {exhausted ? "Limit Reached" : "Launch Examination"}
+                        </Button>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-        <div className="mt-8">
-          <Button
-            onClick={() => navigate("/student/history")}
-            variant="outline"
-          >
-            <History className="mr-2 h-4 w-4" />
-            View Test History
-          </Button>
+          {/* Section: Recent Activity */}
+          <section>
+            <div className="flex items-center gap-3 mb-8 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <History className="h-5 w-5 text-slate-400" />
+              <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Recent Performance History</h2>
+            </div>
+
+            {attempts.length === 0 ? (
+              <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your recent scores will appear here once you complete a test.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {attempts.map((attempt) => {
+                  const pct = attempt.total_marks > 0 ? (attempt.score / attempt.total_marks) * 100 : 0;
+                  const passed = pct >= 40;
+                  return (
+                    <div 
+                      key={attempt.id}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-none flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
+                    >
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                          {new Date(attempt.submitted_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+                          {attempt.tests?.test_name || "Examination Paper"}
+                        </h4>
+                      </div>
+                      
+                      <div className="flex items-center gap-8">
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Score</p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
+                            {attempt.score?.toFixed(1) || 0} <span className="text-slate-400 text-[10px]">/ {attempt.total_marks || 0}</span>
+                          </p>
+                        </div>
+                        <div className="w-24 text-center">
+                          <span className={`text-[10px] font-black px-3 py-1 uppercase tracking-widest border ${
+                            passed 
+                              ? "bg-green-50 text-green-600 border-green-200" 
+                              : "bg-red-50 text-red-600 border-red-200"
+                          }`}>
+                            {passed ? "Qualified" : "Failed"}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate("/student/history")}
+                          className="h-10 px-4 rounded-none border border-slate-200 dark:border-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-blue-600 transition-all text-[10px] font-black uppercase tracking-widest"
+                        >
+                          Details
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <div className="pt-8 flex justify-center">
+            <Button
+              onClick={() => navigate("/student/history")}
+              variant="outline"
+              className="h-12 px-10 rounded-none border-2 border-slate-900 dark:border-slate-700 font-black uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white transition-all text-xs"
+            >
+              Access Complete Archives
+            </Button>
+          </div>
         </div>
       </main>
       <Footer />

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { LayoutGrid, Clock, Info, X, Target, AlertTriangle } from "lucide-react";
+import { Toggle } from "@/components/Theme/Toggle";
 
 interface HeaderProps {
   testName: string;
@@ -46,6 +47,11 @@ export function Header({ testName, timeLeft, formatTime, duration, questionCount
           >
             <Info className="h-4 w-4" />
           </button>
+
+          {/* Theme Toggle */}
+          <div className="border-l border-slate-700 pl-3 ml-1">
+            <Toggle />
+          </div>
         </div>
       </header>
 

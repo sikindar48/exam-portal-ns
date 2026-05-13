@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Monitor, Info, HelpCircle, AlertTriangle, Wifi, ShieldCheck } from "lucide-react";
+import { Toggle } from "@/components/Theme/Toggle";
 
 interface Question {
   id: string;
@@ -102,8 +103,14 @@ export function Instructions({
           <Info className="h-5 w-5 text-blue-600" />
           <h1 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight">Instructions</h1>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-slate-900 dark:text-white">{testName}</p>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Paper</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white leading-none">{testName || "Examination Paper"}</p>
+          </div>
+          <div className="border-l border-slate-200 dark:border-slate-700 h-8 pl-6 flex items-center">
+            <Toggle />
+          </div>
         </div>
       </header>
 
