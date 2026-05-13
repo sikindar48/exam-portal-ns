@@ -32,6 +32,7 @@ import {
   Clock,
   Target,
   BookOpen,
+  RotateCcw,
 } from "lucide-react";
 import CSVImport from "@/components/QuestionImport/CSVImport";
 import { useAuth } from "@/contexts/AuthContext";
