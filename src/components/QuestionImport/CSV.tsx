@@ -54,6 +54,7 @@ export default function CSV({
     [],
   );
   const [importing, setImporting] = useState(false);
+  const [duplicateRows, setDuplicateRows] = useState<Set<number>>(new Set());
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<{
     success: number;
@@ -82,13 +83,30 @@ export default function CSV({
     setImportResult(null);
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const text = event.target?.result as string;
       const { questions: parsedQuestions, errors } = parseCSV(text);
       setParseErrors(errors);
+      
       if (parsedQuestions.length > 0) {
         setQuestions(parsedQuestions);
         setValidationErrors(validateQuestions(parsedQuestions));
+        
+        // Check for duplicates immediately
+        const { data } = await supabase
+          .from("questions")
+          .select("question_text")
+          .eq("client_id", clientId);
+        
+        const existingTexts = new Set(data?.map(q => q.question_text.trim()));
+        const duplicates = parsedQuestions
+          .filter(q => existingTexts.has(q.question_text.trim()))
+          .map(q => ({ row: q.rowNumber, message: "This question already exists in your repository." }));
+        
+        // We can add these to validation errors or a separate state
+        if (duplicates.length > 0) {
+          setDuplicateRows(new Set(duplicates.map(d => d.row)));
+        }
       }
     };
     reader.readAsText(selectedFile);
@@ -107,37 +125,62 @@ export default function CSV({
     setImporting(true);
     setImportProgress(0);
 
-    // Strip rowNumber before inserting
-    const questionsToInsert = questions.map(({ rowNumber, ...q }) => ({
+    // Fetch existing question texts to prevent duplicates
+    const { data: existingData, error: fetchError } = await supabase
+      .from("questions")
+      .select("question_text")
+      .eq("client_id", clientId);
+
+    if (fetchError) {
+      toast({
+        title: "Import Error",
+        description: "Failed to check for existing questions",
+        variant: "destructive",
+      });
+      setImporting(false);
+      return;
+    }
+
+    const existingTexts = new Set(existingData?.map(q => q.question_text.trim()));
+    
+    // Strip rowNumber and filter duplicates
+    const allQuestions = questions.map(({ rowNumber, ...q }) => ({
       ...q,
+      difficulty: q.difficulty || "medium",
       client_id: clientId,
     }));
+
+    const questionsToInsert = allQuestions.filter(q => !existingTexts.has(q.question_text.trim()));
+    const skippedCount = allQuestions.length - questionsToInsert.length;
 
     let successCount = 0;
     let failedCount = 0;
     const insertedIds: string[] = [];
 
-    const batchSize = 50;
-    for (let i = 0; i < questionsToInsert.length; i += batchSize) {
-      const batch = questionsToInsert.slice(i, i + batchSize);
+    if (questionsToInsert.length > 0) {
+      const batchSize = 50;
+      for (let i = 0; i < questionsToInsert.length; i += batchSize) {
+        const batch = questionsToInsert.slice(i, i + batchSize);
 
-      const { data, error } = await supabase
-        .from("questions")
-        .insert(batch)
-        .select("id");
+        const { data, error } = await supabase
+          .from("questions")
+          .insert(batch)
+          .select("id");
 
-      if (error) {
-        failedCount += batch.length;
-        console.error("Import error:", error);
-      } else {
-        successCount += batch.length;
-        if (data) insertedIds.push(...data.map((r: { id: string }) => r.id));
+        if (error) {
+          failedCount += batch.length;
+          console.error("Import error:", error);
+        } else {
+          successCount += batch.length;
+          if (data) insertedIds.push(...data.map((r: { id: string }) => r.id));
+        }
+
+        setImportProgress(
+          Math.round(((i + batch.length) / questionsToInsert.length) * 100),
+        );
       }
-
-      setImportProgress(
-        Math.round(((i + batch.length) / questionsToInsert.length) * 100),
-      );
     }
+
 
     // If linked to a test, create test_questions rows
     if (testId && insertedIds.length > 0) {
@@ -152,10 +195,10 @@ export default function CSV({
     setImportResult({ success: successCount, failed: failedCount });
     setImporting(false);
 
-    if (successCount > 0) {
+    if (successCount > 0 || skippedCount > 0) {
       toast({
         title: "Import Complete",
-        description: `${successCount} question${successCount !== 1 ? "s" : ""} imported${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
+        description: `${successCount} imported, ${skippedCount} skipped (already exist)${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
       });
       onImportSuccess(insertedIds);
     }
@@ -176,6 +219,7 @@ export default function CSV({
     setQuestions([]);
     setParseErrors([]);
     setValidationErrors([]);
+    setDuplicateRows(new Set());
     setImportResult(null);
     setImportProgress(0);
   };
@@ -326,11 +370,15 @@ export default function CSV({
                           <TableCell>{q.marks}</TableCell>
                           <TableCell>
                             {hasError ? (
-                              <span className="text-destructive text-xs">
+                              <span className="text-destructive text-xs font-bold uppercase tracking-tight">
                                 Error
                               </span>
+                            ) : duplicateRows.has(q.rowNumber) ? (
+                              <span className="text-amber-600 text-xs font-bold uppercase tracking-tight bg-amber-50 px-2 py-0.5 border border-amber-100">
+                                Duplicate (Will Skip)
+                              </span>
                             ) : (
-                              <span className="text-green-600 text-xs">
+                              <span className="text-green-600 text-xs font-bold uppercase tracking-tight">
                                 Valid
                               </span>
                             )}

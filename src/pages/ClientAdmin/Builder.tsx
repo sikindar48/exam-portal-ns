@@ -14,6 +14,7 @@ import { Footer } from "@/components/Brand/Footer";
 import { Header } from "@/components/TestBuilder/Header";
 import { Sidebar } from "@/components/TestBuilder/Sidebar";
 import { QuestionCard } from "@/components/TestBuilder/QuestionCard";
+import { QuestionRepositoryPicker } from "@/components/TestBuilder/QuestionRepositoryPicker";
 import { Question, TestData } from "@/types/test";
 
 export default function Builder() {
@@ -38,6 +39,7 @@ export default function Builder() {
     questions: [],
   });
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const [repoDialogOpen, setRepoDialogOpen] = useState(false);
 
   useEffect(() => {
     if (testId) loadTest();
@@ -155,6 +157,15 @@ export default function Builder() {
     setCsvDialogOpen(false);
   };
 
+  const onRepoImportSuccess = (importedQuestions: any[]) => {
+    setTestData((prev) => ({ 
+      ...prev, 
+      questions: [...prev.questions, ...importedQuestions] 
+    }));
+    setRepoDialogOpen(false);
+    toast({ title: "Import Success", description: `${importedQuestions.length} questions imported from repository.` });
+  };
+
   const saveTest = async () => {
     if (!testData.test_name.trim() || testData.questions.length === 0) {
       toast({ title: "Validation Error", description: "Test name and at least one question are required.", variant: "destructive" });
@@ -177,6 +188,8 @@ export default function Builder() {
         restrict_navigation: testData.restrict_navigation,
         active: testData.active,
         allow_guests: testData.allow_guests ?? false,
+        scheduled_start: (testData as any).scheduled_start || null,
+        scheduled_end: (testData as any).scheduled_end || null,
         client_id: clientId,
       };
 
@@ -261,9 +274,14 @@ export default function Builder() {
                 <h2 className="font-black uppercase tracking-tight">Question Palette</h2>
                 <span className="text-[10px] bg-slate-100 px-2 py-0.5 font-bold rounded-full">{testData.questions.length} Items</span>
               </div>
-              <Button onClick={addQuestion} className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs rounded-none">
-                <Plus className="h-4 w-4 mr-2" /> Add Question
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setRepoDialogOpen(true)} variant="outline" className="border-slate-200 hover:bg-slate-50 font-black uppercase tracking-widest text-[10px] rounded-none h-8">
+                  <BookOpen className="h-3.5 w-3.5 mr-2 text-blue-600" /> From Repository
+                </Button>
+                <Button onClick={addQuestion} className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs rounded-none h-8">
+                  <Plus className="h-4 w-4 mr-2" /> Add Question
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-8 pb-12">
@@ -304,6 +322,20 @@ export default function Builder() {
           <div className="p-6">
             <CSV onImportSuccess={onCsvImportSuccess} />
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={repoDialogOpen} onOpenChange={setRepoDialogOpen}>
+        <DialogContent className="max-w-4xl bg-white dark:bg-slate-900 border-none rounded-none p-0 overflow-hidden">
+          <div className="h-1 bg-slate-900 dark:bg-blue-600" />
+          <DialogHeader className="p-6 border-b">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Import from Repository</DialogTitle>
+          </DialogHeader>
+          <QuestionRepositoryPicker 
+            existingIds={testData.questions.map(q => q.id)}
+            onSelect={onRepoImportSuccess}
+            onCancel={() => setRepoDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>

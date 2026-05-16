@@ -28,6 +28,7 @@ const StudentsManagement = lazy(() => import("./pages/ClientAdmin/Students"));
 const QuestionsManagement = lazy(() => import("./pages/ClientAdmin/Questions"));
 const TestsManagement = lazy(() => import("./pages/ClientAdmin/Tests"));
 const Builder = lazy(() => import("./pages/ClientAdmin/Builder"));
+const Results = lazy(() => import("./pages/ClientAdmin/Results"));
 const ClientSettings = lazy(() => import("./pages/ClientAdmin/Settings"));
 
 // Student Pages
@@ -125,6 +126,14 @@ const App = () => (
                   element={
                     <Protected allowedRoles={["clientadmin"]}>
                       <Builder />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/client-admin/tests/:testId/results"
+                  element={
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <Results />
                     </Protected>
                   }
                 />

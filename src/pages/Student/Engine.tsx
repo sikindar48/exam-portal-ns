@@ -47,7 +47,10 @@ export default function Engine() {
   // Guest session
   const isGuest = searchParams.get("guest") === "true";
   const guestName = searchParams.get("name") || sessionStorage.getItem("guestStudentName") || "Guest Student";
-  const currentUserId = user?.id || `guest_${Date.now()}`;
+  
+  const currentUserId = useMemo(() => {
+    return user?.id || `guest_${Math.random().toString(36).substr(2, 9)}`;
+  }, [user?.id]);
 
   // URL-based instructions state — reflects in browser URL
   const showInstructions = searchParams.get("view") !== "test";
@@ -120,10 +123,10 @@ export default function Engine() {
     autoSubmitTriggered.current = true;
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     setLoading(true);
-
     try {
+      console.log("Starting submission for attempt:", attemptId);
       if (isGuest) {
-        // Guest scoring logic
+        // Guest scoring logic (fallback for UI/Local)
         const { data: tqs } = await supabase.from("test_questions").select("questions(id, correct_answer, marks)").eq("test_id", testId);
         let score = 0, total = 0;
         tqs?.forEach(tq => {
@@ -134,10 +137,14 @@ export default function Engine() {
           else if (test?.negative_marking && answers[q.id]) score -= test.negative_marks || 0;
         });
         localStorage.setItem(`guest_result_${testId}`, JSON.stringify({ testName: test?.test_name, studentName: guestName, score: Math.max(0, score), totalMarks: total }));
-        navigate("/join");
-      } else {
-        // Force-sync any pending answers before RPC call
-        const pendingPromises = Object.entries(syncTimerRef.current).map(([qId, timer]) => {
+      }
+
+      // Universal submission logic for both Guest and Registered students
+      // Force-sync any pending answers before RPC call
+      const pendingEntries = Object.entries(syncTimerRef.current);
+      if (pendingEntries.length > 0) {
+        console.log("Syncing pending answers:", pendingEntries.length);
+        const pendingPromises = pendingEntries.map(([qId, timer]) => {
           clearTimeout(timer);
           return supabase.from("attempt_answers").upsert({ 
             attempt_id: attemptId, 
@@ -145,26 +152,30 @@ export default function Engine() {
             selected_option: answers[qId] 
           }, { onConflict: "attempt_id,question_id" });
         });
-        
-        if (pendingPromises.length > 0) {
-          await Promise.all(pendingPromises);
-          syncTimerRef.current = {};
-        }
-
-        const { error } = await supabase.rpc("submit_test_attempt", { 
-          _attempt_id: attemptId, 
-          _time_taken: (test?.timer * 60) - timeLeftRef.current 
-        });
-        
-        if (error) {
-          console.error("Submission RPC error:", error);
-          throw new Error("Failed to submit test. Please try again.");
-        }
-        
-        navigate("/student");
+        await Promise.all(pendingPromises);
+        syncTimerRef.current = {};
       }
-    } catch (err) {
-      toast({ title: "Submission Error", variant: "destructive" });
+
+      console.log("Calling submission RPC...");
+      const { error } = await supabase.rpc("submit_test_attempt", { 
+        _attempt_id: attemptId, 
+        _time_taken: (test?.timer * 60) - timeLeftRef.current 
+      });
+      
+      if (error) {
+        console.error("Submission RPC error:", error);
+        throw error;
+      }
+      
+      toast({ title: "Success", description: "Assessment submitted successfully." });
+      navigate(isGuest ? "/join" : "/student");
+    } catch (err: any) {
+      console.error("Detailed submission error:", err);
+      toast({ 
+        title: "Submission Failed", 
+        description: err.message || "An unexpected error occurred during submission.",
+        variant: "destructive" 
+      });
       setLoading(false);
       autoSubmitTriggered.current = false;
     }
@@ -193,22 +204,78 @@ export default function Engine() {
       const { data: testData } = await supabase.from("tests").select("*").eq("id", testId).single();
       if (!testData) throw new Error("Test not found");
 
-      if (!isGuest) {
-        // Attempt management for logged-in students
-        const { data: existing } = await supabase.from("attempts").select("*").eq("test_id", testId).eq("student_id", user!.id).eq("status", "in_progress").maybeSingle();
-        if (existing) setAttemptId(existing.id);
-        else {
-          const { data: newAttempt } = await supabase.from("attempts").insert({ student_id: user?.id, test_id: testId, status: "in_progress" }).select().single();
-          if (newAttempt) setAttemptId(newAttempt.id);
-        }
+      let finalStudentId = user?.id;
+
+      if (isGuest) {
+        // For guests, we need a profile in the database to store results
+        const existingGuestId = sessionStorage.getItem(`guest_profile_id_${testId}`);
+        const guestIdToUse = existingGuestId || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+
+        console.log("Syncing guest profile:", guestIdToUse);
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: guestIdToUse,
+          name: `GUEST: ${guestName}`,
+          email: `guest_${guestIdToUse.slice(0,8)}@temp.exam`,
+          client_id: testData.client_id
+        }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.error("Critical: Guest profile sync failed:", profileError);
+          sessionStorage.removeItem(`guest_profile_id_${testId}`); // Clear dirty session
+          throw new Error(`Database security blocked guest registration. (Error: ${profileError.code})`);
+        } 
+        
+        sessionStorage.setItem(`guest_profile_id_${testId}`, guestIdToUse);
+        finalStudentId = guestIdToUse;
+      }
+
+      if (!finalStudentId) {
+        throw new Error("Identity verification failed. Please try again.");
+      }
+
+      // Attempt management
+      console.log("Verifying attempt for ID:", finalStudentId);
+      const { data: existing, error: fetchError } = await supabase
+        .from("attempts")
+        .select("*")
+        .eq("test_id", testId)
+        .eq("student_id", finalStudentId)
+        .eq("status", "in_progress")
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error("Attempt lookup failed:", fetchError);
+        throw new Error(`Security policy blocked reading attempt status. (Error: ${fetchError.code})`);
+      }
+
+      if (existing) {
+        setAttemptId(existing.id);
       } else {
-        setAttemptId(`guest_${testId}`);
+        const { data: newAttempt, error: attemptError } = await supabase
+          .from("attempts")
+          .insert({ 
+            student_id: finalStudentId, 
+            test_id: testId, 
+            status: "in_progress" 
+          })
+          .select()
+          .single();
+        
+        if (attemptError) throw attemptError;
+        if (newAttempt) setAttemptId(newAttempt.id);
       }
 
       setTest(testData);
       setTimeLeft(testData.timer * 60);
 
-      const { data: qData } = await supabase.rpc("get_test_questions_for_student", { _test_id: testId!, _student_id: currentUserId });
+      const { data: qData } = await supabase.rpc("get_test_questions_for_student", { 
+        _test_id: testId!, 
+        _student_id: finalStudentId 
+      });
+      
       if (!qData || qData.length === 0) throw new Error("No questions found");
       
       setQuestions(testData.shuffle ? [...qData].sort(() => Math.random() - 0.5) : qData);

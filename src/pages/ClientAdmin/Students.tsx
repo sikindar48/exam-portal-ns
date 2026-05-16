@@ -189,172 +189,162 @@ export default function StudentsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/client-admin")}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold text-primary">Manage Students</h1>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      {/* Premium Header */}
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/client-admin")}
+            className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex flex-col">
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Candidate Management</h1>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Enrollment & Access Controls</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Toggle />
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Student
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Student</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "Adding..." : "Add Student"}
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Toggle />
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="h-9 px-6 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg"
+              >
+                <Plus className="mr-2 h-3.5 w-3.5" /> Register Student
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-none border-t-4 border-t-blue-600">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black uppercase tracking-tight">New Candidate Enrollment</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initial Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
+                    required
+                  />
+                </div>
+                <div className="pt-2">
+                  <Button 
+                    type="submit" 
+                    disabled={loading}
+                    className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px]"
+                  >
+                    {loading ? "Initializing..." : "Create Account"}
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
       {/* Credentials Display Dialog */}
-      <Dialog
-        open={isCredentialsDialogOpen}
-        onOpenChange={setIsCredentialsDialogOpen}
-      >
-        <DialogContent className="max-w-md">
+      <Dialog open={isCredentialsDialogOpen} onOpenChange={setIsCredentialsDialogOpen}>
+        <DialogContent className="max-w-md rounded-none border-t-4 border-t-green-600">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-success">
-              <Check className="h-5 w-5" />
-              Student Created Successfully
+            <DialogTitle className="flex items-center gap-3 text-green-600 text-xl font-black uppercase tracking-tight">
+              <Check className="h-6 w-6" />
+              Enrollment Success
             </DialogTitle>
           </DialogHeader>
           {createdCredentials && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Save these credentials now. The password cannot be retrieved
-                later.
-              </p>
-              <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Name</Label>
+            <div className="space-y-6 pt-4">
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900">
+                <p className="text-[10px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-[0.2em] mb-1">Security Protocol</p>
+                <p className="text-xs text-amber-600 dark:text-amber-600/80 font-medium leading-relaxed">
+                  Save these credentials immediately. For security reasons, passwords cannot be recovered once this window is closed.
+                </p>
+              </div>
+              
+              <div className="space-y-4 rounded-none border border-slate-200 dark:border-slate-800 p-6 bg-slate-50 dark:bg-slate-900/50">
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Candidate Name</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      value={createdCredentials.name}
-                      readOnly
-                      className="font-mono"
-                    />
+                    <Input value={createdCredentials.name} readOnly className="h-10 rounded-none bg-white dark:bg-slate-950 font-bold border-slate-200 dark:border-slate-800" />
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
+                      className="h-10 w-10 rounded-none border-slate-200 dark:border-slate-800"
                       onClick={() => {
                         navigator.clipboard.writeText(createdCredentials.name);
-                        toast({
-                          title: "Copied",
-                          description: "Name copied to clipboard",
-                        });
+                        toast({ title: "Copied", description: "Name copied to clipboard" });
                       }}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Email</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Login Identifier (Email)</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      value={createdCredentials.email}
-                      readOnly
-                      className="font-mono"
-                    />
+                    <Input value={createdCredentials.email} readOnly className="h-10 rounded-none bg-white dark:bg-slate-950 font-bold border-slate-200 dark:border-slate-800" />
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
+                      className="h-10 w-10 rounded-none border-slate-200 dark:border-slate-800"
                       onClick={() => {
                         navigator.clipboard.writeText(createdCredentials.email);
-                        toast({
-                          title: "Copied",
-                          description: "Email copied to clipboard",
-                        });
+                        toast({ title: "Copied", description: "Email copied to clipboard" });
                       }}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">
-                    Password
-                  </Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Access Password</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={createdCredentials.password}
                       readOnly
-                      className="font-mono"
+                      className="h-10 rounded-none bg-white dark:bg-slate-950 font-bold border-slate-200 dark:border-slate-800"
                     />
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
+                      className="h-10 w-10 rounded-none border-slate-200 dark:border-slate-800"
                       onClick={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
+                      className="h-10 w-10 rounded-none border-slate-200 dark:border-slate-800"
                       onClick={() => {
-                        navigator.clipboard.writeText(
-                          createdCredentials.password,
-                        );
-                        toast({
-                          title: "Copied",
-                          description: "Password copied to clipboard",
-                        });
+                        navigator.clipboard.writeText(createdCredentials.password);
+                        toast({ title: "Copied", description: "Password copied to clipboard" });
                       }}
                     >
                       <Copy className="h-4 w-4" />
@@ -368,108 +358,109 @@ export default function StudentsManagement() {
                   setCreatedCredentials(null);
                   setShowPassword(false);
                 }}
-                className="w-full"
+                className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px]"
               >
-                Done
+                Confirm & Finalize
               </Button>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      <main className="container mx-auto p-6 flex-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>All Students ({students.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fetchLoading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-32" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-48" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-8" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : students.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center">
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <Users className="h-10 w-10 opacity-30" />
-                        <p className="font-medium">No students yet</p>
-                        <p className="text-sm">
-                          Add your first student using the button above.
-                        </p>
-                      </div>
-                    </TableCell>
+      <main className="flex-1 overflow-y-auto">
+        <div className="container max-w-7xl mx-auto p-8 space-y-10">
+          
+          <section>
+            <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-900 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                  Student Directory
+                </h2>
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
+                  {students.length} Records
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-xl">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2 border-slate-200 dark:border-slate-800">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Candidate Full Name</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Email Identifier</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Registration Date</TableHead>
+                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest py-4">Account Controls</TableHead>
                   </TableRow>
-                ) : (
-                  students.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">
-                        {student.name}
-                      </TableCell>
-                      <TableCell>{student.email}</TableCell>
-                      <TableCell>
-                        {new Date(student.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteTarget(student.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {fetchLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : students.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-4 text-slate-400">
+                          <Users className="h-12 w-12 opacity-20" />
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-widest">No Active Enrollments</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Start building your student directory by adding candidates.</p>
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ) : (
+                    students.map((student) => (
+                      <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800">
+                        <TableCell className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight py-4">
+                          {student.name}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium text-slate-600 dark:text-slate-400 py-4">{student.email}</TableCell>
+                        <TableCell className="text-xs font-bold text-slate-500 tabular-nums py-4">
+                          {new Date(student.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </TableCell>
+                        <TableCell className="py-4 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteTarget(student.id)}
+                            className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-red-600 hover:border-red-200 transition-all p-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        </div>
       </main>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <AlertDialogContent>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Student?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the student and all their test
-              attempts. This action cannot be undone.
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Are you sure ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium leading-relaxed">
+              You are about to permanently delete this candidate's account and all associated examination records. This action is irreversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="pt-4">
+            <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest"
               onClick={() => deleteTarget && handleDelete(deleteTarget)}
             >
-              Delete
+              Confirm Deletion
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
