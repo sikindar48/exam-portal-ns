@@ -19,6 +19,8 @@ export default function TestHistory() {
   const navigate = useNavigate();
   const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [filterResult, setFilterResult] = useState<"all" | "passed" | "failed">("all");
 
   useEffect(() => {
     if (user) {
@@ -30,7 +32,7 @@ export default function TestHistory() {
     setLoading(true);
     const { data, error } = await supabase
       .from("attempts")
-      .select("*, tests(test_name, timer)")
+      .select("*, tests(test_name, timer, allow_review)")
       .eq("student_id", user?.id)
       .eq("status", "submitted")
       .order("submitted_at", { ascending: false });
@@ -40,6 +42,22 @@ export default function TestHistory() {
     }
     setLoading(false);
   };
+
+  const filteredAttempts = attempts.filter((attempt) => {
+    const pct = attempt.total_marks > 0 ? (attempt.score / attempt.total_marks) * 100 : 0;
+    const passed = pct >= 40;
+    
+    const matchesSearch = (attempt.tests?.test_name || "")
+      .toLowerCase()
+      .includes(search.toLowerCase());
+      
+    const matchesFilter = 
+      filterResult === "all" ||
+      (filterResult === "passed" && passed) ||
+      (filterResult === "failed" && !passed);
+
+    return matchesSearch && matchesFilter;
+  });
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -93,60 +111,100 @@ export default function TestHistory() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {attempts.map((attempt) => {
-                const pct = attempt.total_marks > 0 ? (attempt.score / attempt.total_marks) * 100 : 0;
-                const passed = pct >= 40;
-                return (
-                  <div 
-                    key={attempt.id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row group"
-                  >
-                    <div className={`w-2 shrink-0 ${passed ? "bg-green-500" : "bg-red-500"}`} />
-                    
-                    <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className={`text-[9px] font-black px-2 py-0.5 border uppercase tracking-widest ${
-                            passed 
-                              ? "bg-green-50 text-green-600 border-green-100" 
-                              : "bg-red-50 text-red-600 border-red-100"
-                          }`}>
-                            {passed ? "Qualified" : "Not Qualified"}
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                            {new Date(attempt.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-blue-600 transition-colors">
-                          {attempt.tests?.test_name || "Examination Paper"}
-                        </h4>
-                      </div>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase text-slate-400 tracking-wider">Search:</span>
+                  <input
+                    type="text"
+                    placeholder="EXAMINATION NAME..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full h-10 pl-20 pr-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs font-bold uppercase tracking-tight focus:outline-none focus:ring-1 focus:ring-blue-600 rounded-none"
+                  />
+                </div>
+                
+                <select
+                  value={filterResult}
+                  onChange={(e) => setFilterResult(e.target.value as any)}
+                  className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-blue-600 rounded-none sm:w-48"
+                >
+                  <option value="all">ALL RESULTS</option>
+                  <option value="passed">QUALIFIED</option>
+                  <option value="failed">NOT QUALIFIED</option>
+                </select>
+              </div>
 
-                      <div className="grid grid-cols-3 gap-8 md:gap-12 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-6 md:pt-0 md:pl-8">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Score</p>
-                          <p className="text-base font-black text-slate-900 dark:text-white tabular-nums">
-                            {attempt.score?.toFixed(1) || 0} <span className="text-[10px] text-slate-400">/ {attempt.total_marks || 0}</span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Time</p>
-                          <p className="text-base font-black text-slate-900 dark:text-white tabular-nums">
-                            {formatTime(attempt.time_taken || 0)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Accuracy</p>
-                          <p className={`text-base font-black tabular-nums ${passed ? "text-green-600" : "text-red-600"}`}>
-                            {pct.toFixed(1)}%
-                          </p>
+              {filteredAttempts.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-400 rounded-none">
+                  <p className="text-[10px] font-black uppercase tracking-widest">No matching performance records found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredAttempts.map((attempt) => {
+                    const pct = attempt.total_marks > 0 ? (attempt.score / attempt.total_marks) * 100 : 0;
+                    const passed = pct >= 40;
+                    return (
+                      <div 
+                        key={attempt.id}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row group"
+                      >
+                        <div className={`w-2 shrink-0 ${passed ? "bg-green-500" : "bg-red-500"}`} />
+                        
+                        <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className={`text-[9px] font-black px-2 py-0.5 border uppercase tracking-widest ${
+                                passed 
+                                  ? "bg-green-50 text-green-600 border-green-100" 
+                                  : "bg-red-50 text-red-600 border-red-100"
+                              }`}>
+                                {passed ? "Qualified" : "Not Qualified"}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {new Date(attempt.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+                              {attempt.tests?.test_name || "Examination Paper"}
+                            </h4>
+                            {attempt.tests?.allow_review && (
+                              <Button
+                                variant="link"
+                                onClick={() => navigate(`/student/review/${attempt.id}`)}
+                                className="p-0 h-auto text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 mt-3"
+                              >
+                                Review Answers &rarr;
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-8 md:gap-12 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-6 md:pt-0 md:pl-8">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Score</p>
+                              <p className="text-base font-black text-slate-900 dark:text-white tabular-nums">
+                                {attempt.score?.toFixed(1) || 0} <span className="text-[10px] text-slate-400">/ {attempt.total_marks || 0}</span>
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                              <p className="text-base font-black text-slate-900 dark:text-white tabular-nums">
+                                {formatTime(attempt.time_taken || 0)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Accuracy</p>
+                              <p className={`text-base font-black tabular-nums ${passed ? "text-green-600" : "text-red-600"}`}>
+                                {pct.toFixed(1)}%
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

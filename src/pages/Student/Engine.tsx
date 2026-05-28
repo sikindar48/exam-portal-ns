@@ -78,6 +78,7 @@ export default function Engine() {
   const [attemptId, setAttemptId] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [attemptNumber, setAttemptNumber] = useState<number>(1);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
@@ -88,7 +89,64 @@ export default function Engine() {
   const timeLeftRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSubmitTriggered = useRef(false);
-  const syncTimerRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const dirtyAnswersRef = useRef<Record<string, string>>({});
+  const globalDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const flushDirtyAnswers = useCallback(async () => {
+    if (isGuest || !attemptId) return;
+
+    const dirty = { ...dirtyAnswersRef.current };
+    const entries = Object.entries(dirty);
+    if (entries.length === 0) return;
+
+    // Reset local dirty ref immediately to prevent duplicate runs
+    dirtyAnswersRef.current = {};
+    if (globalDebounceTimerRef.current) {
+      clearTimeout(globalDebounceTimerRef.current);
+      globalDebounceTimerRef.current = null;
+    }
+
+    try {
+      const rows = entries.map(([qId, val]) => ({
+        attempt_id: attemptId,
+        question_id: qId,
+        selected_option: val,
+      }));
+
+      const { error } = await supabase
+        .from("attempt_answers")
+        .upsert(rows, { onConflict: "attempt_id,question_id" });
+
+      if (error) {
+        console.error("Batch save error:", error);
+        Object.assign(dirtyAnswersRef.current, dirty);
+      }
+    } catch (err) {
+      console.error("Error batch saving:", err);
+      Object.assign(dirtyAnswersRef.current, dirty);
+    }
+  }, [attemptId, isGuest]);
+
+  // Cleanup/flush on unmount
+  useEffect(() => {
+    return () => {
+      if (globalDebounceTimerRef.current) {
+        clearTimeout(globalDebounceTimerRef.current);
+      }
+      if (attemptId && !isGuest) {
+        const dirty = { ...dirtyAnswersRef.current };
+        const entries = Object.entries(dirty);
+        if (entries.length > 0) {
+          const rows = entries.map(([qId, val]) => ({
+            attempt_id: attemptId,
+            question_id: qId,
+            selected_option: val,
+          }));
+          supabase.from("attempt_answers").upsert(rows, { onConflict: "attempt_id,question_id" });
+        }
+      }
+    };
+  }, [attemptId, isGuest]);
 
   const triggerAlert = useCallback(() => {
     setShowSecurityAlert(true);
@@ -102,6 +160,14 @@ export default function Engine() {
       if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
     };
   }, []);
+
+  const answeredCount = useMemo(() => {
+    return Object.values(answers).filter(val => val !== null && val !== undefined && val !== "").length;
+  }, [answers]);
+
+  const unansweredCount = useMemo(() => {
+    return questions.length - answeredCount;
+  }, [questions.length, answeredCount]);
 
   const sections = useMemo(() => {
     const groups: Record<string, { id: string; name: string; questions: Question[] }> = {};
@@ -141,20 +207,7 @@ export default function Engine() {
 
       // Universal submission logic for both Guest and Registered students
       // Force-sync any pending answers before RPC call
-      const pendingEntries = Object.entries(syncTimerRef.current);
-      if (pendingEntries.length > 0) {
-        console.log("Syncing pending answers:", pendingEntries.length);
-        const pendingPromises = pendingEntries.map(([qId, timer]) => {
-          clearTimeout(timer);
-          return supabase.from("attempt_answers").upsert({ 
-            attempt_id: attemptId, 
-            question_id: qId, 
-            selected_option: answers[qId] 
-          }, { onConflict: "attempt_id,question_id" });
-        });
-        await Promise.all(pendingPromises);
-        syncTimerRef.current = {};
-      }
+      await flushDirtyAnswers();
 
       console.log("Calling submission RPC...");
       const { error } = await supabase.rpc("submit_test_attempt", { 
@@ -179,7 +232,7 @@ export default function Engine() {
       setLoading(false);
       autoSubmitTriggered.current = false;
     }
-  }, [answers, test, attemptId, testId, navigate, toast, isGuest, guestName, showSubmitDialog]);
+  }, [answers, test, attemptId, testId, navigate, toast, isGuest, guestName, showSubmitDialog, flushDirtyAnswers]);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -235,6 +288,16 @@ export default function Engine() {
       if (!finalStudentId) {
         throw new Error("Identity verification failed. Please try again.");
       }
+
+      // Fetch completed attempts to calculate current attempt number
+      const { count: completedCount } = await supabase
+        .from("attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("test_id", testId)
+        .eq("student_id", finalStudentId)
+        .eq("status", "submitted");
+
+      setAttemptNumber((completedCount || 0) + 1);
 
       // Attempt management
       console.log("Verifying attempt for ID:", finalStudentId);
@@ -345,14 +408,19 @@ export default function Engine() {
   const handleAnswer = (qId: string, val: string) => {
     setAnswers(prev => ({ ...prev, [qId]: val }));
     if (!isGuest) {
-      if (syncTimerRef.current[qId]) clearTimeout(syncTimerRef.current[qId]);
-      syncTimerRef.current[qId] = setTimeout(() => {
-        supabase.from("attempt_answers").upsert({ attempt_id: attemptId, question_id: qId, selected_option: val }, { onConflict: "attempt_id,question_id" });
-      }, 1000);
+      dirtyAnswersRef.current[qId] = val;
+      if (globalDebounceTimerRef.current) {
+        clearTimeout(globalDebounceTimerRef.current);
+      }
+      globalDebounceTimerRef.current = setTimeout(() => {
+        flushDirtyAnswers();
+      }, 2000);
     }
   };
 
   const navigateToQuestion = (index: number) => {
+    // Force flush dirty answers on navigation
+    flushDirtyAnswers();
     setCurrentQuestionIndex(index);
     const qId = questions[index]?.id;
     if (qId) setVisitedQuestions(prev => ({ ...prev, [qId]: true }));
@@ -426,6 +494,8 @@ export default function Engine() {
         questionCount={questions.length}
         negativeMarking={test?.negative_marking}
         negativeMarks={test?.negative_marks}
+        attemptNumber={attemptNumber}
+        attemptsAllowed={test?.attempts_allowed}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -452,7 +522,9 @@ export default function Engine() {
             }}
             onClear={() => {
               const id = questions[currentQuestionIndex]?.id;
-              if (id) { const n = { ...answers }; delete n[id]; setAnswers(n); }
+              if (id) {
+                handleAnswer(id, null as any);
+              }
             }}
           />
         </main>
@@ -515,7 +587,9 @@ export default function Engine() {
           <div className="h-1 bg-green-600 w-full absolute top-0 left-0" />
           <AlertDialogHeader className="pt-4">
             <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">Final Submission</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500">Are you sure you want to finish the test? You cannot change your answers after submission.</AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-500">
+              You have answered {answeredCount} out of {questions.length} questions. {unansweredCount > 0 ? `${unansweredCount} questions are unanswered.` : 'All questions have been answered.'} Are you sure you want to finish the test? You cannot change your answers after submission.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pb-4">
             <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Back to Test</AlertDialogCancel>

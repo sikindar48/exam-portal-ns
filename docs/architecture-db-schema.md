@@ -20,19 +20,33 @@
 ```
 exam-portal-ns/
 ├── src/
-│   ├── App.tsx                        # Root router, providers
+│   ├── App.css
+│   ├── App.tsx                        # Root router, providers, lazy pages
 │   ├── main.tsx                       # React entry point
 │   ├── index.css                      # Tailwind + design tokens
 │   ├── components/
-│   │   ├── BrandFooter.tsx            # Footer with NS branding
-│   │   ├── NavLink.tsx                # Active link component
-│   │   ├── ProtectedRoute.tsx         # Role-based route guard
-│   │   ├── TestSharing.tsx            # Share code + QR dialog
-│   │   ├── theme-provider.tsx         # Light/dark/system theme
-│   │   ├── theme-toggle.tsx           # Theme switcher
+│   │   ├── Auth/
+│   │   │   └── Protected.tsx          # Role-based route guard
+│   │   ├── Brand/
+│   │   │   └── Footer.tsx             # Footer with NS branding
+│   │   ├── ClientAdmin/
+│   │   │   ├── Questions/             # Category folder and dialog components
+│   │   │   └── Tests/                 # Test table and folder components
+│   │   ├── Common/
+│   │   │   ├── ErrorBoundary.tsx      # Global error boundary component
+│   │   │   └── NavLink.tsx            # Active link component
 │   │   ├── QuestionImport/
-│   │   │   └── CSVImport.tsx          # CSV question import UI
-│   │   └── ui/                        # shadcn/ui components
+│   │   │   └── CSV.tsx                # CSV question import UI
+│   │   ├── SuperAdmin/
+│   │   │   └── Clients/               # Client and admin management components
+│   │   ├── Test/
+│   │   │   └── Sharing.tsx            # Share code + QR dialog
+│   │   ├── TestBuilder/               # Sidebar and question editor components
+│   │   ├── TestEngine/                # Header, sidebar, and question navigation
+│   │   ├── Theme/
+│   │   │   ├── Provider.tsx           # Light/dark/system theme provider
+│   │   │   └── Toggle.tsx             # Theme switcher dropdown
+│   │   └── ui/                        # shadcn/ui primitives
 │   ├── contexts/
 │   │   └── AuthContext.tsx            # Auth state, role, clientId
 │   ├── hooks/
@@ -43,26 +57,31 @@ exam-portal-ns/
 │   │       ├── client.ts              # Supabase client init
 │   │       └── types.ts               # Auto-generated DB types
 │   ├── pages/
-│   │   ├── Auth.tsx                   # Sign in / Sign up
-│   │   ├── Landing.tsx                # Public landing page
-│   │   ├── ForgotPassword.tsx         # Password reset request
-│   │   ├── ResetPassword.tsx          # Password reset form
-│   │   ├── JoinTest.tsx               # Public test join page
-│   │   ├── NotFound.tsx               # 404 page
-│   │   ├── SuperAdmin/
-│   │   │   ├── Dashboard.tsx          # Platform stats
-│   │   │   └── Clients.tsx            # Client management
+│   │   ├── Auth/
+│   │   │   ├── Forgot.tsx             # Password reset request
+│   │   │   ├── Page.tsx               # Sign in / Sign up page
+│   │   │   └── Reset.tsx              # Password reset form
 │   │   ├── ClientAdmin/
-│   │   │   ├── Dashboard.tsx          # Org stats & analytics
-│   │   │   ├── Students.tsx           # Student management
-│   │   │   ├── Questions.tsx          # Question bank
-│   │   │   ├── Tests.tsx              # Test management
-│   │   │   ├── TestBuilder.tsx        # Test creation/edit
-│   │   │   └── Settings.tsx           # Org settings
-│   │   └── Student/
-│   │       ├── Dashboard.tsx          # Available tests
-│   │       ├── TestEngine.tsx         # Test taking interface
-│   │       └── History.tsx            # Test history
+│   │   │   ├── Builder.tsx            # Test builder (create/edit) page
+│   │   │   ├── Dashboard.tsx          # Org stats & analytics dashboard
+│   │   │   ├── Questions.tsx          # Question bank management page
+│   │   │   ├── Results.tsx            # Test attempts and results viewer
+│   │   │   ├── Settings.tsx           # Org settings management page
+│   │   │   ├── Students.tsx           # Student user accounts page
+│   │   │   └── Tests.tsx              # Folder-based tests management page
+│   │   ├── Home/
+│   │   │   └── Page.tsx               # Public landing page
+│   │   ├── Student/
+│   │   │   ├── Dashboard.tsx          # Available tests listing page
+│   │   │   ├── Engine.tsx             # Secure test taking screen
+│   │   │   └── History.tsx            # Previous attempts history page
+│   │   ├── SuperAdmin/
+│   │   │   ├── Clients.tsx            # Client organization control page
+│   │   │   └── Dashboard.tsx          # Platform-wide stats dashboard
+│   │   ├── Index.tsx
+│   │   └── NotFound.tsx               # 404 error page
+│   ├── types/
+│   │   └── test.ts                    # Test builder types
 │   └── utils/
 │       ├── csvParser.ts               # CSV parsing utility
 │       └── questionValidator.ts       # Question validation
@@ -170,24 +189,68 @@ Stores role assignments. A user can have multiple roles (e.g., both `clientadmin
 
 ---
 
+#### `test_folders`
+
+Stores folders created by client admins to organize tests.
+
+| Column       | Type          | Notes                      |
+| ------------ | ------------- | -------------------------- |
+| `id`         | `uuid` PK     |                            |
+| `client_id`  | `uuid`        | FK → `clients(id)` CASCADE |
+| `name`       | `text`        | Required                   |
+| `created_at` | `timestamptz` | Auto                       |
+| `updated_at` | `timestamptz` | Auto (trigger)             |
+
+---
+
+#### `question_folders`
+
+Stores categories/folders created by client admins to organize questions in their question bank.
+
+| Column       | Type          | Notes                                     |
+| ------------ | ------------- | ----------------------------------------- |
+| `id`         | `uuid` PK     |                                           |
+| `client_id`  | `uuid`        | FK → `clients(id)` CASCADE                |
+| `name`       | `text`        | Required                                  |
+| `parent_id`  | `uuid`        | FK → `question_folders(id)` CASCADE, null |
+| `created_at` | `timestamptz` | Auto                                      |
+| `updated_at` | `timestamptz` | Auto (trigger)                            |
+
+---
+
+#### `test_sections`
+
+Stores sections within a test to group questions (e.g. Section A, Section B).
+
+| Column       | Type          | Notes                    |
+| ------------ | ------------- | ------------------------ |
+| `id`         | `uuid` PK     |                          |
+| `test_id`    | `uuid`        | FK → `tests(id)` CASCADE |
+| `name`       | `text`        | Required                 |
+| `position`   | `integer`     | Section order index      |
+| `created_at` | `timestamptz` | Auto                     |
+
+---
+
 #### `questions`
 
 MCQ questions belonging to a client.
 
-| Column           | Type          | Notes                               |
-| ---------------- | ------------- | ----------------------------------- |
-| `id`             | `uuid` PK     |                                     |
-| `client_id`      | `uuid`        | FK → `clients(id)` CASCADE          |
-| `question_text`  | `text`        |                                     |
-| `option_a`       | `text`        |                                     |
-| `option_b`       | `text`        |                                     |
-| `option_c`       | `text`        |                                     |
-| `option_d`       | `text`        |                                     |
-| `correct_answer` | `text`        | CHECK `IN ('A','B','C','D')`        |
-| `difficulty`     | `text`        | CHECK `IN ('easy','medium','hard')` |
-| `marks`          | `integer`     | Default `1`                         |
-| `created_at`     | `timestamptz` | Auto                                |
-| `updated_at`     | `timestamptz` | Auto (trigger)                      |
+| Column           | Type          | Notes                                      |
+| ---------------- | ------------- | ------------------------------------------ |
+| `id`             | `uuid` PK     |                                            |
+| `client_id`      | `uuid`        | FK → `clients(id)` CASCADE                 |
+| `folder_id`      | `uuid`        | FK → `question_folders(id)` SET NULL, null |
+| `question_text`  | `text`        |                                            |
+| `option_a`       | `text`        |                                            |
+| `option_b`       | `text`        |                                            |
+| `option_c`       | `text`        |                                            |
+| `option_d`       | `text`        |                                            |
+| `correct_answer` | `text`        | CHECK `IN ('A','B','C','D')`               |
+| `difficulty`     | `text`        | Nullable (Constraint dropped for builder)  |
+| `marks`          | `integer`     | Default `1`                                |
+| `created_at`     | `timestamptz` | Auto                                       |
+| `updated_at`     | `timestamptz` | Auto (trigger)                             |
 
 ---
 
@@ -209,8 +272,10 @@ A test created by a client admin. Supports folders, scheduling, and flexible att
 | `restrict_navigation` | `boolean`     | Prevent going back                        |
 | `attempts_allowed`    | `integer`     | NULL = unlimited, else 1-100              |
 | `status`              | `text`        | `draft` or `published`                    |
-| `start_datetime`      | `timestamptz` | Optional scheduled start                  |
-| `end_datetime`        | `timestamptz` | Optional scheduled end                    |
+| `active`              | `boolean`     | Default `true`                            |
+| `allow_guests`        | `boolean`     | Default `false`                           |
+| `scheduled_start`     | `timestamptz` | Optional scheduled start                  |
+| `scheduled_end`       | `timestamptz` | Optional scheduled end                    |
 | `share_code`          | `text`        | UNIQUE, 8-char, auto-generated by trigger |
 | `public_link_enabled` | `boolean`     | Enables public join URL                   |
 | `created_at`          | `timestamptz` | Auto                                      |
@@ -220,14 +285,16 @@ A test created by a client admin. Supports folders, scheduling, and flexible att
 
 #### `test_questions`
 
-Junction table linking tests to questions (many-to-many).
+Junction table linking tests to questions (many-to-many), organized by sections and positions.
 
-| Column        | Type      | Notes                        |
-| ------------- | --------- | ---------------------------- |
-| `id`          | `uuid` PK |                              |
-| `test_id`     | `uuid`    | FK → `tests(id)` CASCADE     |
-| `question_id` | `uuid`    | FK → `questions(id)` CASCADE |
-| —             | UNIQUE    | `(test_id, question_id)`     |
+| Column        | Type      | Notes                                    |
+| ------------- | --------- | ---------------------------------------- |
+| `id`          | `uuid` PK |                                          |
+| `test_id`     | `uuid`    | FK → `tests(id)` CASCADE                 |
+| `question_id` | `uuid`    | FK → `questions(id)` CASCADE             |
+| `section_id`  | `uuid`    | FK → `test_sections(id)` SET NULL        |
+| `position`    | `integer` | Order index of question within section   |
+| —             | UNIQUE    | `(test_id, question_id)`                 |
 
 ---
 
@@ -299,9 +366,13 @@ auth.users
 
 `SECURITY DEFINER` — reads `profiles.client_id`. Used in RLS policies to scope data to the caller's organization.
 
-### `get_test_questions_for_student(_test_id, _student_id)` → table
+### `get_test_questions_for_student(_test_id uuid, _student_id text)` → table
 
-`SECURITY DEFINER` — returns question rows **without** `correct_answer`. Ensures correct answers are never exposed to the client.
+`SECURITY DEFINER` — returns question rows **without** `correct_answer`, including section details, sorted by section position and question position. Supports guest student credentials as text IDs (`guest_...`).
+
+### `submit_test_attempt(_attempt_id uuid, _time_taken integer)` → json
+
+`SECURITY DEFINER` — handles server-side assessment evaluation: matches candidate answers to correct keys, applies negative markings if enabled, computes final score/marks, and updates attempt status to `submitted`. Returns evaluation metrics.
 
 ### `delete_student(_student_id)` → void
 
@@ -357,8 +428,11 @@ All tables have RLS enabled. Policies use `has_role()` and `get_user_client_id()
 | `clients`         | ALL        | SELECT (own) + UPDATE (own) | SELECT (own)                | SELECT (active only)         |
 | `user_roles`      | ALL        | —                           | SELECT (own)                | —                            |
 | `profiles`        | ALL        | ALL (own client)            | SELECT + UPDATE (own)       | —                            |
-| `questions`       | ALL        | ALL (own client)            | SELECT (own client)         | —                            |
+| `questions`       | ALL        | ALL (own client)            | SELECT (own client)         | SELECT (public tests only)   |
+| `question_folders`| ALL        | ALL (own client)            | —                           | —                            |
+| `test_folders`    | ALL        | ALL (own client)            | —                           | —                            |
 | `tests`           | ALL        | ALL (own client)            | SELECT (active, own client) | SELECT (public_link_enabled) |
+| `test_sections`   | ALL        | ALL (own client tests)      | SELECT (own client tests)   | SELECT (public tests only)   |
 | `test_questions`  | ALL        | ALL (own client tests)      | SELECT (own client tests)   | —                            |
 | `attempts`        | SELECT     | SELECT (own client tests)   | ALL (own)                   | —                            |
 | `attempt_answers` | SELECT     | SELECT (own client)         | ALL (own attempts)          | —                            |
@@ -368,16 +442,23 @@ All tables have RLS enabled. Policies use `has_role()` and `get_user_client_id()
 ## Performance Indexes
 
 ```sql
-idx_user_roles_user_id        -- has_role() lookups
-idx_user_roles_client_id      -- client-scoped role queries
-idx_profiles_client_id        -- get_user_client_id() + student lists
-idx_questions_client_id       -- question bank queries
-idx_tests_client_id           -- test list queries
-idx_tests_share_code          -- join-by-code lookups
-idx_attempts_student_id       -- student history queries
-idx_attempts_test_id          -- admin attempt reporting
-idx_attempt_answers_attempt_id -- answer restore on resume
-idx_test_questions_test_id    -- question fetch per test
+idx_user_roles_user_id          -- has_role() lookups
+idx_user_roles_client_id        -- client-scoped role queries
+idx_profiles_client_id          -- get_user_client_id() + student lists
+idx_questions_client_id         -- question bank queries
+idx_tests_client_id             -- test list queries
+idx_tests_share_code            -- join-by-code lookups
+idx_attempts_student_id         -- student history queries
+idx_attempts_test_id            -- admin attempt reporting
+idx_attempt_answers_attempt_id   -- answer restore on resume
+idx_test_questions_test_id      -- question fetch per test
+idx_test_folders_client_id      -- folder listings by client
+idx_tests_folder_id             -- test lookup inside folder
+idx_tests_status                -- filters for published tests
+idx_tests_scheduled_start       -- scheduling status lookups
+idx_test_sections_test_id       -- sections lookup inside test
+idx_test_questions_section_id   -- questions lookup inside section
+idx_test_questions_position     -- ordered questions inside test section
 ```
 
 ---

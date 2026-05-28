@@ -65,11 +65,13 @@ The app will be available at `http://localhost:5173`
 ### Test Management
 
 - Folder-based test organization
+- Nested question categories/folders
+- Interactive **Assessment Builder** visual palette (create/edit inline)
 - Draft/Publish workflow
 - Scheduled tests (start/end date-time)
 - Unlimited or limited attempts
 - CSV question import
-- Test sharing via invite codes, public links, and QR codes
+- Test sharing via invite codes, public links (with optional **Guest Access**), and QR codes
 
 ### Secure Test Engine
 
@@ -106,23 +108,28 @@ The app will be available at `http://localhost:5173`
 exam-portal-ns/
 ├── src/
 │   ├── components/          # Reusable UI components
-│   │   ├── ui/             # shadcn/ui components
-│   │   ├── BrandFooter.tsx
-│   │   ├── ProtectedRoute.tsx
-│   │   ├── TestSharing.tsx
-│   │   └── theme-*.tsx
-│   ├── contexts/           # React contexts (Auth)
-│   ├── hooks/              # Custom React hooks
-│   ├── integrations/       # Supabase client & types
-│   ├── pages/              # Route components
-│   │   ├── Auth.tsx
-│   │   ├── Landing.tsx
-│   │   ├── JoinTest.tsx
-│   │   ├── SuperAdmin/
-│   │   ├── ClientAdmin/
-│   │   └── Student/
-│   ├── utils/              # Helper functions
-│   └── App.tsx             # Root component
+│   │   ├── Auth/            # Route guarding components
+│   │   ├── Brand/           # NS Branding components
+│   │   ├── ClientAdmin/     # Management tables & folders
+│   │   ├── Common/          # Error boundary and nav components
+│   │   ├── QuestionImport/  # CSV importer
+│   │   ├── SuperAdmin/      # Client admin user creators
+│   │   ├── Test/            # Share & QR dialogs
+│   │   ├── TestBuilder/     # Builder sidebar & inline cards
+│   │   ├── TestEngine/      # Instructions & secure test player
+│   │   ├── Theme/           # Theme provider & toggle dropdown
+│   │   └── ui/              # shadcn/ui base elements
+│   ├── contexts/           # React Contexts (AuthContext)
+│   ├── hooks/              # Custom React hooks (useMobile, useToast)
+│   ├── integrations/       # Supabase client & generated types
+│   ├── pages/              # Lazy-loaded route layouts
+│   │   ├── Auth/            # Login, Reset, Forgot pages
+│   │   ├── ClientAdmin/     # Dashboard, Questions, Builder, Results pages
+│   │   ├── Home/            # Public Landing page
+│   │   ├── Student/         # Dashboard, History, Engine pages
+│   │   └── SuperAdmin/      # Platform admin panel
+│   ├── utils/              # Helper functions (CSV, validators)
+│   └── App.tsx             # Root router configurations
 ├── supabase/
 │   ├── functions/          # Edge Functions
 │   └── migrations/         # Database migrations

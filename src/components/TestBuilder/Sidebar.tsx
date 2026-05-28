@@ -85,6 +85,28 @@ export function Sidebar({ testData, setTestData, totalMarks }: SidebarProps) {
                 />
               </div>
 
+              {testData.attempts_allowed !== 1 && (
+                <div className="pl-12 pt-2 animate-in slide-in-from-top-2 duration-200">
+                  <Label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Number of Attempts</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="2"
+                      placeholder="Unlimited (Leave empty)"
+                      value={testData.attempts_allowed === null ? "" : testData.attempts_allowed}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : null;
+                        updateField("attempts_allowed", val);
+                      }}
+                      className="h-8 text-sm rounded-none border-slate-200"
+                    />
+                    <span className="text-[10px] text-slate-400 font-bold uppercase whitespace-nowrap">
+                      {testData.attempts_allowed === null ? "Unlimited" : "Limit"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between group">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-orange-50 text-orange-600 rounded">

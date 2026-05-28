@@ -38,37 +38,83 @@ export function QuestionRepositoryPicker({ onSelect, onCancel, existingIds }: Pr
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [difficulty, setDifficulty] = useState<string>("all");
+  const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (clientId) {
+      fetchFolders();
+    }
+  }, [clientId]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    const [foldersRes, questionsRes] = await Promise.all([
-      supabase.from("question_folders").select("*").eq("client_id", clientId),
-      supabase.from("questions").select("*").eq("client_id", clientId),
-    ]);
-    
-    if (foldersRes.data) setFolders(foldersRes.data);
-    if (questionsRes.data) setQuestions(questionsRes.data as unknown as Question[]);
-    setLoading(false);
+  const fetchFolders = async () => {
+    const { data } = await supabase
+      .from("question_folders")
+      .select("*")
+      .eq("client_id", clientId);
+    if (data) setFolders(data);
   };
 
-  const filteredFolders = folders.filter(f => f.parent_id === currentFolderId && f.name.toLowerCase().includes(search.toLowerCase()));
-  const filteredQuestions = questions.filter(q => q.folder_id === currentFolderId && q.question_text.toLowerCase().includes(search.toLowerCase()));
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  const toggleSelection = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(i => i !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
+  useEffect(() => {
+    if (clientId) {
+      fetchQuestions();
+    }
+  }, [clientId, currentFolderId, debouncedSearch, difficulty]);
+
+  const fetchQuestions = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from("questions")
+        .select("*")
+        .eq("client_id", clientId);
+
+      if (currentFolderId) {
+        query = query.eq("folder_id", currentFolderId);
+      } else {
+        query = query.is("folder_id", null);
+      }
+
+      if (difficulty !== "all") {
+        query = query.eq("difficulty", difficulty);
+      }
+
+      if (debouncedSearch.trim()) {
+        query = query.ilike("question_text", `%${debouncedSearch.trim()}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setQuestions((data as unknown as Question[]) || []);
+    } catch (err) {
+      console.error("Error fetching questions:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const filteredFolders = folders.filter(f => f.parent_id === currentFolderId && f.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredQuestions = questions;
+
+  const toggleSelection = (question: Question) => {
+    if (selectedQuestions.some(q => q.id === question.id)) {
+      setSelectedQuestions(selectedQuestions.filter(q => q.id !== question.id));
+    } else {
+      setSelectedQuestions([...selectedQuestions, question]);
+    }
+  };
+
+  const isSelected = (id: string) => selectedQuestions.some(q => q.id === id);
+
   const handleConfirm = () => {
-    const selectedQuestions = questions.filter(q => selectedIds.includes(q.id));
     onSelect(selectedQuestions);
   };
 
@@ -97,14 +143,26 @@ export function QuestionRepositoryPicker({ onSelect, onCancel, existingIds }: Pr
           ))}
         </div>
         
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input 
-            placeholder="Search questions or folders..." 
-            className="pl-10 h-10 rounded-none border-slate-200"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input 
+              placeholder="Search questions or folders..." 
+              className="pl-10 h-10 rounded-none border-slate-200"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value)}
+            className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-black uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-blue-600 rounded-none shrink-0"
+          >
+            <option value="all">ALL DIFFICULTIES</option>
+            <option value="easy">EASY</option>
+            <option value="medium">MEDIUM</option>
+            <option value="hard">HARD</option>
+          </select>
         </div>
       </div>
 
@@ -134,10 +192,10 @@ export function QuestionRepositoryPicker({ onSelect, onCancel, existingIds }: Pr
                 return (
                   <div 
                     key={question.id}
-                    className={`flex items-start gap-4 p-4 border transition-all ${selectedIds.includes(question.id) ? 'border-blue-600 bg-blue-50/30' : 'border-slate-100 hover:border-slate-300'} ${isAlreadyInTest ? 'opacity-50 grayscale pointer-events-none' : 'cursor-pointer'}`}
-                    onClick={() => !isAlreadyInTest && toggleSelection(question.id)}
+                    className={`flex items-start gap-4 p-4 border transition-all ${isSelected(question.id) ? 'border-blue-600 bg-blue-50/30' : 'border-slate-100 hover:border-slate-300'} ${isAlreadyInTest ? 'opacity-50 grayscale pointer-events-none' : 'cursor-pointer'}`}
+                    onClick={() => !isAlreadyInTest && toggleSelection(question)}
                   >
-                    <Checkbox checked={selectedIds.includes(question.id) || isAlreadyInTest} className="mt-1" />
+                    <Checkbox checked={isSelected(question.id) || isAlreadyInTest} className="mt-1" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-slate-700 leading-relaxed uppercase tracking-tight">{question.question_text}</p>
                       <div className="flex items-center gap-3 mt-2">
@@ -161,11 +219,11 @@ export function QuestionRepositoryPicker({ onSelect, onCancel, existingIds }: Pr
       </div>
 
       <div className="p-4 border-t flex justify-between items-center bg-slate-50">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{selectedIds.length} Items Ready for Import</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{selectedQuestions.length} Items Ready for Import</span>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onCancel} className="h-10 rounded-none font-bold uppercase text-[10px] tracking-widest">Cancel</Button>
           <Button 
-            disabled={selectedIds.length === 0}
+            disabled={selectedQuestions.length === 0}
             onClick={handleConfirm}
             className="h-10 rounded-none bg-slate-900 dark:bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-8"
           >

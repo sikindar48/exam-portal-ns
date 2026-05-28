@@ -21,8 +21,9 @@ Branding: powered by **[NS Software Solutions](https://www.nssoftwaresolutions.i
 ## Authentication Flow
 
 ```
-User visits /
-  └─► Redirected to /auth
+User visits / (Landing Page)
+  ├─► Guest/Student: clicks "Join Test" → goes to /join
+  └─► Admins/Students: clicks "Get Started" → goes to /auth
 
 /auth page
   ├─► Sign In tab
@@ -97,11 +98,19 @@ All role-specific routes are wrapped in `<ProtectedRoute allowedRoles={[...]}>`:
 
 ### Manage Questions (`/client-admin/questions`)
 
-- Lists all questions for the organization
-- **Add question** — question text, 4 options (A–D), correct answer, difficulty (easy/medium/hard), marks
+- Lists all questions for the organization, organized in nested categories.
+- **Add question** — question text, 4 options (A–D), correct answer, difficulty (easy/medium/hard - optional), marks
 - **Edit question** — update any field
 - **Delete question**
 - **CSV Import** — bulk import questions via CSV file (parsed client-side, validated, then batch inserted)
+
+#### Category / Folder System
+
+- **Root view** shows category cards and an "uncategorized" questions card.
+- **Create Category** — name only; categories can be nested under a parent category.
+- **Relocate/Move Question** — move an individual question or bulk-selected questions to a specific category or "No category (independent)".
+- **Delete Category** — dissolves the category; questions inside become independent (uncategorized).
+- **Bulk operations** — support deleting or moving multiple questions at once.
 
 ### Manage Tests (`/client-admin/tests`)
 
@@ -128,15 +137,23 @@ Create Test (folder_id = NULL by default)
 
 #### Create Test
 
+Admins design tests using an interactive, single-page **Assessment Builder** visual canvas.
+
 - **Test Name** and **Duration (minutes)** — required
-- **Attempts Allowed** — numeric input (1–100) with an **Unlimited toggle**; when toggled on, `attempts_allowed` is stored as `NULL` in the database (displayed as ∞ in the table)
-- **Schedule (optional)** — Start Date & Time and End Date & Time (`datetime-local`); leave blank to make available immediately after publishing
+- **Attempts Allowed** — numeric input (1–100) with an **Unlimited toggle** (stored as `NULL` in the database, displayed as ∞ in tables)
+- **Schedule (optional)** — Scheduled Start and Scheduled End date-times; leave blank to make available immediately after publishing
 - **Settings panel:**
   - Shuffle Questions
   - Allow Review After Test
   - Enable Negative Marking (reveals a deduction-per-wrong-answer input when on)
   - Restrict Navigation
-- **Select Questions** — paginated list (10 per page) with Previous / Next controls; checkboxes persist across pages; shows selected count
+  - **Allow Guest Access** (enables taking the test without a registered user account)
+- **Inline Question Palette**:
+  - Add new blank MCQ questions inline directly on the builder canvas.
+  - Edit question text, choices, correct answer key, and points/marks inline.
+  - Duplicate or delete questions.
+  - **From Repository Picker**: opens a dialog to search, navigate category folders, and import existing questions from the client's question bank.
+  - **CSV Question Import**: upload questions from a CSV file directly into the test.
 - Saved as **Draft** on creation — not visible to students until published
 
 #### Edit Test
@@ -171,6 +188,13 @@ Create Test (folder_id = NULL by default)
 - Copy shareable URL
 - QR code generated from the public link
 
+#### View Test Results (`/client-admin/tests/:testId/results`)
+
+Performance and analytics console for admins to track student attempts.
+- Lists all submitted attempts for a test with student name, score, time taken, accuracy, and submission date.
+- Displays key stats: Total Submissions count, Average Score percentage, and High Score.
+- **Export Data** — downloads all submission results into a CSV file.
+
 ### Organization Settings (`/client-admin/settings`)
 
 - Update organization name, address, logo URL
@@ -182,9 +206,11 @@ Create Test (folder_id = NULL by default)
 
 ### Join Test (public, `/join` or `/join/:code`)
 
-- Student (or anyone) can enter an invite code to look up a test
-- If not logged in → redirected to `/auth?redirect=/join/:code` → after login, redirected back
-- If logged in as student → goes directly to test engine
+- Student (or anyone) can enter an invite code to look up a test.
+- If logged in as student → goes directly to test engine.
+- If not logged in:
+  - If test has **Allow Guest Access** enabled → prompts for student's name and allows taking the test as a guest.
+  - If guest access is disabled → redirects to `/auth?redirect=/join/:code` to sign in.
 
 ### Dashboard (`/student`)
 
@@ -200,11 +226,14 @@ Create Test (folder_id = NULL by default)
 
 1. Loads test config from `tests` table
 2. Checks submitted attempt count against `attempts_allowed` — blocks if exhausted; `NULL` = unlimited (never blocked)
-3. Resumes existing `in_progress` attempt if one exists (restores saved answers)
-4. Otherwise creates a new attempt record
-5. Fetches questions via `get_test_questions_for_student()` RPC — **correct answers are never sent to the client**
-6. Shuffles questions if `shuffle = true`
-7. Requests fullscreen
+3. Identity Verification:
+   - For registered student → gets their `user.id`.
+   - For guest student → generates a guest UUID, registers/upserts a guest profile record into the `profiles` table to maintain DB integrity.
+4. Resumes existing `in_progress` attempt if one exists (restores saved answers)
+5. Otherwise creates a new attempt record
+6. Fetches questions via `get_test_questions_for_student()` RPC — **correct answers are never sent to the client**
+7. Shuffles questions if `shuffle = true`
+8. Requests fullscreen
 
 **During test:**
 
@@ -228,11 +257,13 @@ Create Test (folder_id = NULL by default)
 
 **Submission:**
 
-1. Fetches correct answers server-side from `test_questions` join
-2. Calculates score: +marks for correct, −negative_marks for wrong (if enabled), clamped to 0 minimum
-3. Updates attempt: `score`, `total_marks`, `status: submitted`, `time_taken`
-4. Exits fullscreen
-5. Redirects to `/student`
+1. Force-syncs any pending answers to the `attempt_answers` table.
+2. Calls the server-side `submit_test_attempt` RPC function in Supabase, passing the `_attempt_id` and `_time_taken`.
+3. The RPC calculates the final score (matching answers, applying negative marking deductions if enabled) and completes the attempt entirely server-side.
+4. Exits fullscreen.
+5. Redirects:
+   - Registered student → `/student` dashboard.
+   - Guest student → `/join` page.
 
 **Auto-submit triggers:** timer reaches 0, 3 tab switches, 3 fullscreen exits.
 

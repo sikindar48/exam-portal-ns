@@ -35,6 +35,7 @@ const ClientSettings = lazy(() => import("./pages/ClientAdmin/Settings"));
 const StudentDashboard = lazy(() => import("./pages/Student/Dashboard"));
 const Engine = lazy(() => import("./pages/Student/Engine"));
 const TestHistory = lazy(() => import("./pages/Student/History"));
+const Review = lazy(() => import("./pages/Student/Review"));
 
 const queryClient = new QueryClient();
 
@@ -168,6 +169,14 @@ const App = () => (
                   element={
                     <Protected allowedRoles={["student"]}>
                       <TestHistory />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/student/review/:attemptId"
+                  element={
+                    <Protected allowedRoles={["student"]}>
+                      <Review />
                     </Protected>
                   }
                 />

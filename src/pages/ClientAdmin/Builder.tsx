@@ -204,39 +204,34 @@ export default function Builder() {
         testRecord = data;
       }
 
-      const finalQuestionIds: string[] = [];
-      for (const q of testData.questions) {
-        const qPayload = {
-          question_text: q.question_text,
-          option_a: q.option_a,
-          option_b: q.option_b,
-          option_c: q.option_c,
-          option_d: q.option_d,
-          correct_answer: q.correct_answer,
-          marks: q.marks,
-          client_id: clientId,
-        };
+      const questionsPayload = testData.questions.map((q, index) => ({
+        id: q.id,
+        question_text: q.question_text,
+        option_a: q.option_a,
+        option_b: q.option_b,
+        option_c: q.option_c,
+        option_d: q.option_d,
+        correct_answer: q.correct_answer,
+        marks: q.marks,
+        section_id: (q as any).section_id || null,
+        position: index,
+      }));
 
-        if (q.id.startsWith("temp_")) {
-          const { data: newQ, error: qErr } = await supabase.from("questions").insert(qPayload).select().single();
-          if (qErr) throw qErr;
-          if (newQ) finalQuestionIds.push(newQ.id);
-        } else {
-          const { error: qErr } = await supabase.from("questions").update(qPayload).eq("id", q.id);
-          if (qErr) throw qErr;
-          finalQuestionIds.push(q.id);
-        }
-      }
+      const { data: rpcData, error: rpcError } = await supabase.rpc("upsert_test_questions", {
+        _test_id: testRecord.id,
+        _questions: questionsPayload,
+      });
 
-      await supabase.from("test_questions").delete().eq("test_id", testRecord.id);
-      if (finalQuestionIds.length > 0) {
-        await supabase.from("test_questions").insert(finalQuestionIds.map(qId => ({ test_id: testRecord.id, question_id: qId })));
+      if (rpcError) throw rpcError;
+      if (rpcData && (rpcData as any).error) {
+        throw new Error((rpcData as any).error);
       }
 
       toast({ title: "Success", description: "Test saved successfully" });
       navigate("/client-admin/tests");
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save test", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Save test failed:", error);
+      toast({ title: "Error", description: error?.message || "Failed to save test", variant: "destructive" });
     } finally {
       setSaving(false);
     }

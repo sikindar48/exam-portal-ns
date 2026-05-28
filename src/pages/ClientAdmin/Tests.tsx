@@ -124,14 +124,28 @@ export default function TestsManagement() {
     setFetchLoading(false);
   };
 
+  const toLocalDateTimeLocal = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  const toUTCISOString = (dateStr: string) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     const payload = {
       ...formData,
-      scheduled_start: formData.scheduled_start || null,
-      scheduled_end: formData.scheduled_end || null,
+      scheduled_start: toUTCISOString(formData.scheduled_start),
+      scheduled_end: toUTCISOString(formData.scheduled_end),
       client_id: clientId,
       folder_id: openFolderId === "uncategorized" ? null : openFolderId,
     };
@@ -224,6 +238,26 @@ export default function TestsManagement() {
     setDeleteTarget(null);
   };
 
+  const handleClone = async (id: string) => {
+    setFetchLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("clone_test", {
+        _source_test_id: id,
+      });
+
+      if (error) {
+        toast({ title: "Error Cloning Test", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Success", description: "Assessment duplicated successfully" });
+        fetchTests();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "An error occurred while cloning", variant: "destructive" });
+    } finally {
+      setFetchLoading(false);
+    }
+  };
+
   const handleEdit = (test: Test) => {
     setEditingTest(test);
     setFormData({
@@ -236,8 +270,8 @@ export default function TestsManagement() {
       negative_marks: test.negative_marks ?? 0.25,
       restrict_navigation: test.restrict_navigation ?? false,
       attempts_allowed: test.attempts_allowed ?? 1,
-      scheduled_start: test.scheduled_start ? new Date(test.scheduled_start).toISOString().slice(0, 16) : "",
-      scheduled_end: test.scheduled_end ? new Date(test.scheduled_end).toISOString().slice(0, 16) : "",
+      scheduled_start: toLocalDateTimeLocal(test.scheduled_start),
+      scheduled_end: toLocalDateTimeLocal(test.scheduled_end),
       public_link_enabled: test.public_link_enabled ?? true,
     });
     setIsDialogOpen(true);
@@ -301,6 +335,7 @@ export default function TestsManagement() {
             setDeleteTarget={setDeleteTarget}
             navigate={navigate}
             onUpdate={fetchTests}
+            onClone={handleClone}
           />
         </div>
       </main>

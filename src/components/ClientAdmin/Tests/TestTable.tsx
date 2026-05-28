@@ -2,7 +2,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, MoveRight, Trash2, ClipboardList, Send, FileText } from "lucide-react";
+import { Pencil, MoveRight, Trash2, ClipboardList, Send, FileText, Copy } from "lucide-react";
 import Sharing from "@/components/Test/Sharing";
 
 interface Test {
@@ -25,6 +25,7 @@ interface TestTableProps {
   setDeleteTarget: (id: string) => void;
   navigate: (path: string) => void;
   onUpdate: () => void;
+  onClone: (id: string) => void;
 }
 
 export function TestTable({
@@ -36,6 +37,7 @@ export function TestTable({
   setDeleteTarget,
   navigate,
   onUpdate,
+  onClone,
 }: TestTableProps) {
   const filteredTests = tests.filter((t) => {
     if (openFolderId) {
@@ -140,6 +142,15 @@ export function TestTable({
                       className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-all p-0"
                     >
                       <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onClone(test.id)}
+                      className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all p-0"
+                      title="Duplicate Assessment"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"

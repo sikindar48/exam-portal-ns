@@ -10,9 +10,21 @@ interface HeaderProps {
   questionCount?: number;
   negativeMarking?: boolean;
   negativeMarks?: number;
+  attemptNumber?: number;
+  attemptsAllowed?: number | null;
 }
 
-export function Header({ testName, timeLeft, formatTime, duration, questionCount, negativeMarking, negativeMarks }: HeaderProps) {
+export function Header({ 
+  testName, 
+  timeLeft, 
+  formatTime, 
+  duration, 
+  questionCount, 
+  negativeMarking, 
+  negativeMarks,
+  attemptNumber,
+  attemptsAllowed
+}: HeaderProps) {
   const [showInfo, setShowInfo] = useState(false);
 
   return (
@@ -25,7 +37,10 @@ export function Header({ testName, timeLeft, formatTime, duration, questionCount
           </div>
           <div>
             <h1 className="text-sm font-bold uppercase tracking-wider text-white leading-tight">{testName}</h1>
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">Secure Examination</p>
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">
+              Secure Examination{attemptNumber ? ` · Attempt ${attemptNumber}` : ""}
+              {attemptsAllowed ? ` of ${attemptsAllowed}` : ""}
+            </p>
           </div>
         </div>
 
