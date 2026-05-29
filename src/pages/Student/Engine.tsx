@@ -48,9 +48,7 @@ export default function Engine() {
   const isGuest = searchParams.get("guest") === "true";
   const guestName = searchParams.get("name") || sessionStorage.getItem("guestStudentName") || "Guest Student";
   
-  const currentUserId = useMemo(() => {
-    return user?.id || `guest_${Math.random().toString(36).substr(2, 9)}`;
-  }, [user?.id]);
+
 
   // URL-based instructions state — reflects in browser URL
   const showInstructions = searchParams.get("view") !== "test";
@@ -254,7 +252,11 @@ export default function Engine() {
   const initializeTest = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: testData } = await supabase.from("tests").select("*").eq("id", testId).single();
+      const { data: testData } = await supabase
+        .from("tests")
+        .select("*, clients(name, logo_url)")
+        .eq("id", testId)
+        .single();
       if (!testData) throw new Error("Test not found");
 
       let finalStudentId = user?.id;
@@ -383,7 +385,7 @@ export default function Engine() {
     } finally {
       setLoading(false);
     }
-  }, [testId, user, isGuest, currentUserId, navigate, toast]);
+  }, [testId, user, isGuest, guestName, navigate, toast]);
 
   useEffect(() => {
     if ((user || isGuest) && testId) initializeTest();
@@ -494,6 +496,8 @@ export default function Engine() {
         sections={sections}
         studentName={isGuest ? guestName : user?.user_metadata?.full_name || user?.email}
         onStart={() => { setShowInstructions(false); enterFullscreen(); }} 
+        orgName={test?.clients?.name}
+        orgLogoUrl={test?.clients?.logo_url}
       />
     );
   }
@@ -528,6 +532,8 @@ export default function Engine() {
         negativeMarks={test?.negative_marks}
         attemptNumber={attemptNumber}
         attemptsAllowed={test?.attempts_allowed}
+        orgName={test?.clients?.name}
+        orgLogoUrl={test?.clients?.logo_url}
       />
 
       <div className="flex flex-1 overflow-hidden">

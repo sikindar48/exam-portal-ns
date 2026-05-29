@@ -24,6 +24,8 @@ interface InstructionsProps {
   sections: Section[];
   studentName?: string;
   onStart: () => void;
+  orgName?: string;
+  orgLogoUrl?: string | null;
 }
 
 const RULES = [
@@ -52,6 +54,8 @@ export function Instructions({
   sections,
   studentName,
   onStart,
+  orgName,
+  orgLogoUrl,
 }: InstructionsProps) {
   const [agreed, setAgreed] = useState(false);
   const [speed, setSpeed] = useState<number | null>(null);
@@ -100,8 +104,14 @@ export function Instructions({
       {/* Header */}
       <header className="hidden md:flex shrink-0 h-14 items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
         <div className="flex items-center gap-3">
-          <Info className="h-5 w-5 text-blue-600" />
-          <h1 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight">Instructions</h1>
+          {orgLogoUrl ? (
+            <img src={orgLogoUrl} alt={orgName} className="h-6 w-6 object-contain rounded-sm" />
+          ) : (
+            <Info className="h-5 w-5 text-blue-600" />
+          )}
+          <h1 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight">
+            {orgName ? `${orgName} · Instructions` : "Instructions"}
+          </h1>
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">

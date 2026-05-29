@@ -22,6 +22,7 @@ export default function StudentDashboard() {
   const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>(
     {},
   );
+  const [clientInfo, setClientInfo] = useState<{ name: string; logo_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +55,17 @@ export default function StudentDashboard() {
       if (testsData.error) console.error("Tests fetch error:", testsData.error);
       if (attemptsData.error) console.error("Attempts fetch error:", attemptsData.error);
 
+      if (clientId) {
+        const { data: clientData } = await supabase
+          .from("clients")
+          .select("name, logo_url")
+          .eq("id", clientId)
+          .single();
+        if (clientData) {
+          setClientInfo(clientData);
+        }
+      }
+
       const allAttempts = attemptsData.data || [];
 
       // Count per test and grab 5 most recent for display — single query
@@ -81,11 +93,17 @@ export default function StudentDashboard() {
       {/* Professional Header */}
       <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
         <div className="flex items-center gap-4">
-          <div className="bg-blue-600 p-1.5 rounded-sm">
-            <ClipboardList className="h-5 w-5 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden">
+            {clientInfo?.logo_url ? (
+              <img src={clientInfo.logo_url} alt={clientInfo.name} className="h-full w-full object-cover" />
+            ) : (
+              <ClipboardList className="h-5 w-5 text-slate-400" />
+            )}
           </div>
           <div>
-            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Student Portal</h1>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">
+              {clientInfo?.name ? `${clientInfo.name} Portal` : "Student Portal"}
+            </h1>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Examination Management System</p>
           </div>
         </div>

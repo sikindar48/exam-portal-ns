@@ -40,7 +40,7 @@ export default function Join() {
       // First, find the test by code regardless of active status
       const { data, error } = await supabase
         .from("tests")
-        .select("id, test_name, timer, share_code, active, public_link_enabled, allow_guests")
+        .select("id, test_name, timer, share_code, active, public_link_enabled, allow_guests, clients(name, logo_url)")
         .eq("share_code", shareCode.toUpperCase())
         .maybeSingle();
 
@@ -124,19 +124,23 @@ export default function Join() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4">
       <div className="flex flex-1 w-full items-center justify-center">
-        <Card className="w-full max-w-md shadow-lg border-0 dark:border dark:border-slate-800">
+        <Card className="w-full max-w-md shadow-lg border border-slate-200 dark:border-slate-800 rounded-none bg-white dark:bg-slate-900">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-600 rounded-lg">
-                <ClipboardList className="h-6 w-6 text-white" />
+              <div className="flex items-center justify-center w-14 h-14 bg-slate-800 rounded-none border border-slate-700 overflow-hidden">
+                {test?.clients?.logo_url ? (
+                  <img src={test.clients.logo_url} alt={test.clients.name} className="h-full w-full object-cover" />
+                ) : (
+                  <ClipboardList className="h-6 w-6 text-slate-400" />
+                )}
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {test ? test.test_name : "Join Test"}
+            <CardTitle className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+              {test ? test.test_name : "Join Examination"}
             </CardTitle>
-            <CardDescription className="text-slate-600 dark:text-slate-400">
+            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1.5">
               {test
-                ? `Duration: ${test.timer} minutes`
+                ? `${test.clients?.name ? `${test.clients.name} · ` : ""}Duration: ${test.timer} minutes`
                 : "Enter a test invite code to get started"}
             </CardDescription>
           </CardHeader>
@@ -180,13 +184,19 @@ export default function Join() {
               </div>
             ) : showNameForm ? (
               <form onSubmit={handleGuestJoin} className="space-y-4">
-                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4 text-center border border-blue-200 dark:border-blue-800">
-                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-blue-600 dark:text-blue-400" />
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">
+                <div className="rounded-none bg-slate-50 dark:bg-slate-950 p-4 text-center border border-slate-200 dark:border-slate-800">
+                  <div className="mx-auto mb-3 h-10 w-10 bg-slate-800 rounded-none border border-slate-700 overflow-hidden flex items-center justify-center">
+                    {test.clients?.logo_url ? (
+                      <img src={test.clients.logo_url} alt={test.clients.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <ClipboardList className="h-5 w-5 text-slate-400" />
+                    )}
+                  </div>
+                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                     {test.test_name}
                   </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {test.timer} minutes
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    {test.clients?.name ? `${test.clients.name} · ` : ""}{test.timer} minutes
                   </p>
                 </div>
 
@@ -225,13 +235,19 @@ export default function Join() {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4 text-center border border-blue-200 dark:border-blue-800">
-                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-blue-600 dark:text-blue-400" />
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">
+                <div className="rounded-none bg-slate-50 dark:bg-slate-950 p-4 text-center border border-slate-200 dark:border-slate-800">
+                  <div className="mx-auto mb-3 h-10 w-10 bg-slate-800 rounded-none border border-slate-700 overflow-hidden flex items-center justify-center">
+                    {test.clients?.logo_url ? (
+                      <img src={test.clients.logo_url} alt={test.clients.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <ClipboardList className="h-5 w-5 text-slate-400" />
+                    )}
+                  </div>
+                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
                     {test.test_name}
                   </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {test.timer} minutes
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    {test.clients?.name ? `${test.clients.name} · ` : ""}{test.timer} minutes
                   </p>
                 </div>
 

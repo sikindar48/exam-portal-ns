@@ -12,6 +12,8 @@ interface HeaderProps {
   negativeMarks?: number;
   attemptNumber?: number;
   attemptsAllowed?: number | null;
+  orgName?: string;
+  orgLogoUrl?: string | null;
 }
 
 export function Header({ 
@@ -23,7 +25,9 @@ export function Header({
   negativeMarking, 
   negativeMarks,
   attemptNumber,
-  attemptsAllowed
+  attemptsAllowed,
+  orgName,
+  orgLogoUrl
 }: HeaderProps) {
   const [showInfo, setShowInfo] = useState(false);
 
@@ -32,13 +36,17 @@ export function Header({
       <header className="z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900 px-6 text-white">
         {/* Left: branding */}
         <div className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700">
-            <LayoutGrid className="h-5 w-5 text-slate-400" />
+          <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden">
+            {orgLogoUrl ? (
+              <img src={orgLogoUrl} alt={orgName} className="h-full w-full object-cover" />
+            ) : (
+              <LayoutGrid className="h-5 w-5 text-slate-400" />
+            )}
           </div>
           <div>
             <h1 className="text-sm font-bold uppercase tracking-wider text-white leading-tight">{testName}</h1>
             <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">
-              Secure Examination{attemptNumber ? ` · Attempt ${attemptNumber}` : ""}
+              {orgName ? `${orgName} · ` : ""}Secure Examination{attemptNumber ? ` · Attempt ${attemptNumber}` : ""}
               {attemptsAllowed ? ` of ${attemptsAllowed}` : ""}
             </p>
           </div>
