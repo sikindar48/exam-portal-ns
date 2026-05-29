@@ -93,7 +93,7 @@ export default function Engine() {
   const globalDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const flushDirtyAnswers = useCallback(async () => {
-    if (isGuest || !attemptId) return;
+    if (!attemptId) return;
 
     const dirty = { ...dirtyAnswersRef.current };
     const entries = Object.entries(dirty);
@@ -125,7 +125,7 @@ export default function Engine() {
       console.error("Error batch saving:", err);
       Object.assign(dirtyAnswersRef.current, dirty);
     }
-  }, [attemptId, isGuest]);
+  }, [attemptId]);
 
   // Cleanup/flush on unmount
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function Engine() {
       if (globalDebounceTimerRef.current) {
         clearTimeout(globalDebounceTimerRef.current);
       }
-      if (attemptId && !isGuest) {
+      if (attemptId) {
         const dirty = { ...dirtyAnswersRef.current };
         const entries = Object.entries(dirty);
         if (entries.length > 0) {
@@ -146,7 +146,7 @@ export default function Engine() {
         }
       }
     };
-  }, [attemptId, isGuest]);
+  }, [attemptId]);
 
   const triggerAlert = useCallback(() => {
     setShowSecurityAlert(true);
@@ -441,15 +441,13 @@ export default function Engine() {
 
   const handleAnswer = (qId: string, val: string) => {
     setAnswers(prev => ({ ...prev, [qId]: val }));
-    if (!isGuest) {
-      dirtyAnswersRef.current[qId] = val;
-      if (globalDebounceTimerRef.current) {
-        clearTimeout(globalDebounceTimerRef.current);
-      }
-      globalDebounceTimerRef.current = setTimeout(() => {
-        flushDirtyAnswers();
-      }, 2000);
+    dirtyAnswersRef.current[qId] = val;
+    if (globalDebounceTimerRef.current) {
+      clearTimeout(globalDebounceTimerRef.current);
     }
+    globalDebounceTimerRef.current = setTimeout(() => {
+      flushDirtyAnswers();
+    }, 2000);
   };
 
   const navigateToQuestion = (index: number) => {
