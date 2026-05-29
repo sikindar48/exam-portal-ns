@@ -31,6 +31,7 @@ import {
   Users,
   FileSpreadsheet,
   Upload,
+  Key,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -224,59 +225,112 @@ export default function StudentsManagement() {
     
     setImporting(false);
     toast({ title: "Import Cycle Complete", description: "All CSV rows have been processed." });
-    fetchStudents();
+    fetchStudents(true);
+  };
+
+  const [allStudentIds, setAllStudentIds] = useState<string[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const pageSize = 20;
+
+  const fetchStudents = async (reset = false) => {
+    if (reset) {
+      setFetchLoading(true);
+      setPage(0);
+      setStudents([]);
+    }
+
+    try {
+      let ids = allStudentIds;
+      if (reset || allStudentIds.length === 0) {
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("client_id", clientId)
+          .eq("role", "student");
+
+        if (roleError) throw roleError;
+        ids = roleData?.map((r) => r.user_id) || [];
+        setAllStudentIds(ids);
+      }
+
+      if (ids.length === 0) {
+        setStudents([]);
+        setHasMore(false);
+        return;
+      }
+
+      const currentPage = reset ? 0 : page;
+      const from = currentPage * pageSize;
+      const to = from + pageSize;
+      const idsToFetch = ids.slice(from, to);
+
+      if (idsToFetch.length === 0) {
+        setHasMore(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name, email, created_at")
+        .in("id", idsToFetch)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (reset) {
+        setStudents(data || []);
+      } else {
+        setStudents((prev) => [...prev, ...(data || [])]);
+      }
+      setHasMore(to < ids.length);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch student directory",
+        variant: "destructive",
+      });
+    } finally {
+      setFetchLoading(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    setPage((prev) => prev + 1);
+  };
+
+  const handleResetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast({
+        title: "Reset Request Sent",
+        description: `A password reset link has been sent to ${email}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Reset Failed",
+        description: err.message || "Failed to trigger password reset.",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {
     if (clientId) {
-      fetchStudents();
+      setPage(0);
+      setAllStudentIds([]);
+      fetchStudents(true);
     }
   }, [clientId]);
 
-  const fetchStudents = async () => {
-    setFetchLoading(true);
-
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("client_id", clientId)
-      .eq("role", "student");
-
-    if (roleError) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch students",
-        variant: "destructive",
-      });
-      setFetchLoading(false);
-      return;
+  useEffect(() => {
+    if (clientId && page > 0) {
+      fetchStudents(false);
     }
-
-    if (!roleData || roleData.length === 0) {
-      setStudents([]);
-      setFetchLoading(false);
-      return;
-    }
-
-    const studentIds = roleData.map((r) => r.user_id);
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, name, email, created_at")
-      .in("id", studentIds)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch students",
-        variant: "destructive",
-      });
-    } else {
-      setStudents(data || []);
-    }
-    setFetchLoading(false);
-  };
+  }, [page]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,7 +375,7 @@ export default function StudentsManagement() {
       });
       setIsCredentialsDialogOpen(true);
       setIsDialogOpen(false);
-      fetchStudents();
+      fetchStudents(true);
       setFormData({ name: "", email: "", password: "" });
     }
 
@@ -342,7 +396,7 @@ export default function StudentsManagement() {
         title: "Success",
         description: "Student deleted successfully",
       });
-      fetchStudents();
+      fetchStudents(true);
     }
     setDeleteTarget(null);
   };
@@ -670,7 +724,7 @@ export default function StudentsManagement() {
                   Student Directory
                 </h2>
                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
-                  {students.length} Records
+                  {allStudentIds.length} Records
                 </span>
               </div>
             </div>
@@ -718,14 +772,26 @@ export default function StudentsManagement() {
                           {new Date(student.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         </TableCell>
                         <TableCell className="py-4 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteTarget(student.id)}
-                            className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-red-600 hover:border-red-200 transition-all p-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex justify-end gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleResetPassword(student.email)}
+                              className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all p-0"
+                              title="Reset Password"
+                            >
+                              <Key className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget(student.id)}
+                              className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-red-600 hover:border-red-200 transition-all p-0"
+                              title="Delete Candidate"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -733,6 +799,18 @@ export default function StudentsManagement() {
                 </TableBody>
               </Table>
             </div>
+            
+            {hasMore && (
+              <div className="mt-8 flex justify-center">
+                <Button
+                  onClick={handleLoadMore}
+                  variant="outline"
+                  className="h-11 px-8 rounded-none border-2 border-slate-900 dark:border-slate-700 font-black uppercase tracking-widest text-xs hover:bg-slate-900 hover:text-white dark:hover:bg-blue-600 transition-all"
+                >
+                  Load More Candidates
+                </Button>
+              </div>
+            )}
           </section>
         </div>
       </main>

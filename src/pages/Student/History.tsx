@@ -20,27 +20,77 @@ export default function TestHistory() {
   const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterResult, setFilterResult] = useState<"all" | "passed" | "failed">("all");
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const pageSize = 20;
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const fetchAttempts = async (reset = false) => {
+    if (!user) return;
+    
+    if (reset) {
+      setLoading(true);
+    }
+
+    try {
+      const currentPage = reset ? 0 : page;
+      const from = currentPage * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from("attempts")
+        .select("*, tests!inner(test_name, timer, allow_review)", { count: "exact" })
+        .eq("student_id", user.id)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false });
+
+      if (debouncedSearch.trim()) {
+        query = query.ilike("tests.test_name", `%${debouncedSearch.trim()}%`);
+      }
+
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      if (reset) {
+        setAttempts(data || []);
+      } else {
+        setAttempts((prev) => [...prev, ...(data || [])]);
+      }
+
+      const totalCount = count || 0;
+      setHasMore(from + (data?.length || 0) < totalCount);
+    } catch (err) {
+      console.error("Error fetching attempts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
-      fetchAttempts();
+      setPage(0);
+      fetchAttempts(true);
     }
-  }, [user]);
+  }, [user, debouncedSearch]);
 
-  const fetchAttempts = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("attempts")
-      .select("*, tests(test_name, timer, allow_review)")
-      .eq("student_id", user?.id)
-      .eq("status", "submitted")
-      .order("submitted_at", { ascending: false });
-
-    if (!error) {
-      setAttempts(data || []);
+  useEffect(() => {
+    if (user && page > 0) {
+      fetchAttempts(false);
     }
-    setLoading(false);
+  }, [page]);
+
+  const handleLoadMore = () => {
+    setPage((prev) => prev + 1);
   };
 
   const filteredAttempts = attempts.filter((attempt) => {
@@ -93,7 +143,7 @@ export default function TestHistory() {
             <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Performance Archives</h2>
           </div>
 
-          {loading ? (
+          {loading && attempts.length === 0 ? (
             <div className="space-y-4">
               {[1,2,3].map(i => <div key={i} className="h-32 bg-slate-100 dark:bg-slate-900 animate-pulse rounded-none" />)}
             </div>
@@ -205,6 +255,19 @@ export default function TestHistory() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                onClick={handleLoadMore}
+                disabled={loading}
+                variant="outline"
+                className="h-11 px-8 rounded-none border-2 border-slate-900 dark:border-slate-700 font-black uppercase tracking-widest text-xs hover:bg-slate-900 hover:text-white dark:hover:bg-blue-600 transition-all"
+              >
+                {loading ? "Loading..." : "Load More Attempts"}
+              </Button>
             </div>
           )}
         </div>
