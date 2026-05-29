@@ -48,127 +48,119 @@ export default function ClientAdminDashboard() {
   const fetchStats = async () => {
     if (!clientId) return;
 
-    const [students, questions, tests] = await Promise.all([
-      supabase
-        .from("user_roles")
-        .select("user_id", { count: "exact", head: true })
-        .eq("client_id", clientId)
-        .eq("role", "student"),
-      supabase
-        .from("questions")
-        .select("id", { count: "exact", head: true })
-        .eq("client_id", clientId),
-      supabase.from("tests").select("id, test_name").eq("client_id", clientId),
-    ]);
+    try {
+      const [students, questions, tests, attemptsResult] = await Promise.all([
+        supabase
+          .from("user_roles")
+          .select("user_id", { count: "exact", head: true })
+          .eq("client_id", clientId)
+          .eq("role", "student"),
+        supabase
+          .from("questions")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", clientId),
+        supabase
+          .from("tests")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", clientId),
+        supabase
+          .from("attempts")
+          .select(`
+            id, 
+            student_id, 
+            score, 
+            total_marks, 
+            test_id, 
+            tests!inner(test_name, client_id),
+            profiles:profiles(name)
+          `)
+          .eq("status", "submitted")
+          .eq("tests.client_id", clientId),
+      ]);
 
-    const testIds = (tests.data || []).map((t) => t.id);
+      if (attemptsResult.error) throw attemptsResult.error;
 
-    // Only fetch attempts for this client's tests — avoids full-table scan
-    const attempts =
-      testIds.length > 0
-        ? await supabase
-            .from("attempts")
-            .select(
-              "id, student_id, score, total_marks, test_id, tests(test_name)",
-            )
-            .eq("status", "submitted")
-            .in("test_id", testIds)
-        : { data: [] };
+      const clientAttempts = (attemptsResult.data || []) as any[];
 
-    const clientAttempts = attempts.data || [];
+      let totalScore = 0;
+      let totalMaxScore = 0;
+      let passCount = 0;
 
-    let totalScore = 0;
-    let totalMaxScore = 0;
-    let passCount = 0;
+      clientAttempts.forEach((a) => {
+        totalScore += Number(a.score) || 0;
+        totalMaxScore += Number(a.total_marks) || 0;
+        if (a.total_marks && a.score && Number(a.score) / Number(a.total_marks) >= 0.4)
+          passCount++;
+      });
 
-    clientAttempts.forEach((a) => {
-      totalScore += a.score || 0;
-      totalMaxScore += a.total_marks || 0;
-      if (a.total_marks && a.score && a.score / a.total_marks >= 0.4)
-        passCount++;
-    });
+      const avgScore =
+        clientAttempts.length > 0 ? (totalScore / totalMaxScore) * 100 : 0;
+      const passRate =
+        clientAttempts.length > 0 ? (passCount / clientAttempts.length) * 100 : 0;
 
-    const avgScore =
-      clientAttempts.length > 0 ? (totalScore / totalMaxScore) * 100 : 0;
-    const passRate =
-      clientAttempts.length > 0 ? (passCount / clientAttempts.length) * 100 : 0;
+      setStats({
+        totalStudents: students.count || 0,
+        totalQuestions: questions.count || 0,
+        totalTests: tests.count || 0,
+        totalAttempts: clientAttempts.length,
+        avgScore: Math.round(avgScore),
+        passRate: Math.round(passRate),
+      });
 
-    setStats({
-      totalStudents: students.count || 0,
-      totalQuestions: questions.count || 0,
-      totalTests: tests.data?.length || 0,
-      totalAttempts: clientAttempts.length,
-      avgScore: Math.round(avgScore),
-      passRate: Math.round(passRate),
-    });
+      // Top performers: rank by their highest score achieved in any attempt
+      const studentScores = new Map<
+        string,
+        { name: string; highestScore: number }
+      >();
 
-    // For top performers: fetch names directly from profiles
-    // (RLS fixed to allow clientadmin to read profiles of users in their client)
-    const uniqueStudentIds = [
-      ...new Set(clientAttempts.map((a) => a.student_id)),
-    ];
+      clientAttempts.forEach((a) => {
+        const name = a.profiles?.name || "Unknown";
+        const existing = studentScores.get(a.student_id) || {
+          name,
+          highestScore: 0,
+        };
+        const attemptPct = a.total_marks
+          ? (Number(a.score || 0) / Number(a.total_marks)) * 100
+          : 0;
+        if (attemptPct > existing.highestScore) {
+          existing.highestScore = attemptPct;
+        }
+        studentScores.set(a.student_id, existing);
+      });
 
-    let studentMap = new Map<string, string>();
-    if (uniqueStudentIds.length > 0) {
-      const { data: profileRows } = await supabase
-        .from("profiles")
-        .select("id, name")
-        .in("id", uniqueStudentIds);
+      const sorted = Array.from(studentScores.values())
+        .map((s) => ({ name: s.name, avg: Math.round(s.highestScore) }))
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 5);
+      setTopPerformers(sorted);
 
-      studentMap = new Map((profileRows || []).map((r: any) => [r.id, r.name]));
+      // Test performance chart
+      const testScores = new Map<
+        string,
+        { name: string; totalPct: number; count: number }
+      >();
+      clientAttempts.forEach((a) => {
+        const tName = a.tests?.test_name || "Test";
+        const existing = testScores.get(a.test_id) || {
+          name: tName,
+          totalPct: 0,
+          count: 0,
+        };
+        existing.totalPct += a.total_marks
+          ? (Number(a.score || 0) / Number(a.total_marks)) * 100
+          : 0;
+        existing.count += 1;
+        testScores.set(a.test_id, existing);
+      });
+      setTestPerformance(
+        Array.from(testScores.values()).map((t) => ({
+          name: t.name.length > 15 ? t.name.slice(0, 15) + "…" : t.name,
+          avgScore: Math.round(t.totalPct / t.count),
+        })),
+      );
+    } catch (err: any) {
+      console.error("Error fetching stats:", err);
     }
-
-    // Top performers: rank by their highest score achieved in any attempt
-    const studentScores = new Map<
-      string,
-      { name: string; highestScore: number }
-    >();
-
-    clientAttempts.forEach((a) => {
-      const name = studentMap.get(a.student_id) || "Unknown";
-      const existing = studentScores.get(a.student_id) || {
-        name,
-        highestScore: 0,
-      };
-      const attemptPct = a.total_marks
-        ? ((a.score || 0) / a.total_marks) * 100
-        : 0;
-      if (attemptPct > existing.highestScore) {
-        existing.highestScore = attemptPct;
-      }
-      studentScores.set(a.student_id, existing);
-    });
-
-    const sorted = Array.from(studentScores.values())
-      .map((s) => ({ name: s.name, avg: Math.round(s.highestScore) }))
-      .sort((a, b) => b.avg - a.avg)
-      .slice(0, 5);
-    setTopPerformers(sorted);
-
-    // Test performance chart
-    const testScores = new Map<
-      string,
-      { name: string; totalPct: number; count: number }
-    >();
-    clientAttempts.forEach((a) => {
-      const tName = (a.tests as any)?.test_name || "Test";
-      const existing = testScores.get(a.test_id) || {
-        name: tName,
-        totalPct: 0,
-        count: 0,
-      };
-      existing.totalPct += a.total_marks
-        ? ((a.score || 0) / a.total_marks) * 100
-        : 0;
-      existing.count += 1;
-      testScores.set(a.test_id, existing);
-    });
-    setTestPerformance(
-      Array.from(testScores.values()).map((t) => ({
-        name: t.name.length > 15 ? t.name.slice(0, 15) + "…" : t.name,
-        avgScore: Math.round(t.totalPct / t.count),
-      })),
-    );
   };
 
   return (

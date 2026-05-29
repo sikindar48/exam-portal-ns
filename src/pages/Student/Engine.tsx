@@ -219,7 +219,10 @@ export default function Engine() {
       }
       
       toast({ title: "Success", description: "Assessment submitted successfully." });
-      navigate(isGuest ? "/join" : "/student");
+      const candidateName = isGuest ? guestName : user?.user_metadata?.full_name || user?.email || "Student";
+      navigate(
+        `/student/submit-success?name=${encodeURIComponent(candidateName)}&org=${encodeURIComponent(test?.clients?.name || "")}&logo=${encodeURIComponent(test?.clients?.logo_url || "")}&isGuest=${isGuest}`
+      );
     } catch (err: any) {
       console.error("Detailed submission error:", err);
       toast({ 

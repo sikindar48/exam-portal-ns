@@ -11,8 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Trophy, Download, User, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Trophy, Download, User, Clock, CheckCircle2, Eye } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Footer } from "@/components/Brand/Footer";
 
 export default function Results() {
@@ -22,6 +23,11 @@ export default function Results() {
   const [results, setResults] = useState<any[]>([]);
   const [testInfo, setTestInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [totalQuestions, setTotalQuestions] = useState<number>(0);
+  const [selectedAttempt, setSelectedAttempt] = useState<any>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [attemptQuestions, setAttemptQuestions] = useState<any[]>([]);
 
   useEffect(() => {
     if (testId) {
@@ -32,20 +38,30 @@ export default function Results() {
   const fetchResults = async () => {
     setLoading(true);
     try {
-      // Fetch test info
-      const { data: test, error: testError } = await supabase
-        .from("tests")
-        .select("test_name, timer")
-        .eq("id", testId)
-        .single();
+      // Fetch test info and questions count in parallel
+      const [testRes, qCountRes] = await Promise.all([
+        supabase
+          .from("tests")
+          .select("test_name, timer")
+          .eq("id", testId)
+          .single(),
+        supabase
+          .from("test_questions")
+          .select("question_id", { count: "exact", head: true })
+          .eq("test_id", testId)
+      ]);
 
-      if (testError) throw testError;
-      setTestInfo(test);
+      if (testRes.error) throw testRes.error;
+      setTestInfo(testRes.data);
+      setTotalQuestions(qCountRes.count || 0);
 
-      // Fetch attempts first
+      // Fetch attempts with answers count nested
       const { data: attemptsData, error: attemptsError } = await supabase
         .from("attempts")
-        .select("*")
+        .select(`
+          *,
+          attempt_answers(count)
+        `)
         .eq("test_id", testId)
         .eq("status", "submitted")
         .order("submitted_at", { ascending: false });
@@ -62,7 +78,6 @@ export default function Results() {
 
         if (profileError) {
           console.error("Error fetching profiles:", profileError);
-          // Still show attempts even if profiles fail to load
           setResults(attemptsData);
         } else {
           const profileMap = new Map(profileData.map(p => [p.id, p]));
@@ -79,6 +94,54 @@ export default function Results() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const viewAttemptDetails = async (attempt: any) => {
+    setSelectedAttempt(attempt);
+    setShowDetailDialog(true);
+    setDetailLoading(true);
+    try {
+      // Fetch test questions first
+      const { data: qData, error: qError } = await supabase
+        .from("test_questions")
+        .select("question_id, questions(id, question_text, option_a, option_b, option_c, option_d, correct_answer, marks)")
+        .eq("test_id", testId)
+        .order("position", { ascending: true });
+
+      if (qError) throw qError;
+
+      // Fetch student's answers for this attempt
+      const { data: answersData, error: answersError } = await supabase
+        .from("attempt_answers")
+        .select("*")
+        .eq("attempt_id", attempt.id);
+
+      if (answersError) throw answersError;
+
+      const answersMap = new Map(answersData?.map((a) => [a.question_id, a.selected_option]) || []);
+
+      const questionsList = qData?.map((tq) => {
+        const q = tq.questions as any;
+        return {
+          id: q.id,
+          question_text: q.question_text,
+          option_a: q.option_a,
+          option_b: q.option_b,
+          option_c: q.option_c,
+          option_d: q.option_d,
+          correct_answer: q.correct_answer,
+          marks: q.marks,
+          student_answer: answersMap.get(q.id) || null,
+        };
+      }) || [];
+
+      setAttemptQuestions(questionsList);
+    } catch (err: any) {
+      toast({ title: "Failed to load details", description: err.message, variant: "destructive" });
+      setShowDetailDialog(false);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -174,25 +237,28 @@ export default function Results() {
                 <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2">
                   <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Student Candidate</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 text-center">Score / Total</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 text-center">Attempted Qs</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 text-center">Time Taken</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 text-center">Accuracy</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 text-right">Completion Date</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 text-right pr-6">Review</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}><TableCell colSpan={5} className="h-16 animate-pulse bg-slate-50/50 dark:bg-slate-900/50" /></TableRow>
+                    <TableRow key={i}><TableCell colSpan={7} className="h-16 animate-pulse bg-slate-50/50 dark:bg-slate-900/50" /></TableRow>
                   ))
                 ) : results.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">
+                    <TableCell colSpan={7} className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">
                       No evaluation data captured for this assessment yet.
                     </TableCell>
                   </TableRow>
                 ) : (
                   results.map((r) => {
                     const pct = (r.score / r.total_marks) * 100;
+                    const attemptedCount = r.attempt_answers?.[0]?.count || 0;
                     return (
                       <TableRow key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800">
                         <TableCell className="py-4">
@@ -209,6 +275,9 @@ export default function Results() {
                         <TableCell className="text-center font-black text-slate-900 dark:text-white tabular-nums text-xs">
                           {r.score} <span className="text-slate-400">/ {r.total_marks}</span>
                         </TableCell>
+                        <TableCell className="text-center font-bold text-slate-700 dark:text-slate-300 tabular-nums text-xs">
+                          {attemptedCount} <span className="text-slate-400">/ {totalQuestions}</span>
+                        </TableCell>
                         <TableCell className="text-center text-slate-500 font-bold text-xs">
                           <div className="flex items-center justify-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -223,6 +292,15 @@ export default function Results() {
                         <TableCell className="text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           {new Date(r.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button
+                            variant="ghost"
+                            onClick={() => viewAttemptDetails(r)}
+                            className="h-8 w-8 rounded-none border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })
@@ -232,6 +310,100 @@ export default function Results() {
           </div>
         </div>
       </main>
+
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-2xl p-6 font-sans">
+          <DialogHeader className="border-b pb-4 mb-4">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+              Attempt Evaluation Sheet
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              <span>Candidate: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt?.profiles?.name || "N/A"}</strong></span>
+              <span>Score: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt?.score}/{selectedAttempt?.total_marks}</strong></span>
+              <span>Submitted: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt && new Date(selectedAttempt.submitted_at).toLocaleString()}</strong></span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-4">
+              <div className="relative h-10 w-10">
+                <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
+                <div className="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin" />
+              </div>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Loading Evaluation Sheets...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {attemptQuestions.map((q, idx) => {
+                const isCorrect = (q.student_answer || '').trim().toUpperCase() === (q.correct_answer || '').trim().toUpperCase();
+                const isUnattempted = !q.student_answer;
+                
+                return (
+                  <div key={q.id} className="border border-slate-200 dark:border-slate-800 p-5 rounded-none space-y-4 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Question {idx + 1}</span>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{q.question_text}</p>
+                      </div>
+                      <span className="text-[10px] font-black px-2.5 py-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0 uppercase tracking-tight">
+                        {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      {(["a", "b", "c", "d"] as const).map((opt) => {
+                        const optKey = `option_${opt}`;
+                        const optText = q[optKey];
+                        const optionLetter = opt.toUpperCase();
+                        
+                        const isStudentChoice = q.student_answer === optionLetter;
+                        const isCorrectChoice = q.correct_answer === optionLetter;
+
+                        let optionStyle = "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300";
+                        if (isStudentChoice) {
+                          optionStyle = isCorrect
+                            ? "border-green-600 bg-green-50/50 dark:bg-green-950/20 text-green-900 dark:text-green-200 border-l-4"
+                            : "border-red-600 bg-red-50/50 dark:bg-red-950/20 text-red-900 dark:text-red-200 border-l-4";
+                        } else if (isCorrectChoice) {
+                          optionStyle = "border-green-500 bg-green-50/20 dark:bg-green-950/10 text-green-800 dark:text-green-300";
+                        }
+
+                        return (
+                          <div key={opt} className={`flex items-start gap-3 border px-4 py-2.5 text-xs transition-all ${optionStyle}`}>
+                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
+                              isStudentChoice
+                                ? isCorrect
+                                  ? "border-green-600 bg-green-600 text-white"
+                                  : "border-red-600 bg-red-600 text-white"
+                                : isCorrectChoice
+                                  ? "border-green-500 bg-green-500 text-white"
+                                  : "border-slate-300 dark:border-slate-700 text-slate-500"
+                            }`}>
+                              {optionLetter}
+                            </span>
+                            <span className="leading-relaxed">{optText}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[10px] font-black uppercase tracking-wider">
+                      {isUnattempted ? (
+                        <span className="text-slate-400">Status: Skipped (Unattempted)</span>
+                      ) : isCorrect ? (
+                        <span className="text-green-600">Status: Correct (+{q.marks} Marks)</span>
+                      ) : (
+                        <span className="text-red-600 font-bold">Status: Incorrect (Correct Option is {q.correct_answer})</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );

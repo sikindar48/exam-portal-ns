@@ -36,6 +36,7 @@ const StudentDashboard = lazy(() => import("./pages/Student/Dashboard"));
 const Engine = lazy(() => import("./pages/Student/Engine"));
 const TestHistory = lazy(() => import("./pages/Student/History"));
 const Review = lazy(() => import("./pages/Student/Review"));
+const SubmitSuccess = lazy(() => import("./pages/Student/SubmitSuccess"));
 
 const queryClient = new QueryClient();
 
@@ -179,6 +180,10 @@ const App = () => (
                       <Review />
                     </Protected>
                   }
+                />
+                <Route
+                  path="/student/submit-success"
+                  element={<SubmitSuccess />}
                 />
 
                 <Route path="*" element={<NotFound />} />
