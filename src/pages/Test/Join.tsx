@@ -184,21 +184,7 @@ export default function Join() {
               </div>
             ) : showNameForm ? (
               <form onSubmit={handleGuestJoin} className="space-y-4">
-                <div className="rounded-none bg-slate-50 dark:bg-slate-950 p-4 text-center border border-slate-200 dark:border-slate-800">
-                  <div className="mx-auto mb-3 h-10 w-10 bg-slate-800 rounded-none border border-slate-700 overflow-hidden flex items-center justify-center">
-                    {test.clients?.logo_url ? (
-                      <img src={test.clients.logo_url} alt={test.clients.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <ClipboardList className="h-5 w-5 text-slate-400" />
-                    )}
-                  </div>
-                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                    {test.test_name}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                    {test.clients?.name ? `${test.clients.name} · ` : ""}{test.timer} minutes
-                  </p>
-                </div>
+
 
                 <div className="space-y-2">
                   <Label className="text-slate-700 dark:text-slate-300">
@@ -235,21 +221,7 @@ export default function Join() {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-none bg-slate-50 dark:bg-slate-950 p-4 text-center border border-slate-200 dark:border-slate-800">
-                  <div className="mx-auto mb-3 h-10 w-10 bg-slate-800 rounded-none border border-slate-700 overflow-hidden flex items-center justify-center">
-                    {test.clients?.logo_url ? (
-                      <img src={test.clients.logo_url} alt={test.clients.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <ClipboardList className="h-5 w-5 text-slate-400" />
-                    )}
-                  </div>
-                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                    {test.test_name}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                    {test.clients?.name ? `${test.clients.name} · ` : ""}{test.timer} minutes
-                  </p>
-                </div>
+
 
                 {user && role === "student" ? (
                   <Button

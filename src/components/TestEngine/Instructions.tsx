@@ -102,21 +102,28 @@ export function Instructions({
       </div>
 
       {/* Header */}
-      <header className="hidden md:flex shrink-0 h-14 items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-        <div className="flex items-center gap-3">
-          {orgLogoUrl ? (
-            <img src={orgLogoUrl} alt={orgName} className="h-6 w-6 object-contain rounded-sm" />
-          ) : (
-            <Info className="h-5 w-5 text-blue-600" />
-          )}
-          <h1 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight">
-            {orgName ? `${orgName} · Instructions` : "Instructions"}
-          </h1>
+      <header className="hidden md:flex shrink-0 h-16 items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <div className="flex items-center gap-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-none bg-slate-800 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0">
+            {orgLogoUrl ? (
+              <img src={orgLogoUrl} alt={orgName} className="h-full w-full object-cover" />
+            ) : (
+              <Info className="h-5 w-5 text-slate-400" />
+            )}
+          </div>
+          <div className="border-r border-slate-200 dark:border-slate-700 pr-6 h-8 flex flex-col justify-center">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Organization</p>
+            <p className="text-xs font-bold text-slate-900 dark:text-white leading-none uppercase">{orgName || "General"}</p>
+          </div>
+          <div className="flex flex-col justify-center">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Paper</p>
+            <p className="text-xs font-bold text-slate-900 dark:text-white leading-none uppercase">{testName || "Examination Paper"}</p>
+          </div>
         </div>
+        
         <div className="flex items-center gap-6">
           <div className="text-right">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Paper</p>
-            <p className="text-sm font-bold text-slate-900 dark:text-white leading-none">{testName || "Examination Paper"}</p>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Instructions</h1>
           </div>
           <div className="border-l border-slate-200 dark:border-slate-700 h-8 pl-6 flex items-center">
             <Toggle />
