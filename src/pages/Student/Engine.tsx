@@ -341,8 +341,42 @@ export default function Engine() {
       
       if (!qData || qData.length === 0) throw new Error("No questions found");
       
-      setQuestions(testData.shuffle ? [...qData].sort(() => Math.random() - 0.5) : qData);
-      if (qData.length > 0) setVisitedQuestions({ [qData[0].id]: true });
+      const finalQuestions = testData.shuffle ? [...qData].sort(() => Math.random() - 0.5) : qData;
+      setQuestions(finalQuestions);
+
+      const initialVisited: Record<string, boolean> = {};
+      if (finalQuestions.length > 0) {
+        initialVisited[finalQuestions[0].id] = true;
+      }
+
+      if (existing) {
+        // Fetch any existing answers for this attempt to resume seamlessly
+        const { data: answersData } = await supabase
+          .from("attempt_answers")
+          .select("*")
+          .eq("attempt_id", existing.id);
+
+        if (answersData && answersData.length > 0) {
+          const answerMap: Record<string, string> = {};
+          const markedMap: Record<string, boolean> = {};
+          
+          answersData.forEach((ans) => {
+            if (ans.selected_option) {
+              answerMap[ans.question_id] = ans.selected_option;
+              initialVisited[ans.question_id] = true;
+            }
+            if (ans.marked_for_review) {
+              markedMap[ans.question_id] = true;
+              initialVisited[ans.question_id] = true;
+            }
+          });
+          
+          setAnswers(answerMap);
+          setMarkedForReview(markedMap);
+        }
+      }
+
+      setVisitedQuestions(initialVisited);
     } catch (err: any) {
       toast({ title: "Loading Failed", description: err.message, variant: "destructive" });
       navigate(isGuest ? "/join" : "/student");
