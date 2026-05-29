@@ -87,7 +87,7 @@ export default function Engine() {
   const timeLeftRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSubmitTriggered = useRef(false);
-  const dirtyAnswersRef = useRef<Record<string, string>>({});
+  const dirtyAnswersRef = useRef<Record<string, { selected_option: string | null; marked_for_review: boolean }>>({});
   const globalDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const flushDirtyAnswers = useCallback(async () => {
@@ -105,10 +105,11 @@ export default function Engine() {
     }
 
     try {
-      const rows = entries.map(([qId, val]) => ({
+      const rows = entries.map(([qId, data]) => ({
         attempt_id: attemptId,
         question_id: qId,
-        selected_option: val,
+        selected_option: data.selected_option,
+        marked_for_review: data.marked_for_review,
       }));
 
       const { error } = await supabase
@@ -135,10 +136,11 @@ export default function Engine() {
         const dirty = { ...dirtyAnswersRef.current };
         const entries = Object.entries(dirty);
         if (entries.length > 0) {
-          const rows = entries.map(([qId, val]) => ({
+          const rows = entries.map(([qId, data]) => ({
             attempt_id: attemptId,
             question_id: qId,
-            selected_option: val,
+            selected_option: data.selected_option,
+            marked_for_review: data.marked_for_review,
           }));
           supabase.from("attempt_answers").upsert(rows, { onConflict: "attempt_id,question_id" });
         }
@@ -444,15 +446,22 @@ export default function Engine() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [handleSubmit, triggerAlert, showInstructions, loading]);
 
-  const handleAnswer = (qId: string, val: string) => {
-    setAnswers(prev => ({ ...prev, [qId]: val }));
-    dirtyAnswersRef.current[qId] = val;
-    if (globalDebounceTimerRef.current) {
-      clearTimeout(globalDebounceTimerRef.current);
-    }
-    globalDebounceTimerRef.current = setTimeout(() => {
-      flushDirtyAnswers();
-    }, 2000);
+  const handleAnswer = (qId: string, val: string | null) => {
+    setAnswers(prev => {
+      const nextAnswers = { ...prev, [qId]: val || "" };
+      const isMarked = !!markedForReview[qId];
+      dirtyAnswersRef.current[qId] = {
+        selected_option: val,
+        marked_for_review: isMarked
+      };
+      if (globalDebounceTimerRef.current) {
+        clearTimeout(globalDebounceTimerRef.current);
+      }
+      globalDebounceTimerRef.current = setTimeout(() => {
+        flushDirtyAnswers();
+      }, 2000);
+      return nextAnswers;
+    });
   };
 
   const navigateToQuestion = (index: number) => {
@@ -559,7 +568,23 @@ export default function Engine() {
             isMarked={!!markedForReview[questions[currentQuestionIndex]?.id]}
             onMarkForReview={() => {
               const id = questions[currentQuestionIndex]?.id;
-              if (id) setMarkedForReview(prev => ({ ...prev, [id]: !prev[id] }));
+              if (id) {
+                setMarkedForReview(prev => {
+                  const nextVal = !prev[id];
+                  const currentAnswer = answers[id] || null;
+                  dirtyAnswersRef.current[id] = {
+                    selected_option: currentAnswer,
+                    marked_for_review: nextVal
+                  };
+                  if (globalDebounceTimerRef.current) {
+                    clearTimeout(globalDebounceTimerRef.current);
+                  }
+                  globalDebounceTimerRef.current = setTimeout(() => {
+                    flushDirtyAnswers();
+                  }, 2000);
+                  return { ...prev, [id]: nextVal };
+                });
+              }
             }}
             onClear={() => {
               const id = questions[currentQuestionIndex]?.id;

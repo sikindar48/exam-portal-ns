@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";
+import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
 
 // Extracted Components
 import { QuestionHeader } from "@/components/ClientAdmin/Questions/QuestionHeader";
@@ -85,7 +86,7 @@ export default function QuestionsManagement() {
   }, [clientId]);
 
   const fetchFolders = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("question_folders")
       .select("*")
       .eq("client_id", clientId)
@@ -95,7 +96,7 @@ export default function QuestionsManagement() {
 
   const fetchQuestions = async () => {
     setFetchLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("questions")
       .select("*")
       .eq("client_id", clientId)
@@ -114,7 +115,7 @@ export default function QuestionsManagement() {
     setLoading(true);
 
     if (editingQuestion) {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("questions")
         .update({ ...formData })
         .eq("id", editingQuestion.id);
@@ -128,7 +129,7 @@ export default function QuestionsManagement() {
         resetForm();
       }
     } else {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("questions")
         .insert([{ 
           ...formData, 
@@ -152,7 +153,7 @@ export default function QuestionsManagement() {
     e.preventDefault();
     if (!newFolderName.trim()) return;
     setLoading(true);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("question_folders")
       .insert([{ 
         name: newFolderName.trim(), 
@@ -173,7 +174,7 @@ export default function QuestionsManagement() {
   const handleMoveQuestion = async () => {
     if (!moveQuestionTarget) return;
     const folderId = selectedMoveFolder === "none" ? null : selectedMoveFolder;
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("questions")
       .update({ folder_id: folderId })
       .eq("id", moveQuestionTarget.id);
@@ -188,7 +189,7 @@ export default function QuestionsManagement() {
   };
 
   const handleDeleteFolder = async (id: string) => {
-    const { error } = await supabase.from("question_folders").delete().eq("id", id);
+    const { error } = await (supabase as any).from("question_folders").delete().eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -201,7 +202,8 @@ export default function QuestionsManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("questions").delete().eq("id", id);
+    setLoading(true);
+    const { error } = await (supabase as any).from("questions").delete().eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -209,12 +211,12 @@ export default function QuestionsManagement() {
       fetchQuestions();
     }
     setDeleteTarget(null);
+    setLoading(false);
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
     setLoading(true);
-    const { error } = await supabase.from("questions").delete().in("id", selectedIds);
+    const { error } = await (supabase as any).from("questions").delete().in("id", selectedIds);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -229,7 +231,7 @@ export default function QuestionsManagement() {
     if (selectedIds.length === 0) return;
     const folderId = selectedMoveFolder === "none" ? null : selectedMoveFolder;
     setLoading(true);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("questions")
       .update({ folder_id: folderId })
       .in("id", selectedIds);
@@ -309,79 +311,83 @@ export default function QuestionsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
-      <QuestionHeader 
-        openFolderId={openFolderId}
-        breadcrumbs={breadcrumbs}
-        navigateToBreadcrumb={navigateToBreadcrumb}
-        navigate={navigate}
-        setIsCreateFolderOpen={setIsCreateFolderOpen}
-        fetchQuestions={fetchQuestions}
-      />
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="container max-w-7xl mx-auto p-8 space-y-10">
-          <FolderGrid 
-            folders={folders}
-            questions={questions}
-            openFolderId={openFolderId}
-            navigateToFolder={navigateToFolder}
-            setOpenFolderId={setOpenFolderId}
-            setDeleteFolderTarget={setDeleteFolderTarget}
-          />
-
-          {openFolderId && (
-            <QuestionTable 
-              questions={questions}
-              fetchLoading={fetchLoading}
-              openFolderId={openFolderId}
-              handleEdit={handleEdit}
-              openMoveDialog={openMoveDialog}
-              setDeleteTarget={setDeleteTarget}
-              selectedIds={selectedIds}
-              setSelectedIds={setSelectedIds}
-              onBulkMove={() => setIsBulkMoveOpen(true)}
-              onBulkDelete={handleBulkDelete}
-            />
-          )}
-        </div>
-      </main>
-
-      <QuestionDialog 
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        editingQuestion={editingQuestion}
-        formData={formData}
-        setFormData={setFormData}
-        loading={loading}
-        handleSubmit={handleSubmit}
-      />
-
-      <FolderDialogs 
-        isCreateFolderOpen={isCreateFolderOpen}
-        setIsCreateFolderOpen={setIsCreateFolderOpen}
-        newFolderName={newFolderName}
-        setNewFolderName={setNewFolderName}
-        handleCreateFolder={handleCreateFolder}
-        loading={loading}
-        isMoveQuestionOpen={isMoveQuestionOpen}
-        setIsMoveQuestionOpen={setIsMoveQuestionOpen}
-        selectedMoveFolder={selectedMoveFolder}
-        setSelectedMoveFolder={setSelectedMoveFolder}
-        folders={folders}
-        handleMoveQuestion={handleMoveQuestion}
-        deleteTarget={deleteTarget}
-        setDeleteTarget={setDeleteTarget}
-        handleDelete={handleDelete}
-        deleteFolderTarget={deleteFolderTarget}
-        setDeleteFolderTarget={setDeleteFolderTarget}
-        handleDeleteFolder={handleDeleteFolder}
-        isBulkMoveOpen={isBulkMoveOpen}
-        setIsBulkMoveOpen={setIsBulkMoveOpen}
-        handleBulkMove={handleBulkMove}
-      />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
+      <ClientAdminSidebar activeTab="Question Bank" />
       
-      <Footer />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <QuestionHeader 
+          openFolderId={openFolderId}
+          breadcrumbs={breadcrumbs}
+          navigateToBreadcrumb={navigateToBreadcrumb}
+          navigate={navigate}
+          setIsCreateFolderOpen={setIsCreateFolderOpen}
+          fetchQuestions={fetchQuestions}
+        />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="container max-w-7xl mx-auto p-8 space-y-10">
+            <FolderGrid 
+              folders={folders}
+              questions={questions}
+              openFolderId={openFolderId}
+              navigateToFolder={navigateToFolder}
+              setOpenFolderId={setOpenFolderId}
+              setDeleteFolderTarget={setDeleteFolderTarget}
+            />
+
+            {openFolderId && (
+              <QuestionTable 
+                questions={questions}
+                fetchLoading={fetchLoading}
+                openFolderId={openFolderId}
+                handleEdit={handleEdit}
+                openMoveDialog={openMoveDialog}
+                setDeleteTarget={setDeleteTarget}
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+                onBulkMove={() => setIsBulkMoveOpen(true)}
+                onBulkDelete={handleBulkDelete}
+              />
+            )}
+          </div>
+        </main>
+
+        <QuestionDialog 
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          formData={formData}
+          setFormData={setFormData}
+          loading={loading}
+          handleSubmit={handleSubmit}
+          editingQuestion={editingQuestion}
+        />
+
+        <FolderDialogs 
+          isCreateFolderOpen={isCreateFolderOpen}
+          setIsCreateFolderOpen={setIsCreateFolderOpen}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          handleCreateFolder={handleCreateFolder}
+          loading={loading}
+          isMoveQuestionOpen={isMoveQuestionOpen}
+          setIsMoveQuestionOpen={setIsMoveQuestionOpen}
+          selectedMoveFolder={selectedMoveFolder}
+          setSelectedMoveFolder={setSelectedMoveFolder}
+          folders={folders}
+          handleMoveQuestion={handleMoveQuestion}
+          deleteTarget={deleteTarget}
+          setDeleteTarget={setDeleteTarget}
+          handleDelete={handleDelete}
+          deleteFolderTarget={deleteFolderTarget}
+          setDeleteFolderTarget={setDeleteFolderTarget}
+          handleDeleteFolder={handleDeleteFolder}
+          isBulkMoveOpen={isBulkMoveOpen}
+          setIsBulkMoveOpen={setIsBulkMoveOpen}
+          handleBulkMove={handleBulkMove}
+        />
+        
+        <Footer />
+      </div>
     </div>
   );
 }

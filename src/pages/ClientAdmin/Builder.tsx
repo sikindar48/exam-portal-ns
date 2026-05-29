@@ -270,7 +270,7 @@ export default function Builder() {
                 <span className="text-[10px] bg-slate-100 px-2 py-0.5 font-bold rounded-full">{testData.questions.length} Items</span>
               </div>
               <div className="flex gap-2">
-                <Button onClick={() => setRepoDialogOpen(true)} variant="outline" className="border-slate-200 hover:bg-slate-50 font-black uppercase tracking-widest text-[10px] rounded-none h-8">
+                <Button onClick={() => setRepoDialogOpen(true)} variant="outline" className="border-slate-200 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] rounded-none h-8">
                   <BookOpen className="h-3.5 w-3.5 mr-2 text-blue-600" /> From Repository
                 </Button>
                 <Button onClick={addQuestion} className="bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-xs rounded-none h-8">

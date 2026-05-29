@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Footer } from "@/components/Brand/Footer";
+import { SuperAdminSidebar } from "@/components/SuperAdmin/Sidebar";
 
 // Extracted Components
 import { ClientHeader } from "@/components/SuperAdmin/Clients/ClientHeader";
@@ -209,86 +210,90 @@ export default function ClientsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
-      <ClientHeader 
-        navigate={navigate}
-        setIsClientDialogOpen={setIsClientDialogOpen}
-        resetClientForm={resetClientForm}
-      />
-
-      <main className="container max-w-7xl mx-auto p-8 flex-1">
-        <ClientTable 
-          clients={clients}
-          handleManageAdmins={handleManageAdmins}
-          handleEditClient={handleEditClient}
-          setDeleteClientTarget={setDeleteClientTarget}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
+      <SuperAdminSidebar activeTab="Manage Organizations" />
+      
+      <div className="flex-1 flex flex-col min-h-screen">
+        <ClientHeader 
+          navigate={navigate}
+          setIsClientDialogOpen={setIsClientDialogOpen}
+          resetClientForm={resetClientForm}
         />
-      </main>
 
-      <ClientDialog 
-        isOpen={isClientDialogOpen}
-        onOpenChange={setIsClientDialogOpen}
-        editingClient={editingClient}
-        clientForm={clientForm}
-        setClientForm={setClientForm}
-        loading={loading}
-        handleSubmit={handleClientSubmit}
-      />
+        <main className="container max-w-7xl mx-auto p-8 flex-1">
+          <ClientTable 
+            clients={clients}
+            handleManageAdmins={handleManageAdmins}
+            handleEditClient={handleEditClient}
+            setDeleteClientTarget={setDeleteClientTarget}
+          />
+        </main>
 
-      <AdminManagementDialog 
-        isOpen={isAdminDialogOpen}
-        onOpenChange={setIsAdminDialogOpen}
-        selectedClient={selectedClient}
-        adminForm={adminForm}
-        setAdminForm={setAdminForm}
-        adminLoading={adminLoading}
-        handleAdminSubmit={handleAdminSubmit}
-        clientAdmins={clientAdmins}
-        setDeleteAdminTarget={setDeleteAdminTarget}
-      />
+        <ClientDialog 
+          isOpen={isClientDialogOpen}
+          onOpenChange={setIsClientDialogOpen}
+          editingClient={editingClient}
+          clientForm={clientForm}
+          setClientForm={setClientForm}
+          loading={loading}
+          handleSubmit={handleClientSubmit}
+        />
 
-      <CredentialsDialog 
-        isOpen={isCredentialsDialogOpen}
-        onOpenChange={setIsCredentialsDialogOpen}
-        createdCredentials={createdCredentials}
-        showPassword={showPassword}
-        setShowPassword={setShowPassword}
-        setCreatedCredentials={setCreatedCredentials}
-      />
+        <AdminManagementDialog 
+          isOpen={isAdminDialogOpen}
+          onOpenChange={setIsAdminDialogOpen}
+          selectedClient={selectedClient}
+          adminForm={adminForm}
+          setAdminForm={setAdminForm}
+          adminLoading={adminLoading}
+          handleAdminSubmit={handleAdminSubmit}
+          clientAdmins={clientAdmins}
+          setDeleteAdminTarget={setDeleteAdminTarget}
+        />
 
-      {/* Delete Client Confirmation */}
-      <AlertDialog open={!!deleteClientTarget} onOpenChange={(open) => !open && setDeleteClientTarget(null)}>
-        <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Erase Organization Data?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium leading-relaxed">
-              This will permanently delete the client and all associated data including students, questions, and tests. This action is irreversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="pt-4">
-            <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteClientTarget && handleDeleteClient(deleteClientTarget)}>Confirm Purge</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <CredentialsDialog 
+          isOpen={isCredentialsDialogOpen}
+          onOpenChange={setIsCredentialsDialogOpen}
+          createdCredentials={createdCredentials}
+          showPassword={showPassword}
+          setShowPassword={setShowPassword}
+          setCreatedCredentials={setCreatedCredentials}
+        />
 
-      {/* Delete Admin Confirmation */}
-      <AlertDialog open={!!deleteAdminTarget} onOpenChange={(open) => !open && setDeleteAdminTarget(null)}>
-        <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Remove Access Credentials?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium leading-relaxed">
-              This will revoke the administrator's access to this organization. Their profile data will be retained but their role will be stripped.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="pt-4">
-            <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteAdminTarget && handleDeleteAdmin(deleteAdminTarget)}>Confirm Revocation</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Delete Client Confirmation */}
+        <AlertDialog open={!!deleteClientTarget} onOpenChange={(open) => !open && setDeleteClientTarget(null)}>
+          <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Erase Organization Data?</AlertDialogTitle>
+              <AlertDialogDescription className="text-sm font-medium leading-relaxed">
+                This will permanently delete the client and all associated data including students, questions, and tests. This action is irreversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="pt-4">
+              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteClientTarget && handleDeleteClient(deleteClientTarget)}>Confirm Purge</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-      <Footer />
+        {/* Delete Admin Confirmation */}
+        <AlertDialog open={!!deleteAdminTarget} onOpenChange={(open) => !open && setDeleteAdminTarget(null)}>
+          <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Remove Access Credentials?</AlertDialogTitle>
+              <AlertDialogDescription className="text-sm font-medium leading-relaxed">
+                This will revoke the administrator's access to this organization. Their profile data will be retained but their role will be stripped.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="pt-4">
+              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteAdminTarget && handleDeleteAdmin(deleteAdminTarget)}>Confirm Revocation</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Footer />
+      </div>
     </div>
   );
 }

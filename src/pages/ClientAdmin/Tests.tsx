@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";
+import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
 
 // Extracted Components
 import { TestHeader } from "@/components/ClientAdmin/Tests/TestHeader";
@@ -302,76 +303,81 @@ export default function TestsManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
-      <TestHeader 
-        openFolderId={openFolderId}
-        setOpenFolderId={setOpenFolderId}
-        navigate={navigate}
-        setIsCreateFolderOpen={setIsCreateFolderOpen}
-        setIsDialogOpen={setIsDialogOpen}
-        resetForm={resetForm}
-        folders={folders}
-      />
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="container max-w-7xl mx-auto p-8 space-y-10">
-          {!openFolderId || openFolderId === "uncategorized" || folders.some(f => f.id === openFolderId) ? (
-            <TestFolderGrid 
-              folders={folders}
-              tests={tests}
-              openFolderId={openFolderId}
-              setOpenFolderId={setOpenFolderId}
-              setDeleteFolderTarget={setDeleteFolderTarget}
-              navigate={navigate}
-            />
-          ) : null}
-
-          <TestTable 
-            tests={tests}
-            fetchLoading={fetchLoading}
-            openFolderId={openFolderId === "uncategorized" ? null : openFolderId}
-            handleEdit={handleEdit}
-            openMoveDialog={openMoveDialog}
-            setDeleteTarget={setDeleteTarget}
-            navigate={navigate}
-            onUpdate={fetchTests}
-            onClone={handleClone}
-          />
-        </div>
-      </main>
-
-      <TestDialog 
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        editingTest={editingTest}
-        formData={formData}
-        setFormData={setFormData}
-        loading={loading}
-        handleSubmit={handleSubmit}
-      />
-
-      <TestFolderDialogs 
-        isCreateFolderOpen={isCreateFolderOpen}
-        setIsCreateFolderOpen={setIsCreateFolderOpen}
-        newFolderName={newFolderName}
-        setNewFolderName={setNewFolderName}
-        handleCreateFolder={handleCreateFolder}
-        loading={loading}
-        isMoveTestOpen={isMoveTestOpen}
-        setIsMoveTestOpen={setIsMoveTestOpen}
-        selectedMoveFolder={selectedMoveFolder}
-        setSelectedMoveFolder={setSelectedMoveFolder}
-        folders={folders}
-        handleMoveTest={handleMoveTest}
-        deleteTarget={deleteTarget}
-        setDeleteTarget={setDeleteTarget}
-        handleDelete={handleDelete}
-        deleteFolderTarget={deleteFolderTarget}
-        setDeleteFolderTarget={setDeleteFolderTarget}
-        handleDeleteFolder={handleDeleteFolder}
-      />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
+      <ClientAdminSidebar activeTab="Examination Papers" />
       
-      <Footer />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <TestHeader 
+          openFolderId={openFolderId}
+          setOpenFolderId={setOpenFolderId}
+          navigate={navigate}
+          setIsCreateFolderOpen={setIsCreateFolderOpen}
+          setIsDialogOpen={setIsDialogOpen}
+          resetForm={resetForm}
+          folders={folders}
+        />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="container max-w-7xl mx-auto p-8 space-y-10">
+            {!openFolderId || openFolderId === "uncategorized" || folders.some(f => f.id === openFolderId) ? (
+              <TestFolderGrid 
+                folders={folders}
+                tests={tests}
+                openFolderId={openFolderId}
+                setOpenFolderId={setOpenFolderId}
+                setDeleteFolderTarget={setDeleteFolderTarget}
+                navigate={navigate}
+              />
+            ) : null}
+
+            <TestTable 
+              tests={tests}
+              fetchLoading={fetchLoading}
+              openFolderId={openFolderId === "uncategorized" ? null : openFolderId}
+              handleEdit={handleEdit}
+              openMoveDialog={openMoveDialog}
+              setDeleteTarget={setDeleteTarget}
+              navigate={navigate}
+              onUpdate={fetchTests}
+              onClone={handleClone}
+            />
+          </div>
+        </main>
+
+        <TestDialog 
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          formData={formData}
+          setFormData={setFormData}
+          loading={loading}
+          handleSubmit={handleSubmit}
+          editingTest={editingTest}
+          folders={folders}
+        />
+
+        <TestFolderDialogs 
+          isCreateFolderOpen={isCreateFolderOpen}
+          setIsCreateFolderOpen={setIsCreateFolderOpen}
+          newFolderName={newFolderName}
+          setNewFolderName={setNewFolderName}
+          handleCreateFolder={handleCreateFolder}
+          loading={loading}
+          isMoveTestOpen={isMoveTestOpen}
+          setIsMoveTestOpen={setIsMoveTestOpen}
+          selectedMoveFolder={selectedMoveFolder}
+          setSelectedMoveFolder={setSelectedMoveFolder}
+          folders={folders}
+          handleMoveTest={handleMoveTest}
+          deleteTarget={deleteTarget}
+          setDeleteTarget={setDeleteTarget}
+          handleDelete={handleDelete}
+          deleteFolderTarget={deleteFolderTarget}
+          setDeleteFolderTarget={setDeleteFolderTarget}
+          handleDeleteFolder={handleDeleteFolder}
+        />
+        
+        <Footer />
+      </div>
     </div>
   );
 }
