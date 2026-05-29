@@ -118,28 +118,29 @@ export default function ClientAdminDashboard() {
       studentMap = new Map((profileRows || []).map((r: any) => [r.id, r.name]));
     }
 
-    // Top performers
+    // Top performers: rank by their highest score achieved in any attempt
     const studentScores = new Map<
       string,
-      { name: string; totalScore: number; count: number }
+      { name: string; highestScore: number }
     >();
 
     clientAttempts.forEach((a) => {
       const name = studentMap.get(a.student_id) || "Unknown";
       const existing = studentScores.get(a.student_id) || {
         name,
-        totalScore: 0,
-        count: 0,
+        highestScore: 0,
       };
-      existing.totalScore += a.total_marks
+      const attemptPct = a.total_marks
         ? ((a.score || 0) / a.total_marks) * 100
         : 0;
-      existing.count += 1;
+      if (attemptPct > existing.highestScore) {
+        existing.highestScore = attemptPct;
+      }
       studentScores.set(a.student_id, existing);
     });
 
     const sorted = Array.from(studentScores.values())
-      .map((s) => ({ name: s.name, avg: Math.round(s.totalScore / s.count) }))
+      .map((s) => ({ name: s.name, avg: Math.round(s.highestScore) }))
       .sort((a, b) => b.avg - a.avg)
       .slice(0, 5);
     setTopPerformers(sorted);
