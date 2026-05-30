@@ -118,7 +118,7 @@ export default function TestHistory() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
       {/* Professional Header */}
-      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-4 md:px-8 shrink-0 shadow-md z-10">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -128,15 +128,15 @@ export default function TestHistory() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Examination History</h1>
-            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Performance Record</p>
+            <h1 className="text-xs sm:text-sm font-black uppercase tracking-[0.2em]">Examination History</h1>
+            <p className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Performance Record</p>
           </div>
         </div>
         <Toggle />
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="container max-w-5xl mx-auto p-8 space-y-8">
+        <div className="container max-w-5xl mx-auto p-4 md:p-8 space-y-8">
           
           <div className="flex items-center gap-3 mb-8 border-b-2 border-slate-900 dark:border-slate-800 pb-4">
             <Trophy className="h-5 w-5 text-slate-400" />

@@ -24,7 +24,7 @@ export function QuestionView({
   onAnswer,
 }: QuestionViewProps) {
   return (
-    <div className="max-w-3xl w-full space-y-8">
+    <div className="max-w-3xl w-full space-y-6 md:space-y-8">
       {/* Question Header */}
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
         <div className="flex items-center gap-2">
@@ -38,7 +38,7 @@ export function QuestionView({
       </div>
 
       {/* Question Text */}
-      <p className="text-[15px] leading-7 text-slate-800 dark:text-slate-100 font-medium">
+      <p className="text-sm md:text-[15px] leading-6 md:leading-7 text-slate-800 dark:text-slate-100 font-medium">
         {question.question_text}
       </p>
 

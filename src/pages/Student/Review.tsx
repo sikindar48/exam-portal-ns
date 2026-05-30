@@ -230,7 +230,7 @@ export default function Review() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans select-none">
       {/* Review Header */}
-      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-4 md:px-8 shrink-0 shadow-md z-10">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -248,7 +248,7 @@ export default function Review() {
       </header>
 
       {/* Review Dashboard Metrics */}
-      <section className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-8 shrink-0">
+      <section className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 md:p-8 shrink-0">
         <div className="container max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-6">
           <div className="flex flex-col justify-center">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Result Status</span>
@@ -303,7 +303,7 @@ export default function Review() {
       {/* Main Workspace split */}
       <div className="flex-1 flex overflow-hidden">
         {/* Scrollable Questions Panel */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-8">
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
           <div className="container max-w-4xl mx-auto space-y-12">
             {sections.map((sec) => (
               <div key={sec.id} className="space-y-6">

@@ -82,6 +82,7 @@ export default function Engine() {
   const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
   const [showSecurityAlert, setShowSecurityAlert] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const alertTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const timeLeftRef = useRef<number>(0);
@@ -470,6 +471,7 @@ export default function Engine() {
     setCurrentQuestionIndex(index);
     const qId = questions[index]?.id;
     if (qId) setVisitedQuestions(prev => ({ ...prev, [qId]: true }));
+    setIsSidebarOpen(false);
   };
 
   const formatTime = (s: number) => {
@@ -516,16 +518,6 @@ export default function Engine() {
 
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden select-none">
-      {/* Mobile blocker */}
-      <div className="md:hidden fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white dark:bg-slate-950 px-8 text-center gap-6">
-        <div className="flex h-16 w-16 items-center justify-center bg-slate-100 dark:bg-slate-800">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="2"/><path d="M8 21h8M12 17v4" strokeWidth="2" strokeLinecap="round"/></svg>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Desktop Required</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">This examination must be taken on a desktop or laptop. Mobile and tablet devices are not supported.</p>
-        </div>
-      </div>
 
       {showSecurityAlert && (
         <div className="z-40 flex items-center justify-center bg-red-600 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white border-b border-red-700">
@@ -546,11 +538,13 @@ export default function Engine() {
         attemptsAllowed={test?.attempts_allowed}
         orgName={test?.clients?.name}
         orgLogoUrl={test?.clients?.logo_url}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
       />
 
       <div className="flex flex-1 overflow-hidden">
         <main className="flex flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
-          <div className="flex-1 overflow-y-auto px-10 py-8">
+          <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-8">
             {questions[currentQuestionIndex] && (
               <QuestionView
                 question={questions[currentQuestionIndex]}
@@ -605,6 +599,8 @@ export default function Engine() {
           onNavigate={navigateToQuestion} 
           onSubmit={() => handleSubmit(false)} 
           disableSubmit={currentQuestionIndex !== questions.length - 1} 
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
         />
       </div>
 

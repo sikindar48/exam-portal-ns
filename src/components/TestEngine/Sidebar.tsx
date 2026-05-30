@@ -11,6 +11,8 @@ interface SidebarProps {
   onNavigate: (index: number) => void;
   onSubmit: () => void;
   disableSubmit: boolean;
+  isSidebarOpen?: boolean;
+  setIsSidebarOpen?: (open: boolean) => void;
 }
 
 export function Sidebar({
@@ -23,6 +25,8 @@ export function Sidebar({
   onNavigate,
   onSubmit,
   disableSubmit,
+  isSidebarOpen,
+  setIsSidebarOpen,
 }: SidebarProps) {
   let globalIndex = 0;
   const totalAnswered = Object.keys(answers).length;
@@ -30,7 +34,14 @@ export function Sidebar({
   const totalQuestions = sections.reduce((acc, s) => acc + s.questions.length, 0);
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+    <>
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-20 bg-black/40 md:hidden"
+          onClick={() => setIsSidebarOpen?.(false)}
+        />
+      )}
+      <aside className={`fixed md:relative top-16 md:top-0 right-0 h-[calc(100vh-4rem)] md:h-full w-72 z-30 md:z-0 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-transform duration-300 transform md:transform-none flex flex-col ${isSidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}`}>
 
       {/* Candidate Info */}
       <div className="border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3">
@@ -130,6 +141,7 @@ export function Sidebar({
           </p>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

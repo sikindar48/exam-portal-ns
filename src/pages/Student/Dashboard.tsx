@@ -91,20 +91,20 @@ export default function StudentDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
       {/* Professional Header */}
-      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
-        <div className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden">
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-4 md:px-8 shrink-0 shadow-md z-10">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
             {clientInfo?.logo_url ? (
               <img src={clientInfo.logo_url} alt={clientInfo.name} className="h-full w-full object-cover" />
             ) : (
               <ClipboardList className="h-5 w-5 text-slate-400" />
             )}
           </div>
-          <div>
-            <h1 className="text-sm font-black uppercase tracking-[0.2em]">
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-sm font-black uppercase tracking-[0.2em] truncate">
               {clientInfo?.name ? `${clientInfo.name} Portal` : "Student Portal"}
             </h1>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Examination Management System</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">Examination Management System</p>
           </div>
         </div>
         
@@ -128,18 +128,18 @@ export default function StudentDashboard() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="container max-w-7xl mx-auto p-8 space-y-12">
+        <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-12">
           
           {/* Section: Available Tests */}
           <section>
-            <div className="flex items-end justify-between mb-8 border-b-2 border-slate-900 dark:border-slate-800 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 border-b-2 border-slate-900 dark:border-slate-800 pb-4 gap-4">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Available Examinations</h2>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select a paper to begin your session</p>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Available Examinations</h2>
+                <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select a paper to begin your session</p>
               </div>
-              <div className="text-right hidden sm:block">
+              <div className="text-left sm:text-right">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Papers</span>
-                <p className="text-xl font-black text-blue-600">{tests.length}</p>
+                <p className="text-lg sm:text-xl font-black text-blue-600">{tests.length}</p>
               </div>
             </div>
 
@@ -229,14 +229,14 @@ export default function StudentDashboard() {
                         </h4>
                       </div>
                       
-                      <div className="flex items-center gap-8">
-                        <div className="text-right">
+                      <div className="flex flex-wrap items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0">
+                        <div className="text-left md:text-right">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Score</p>
                           <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
                             {attempt.score?.toFixed(1) || 0} <span className="text-slate-400 text-[10px]">/ {attempt.total_marks || 0}</span>
                           </p>
                         </div>
-                        <div className="w-24 text-center">
+                        <div className="text-center">
                           <span className={`text-[10px] font-black px-3 py-1 uppercase tracking-widest border ${
                             passed 
                               ? "bg-green-50 text-green-600 border-green-200" 
@@ -249,7 +249,7 @@ export default function StudentDashboard() {
                           variant="ghost"
                           size="sm"
                           onClick={() => navigate("/student/history")}
-                          className="h-10 px-4 rounded-none border border-slate-200 dark:border-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-blue-600 transition-all text-[10px] font-black uppercase tracking-widest"
+                          className="h-10 px-4 rounded-none border border-slate-200 dark:border-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-blue-600 transition-all text-[10px] font-black uppercase tracking-widest w-full md:w-auto"
                         >
                           Details
                         </Button>

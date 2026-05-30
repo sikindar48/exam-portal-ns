@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, Clock, Info, X, Target, AlertTriangle } from "lucide-react";
+import { LayoutGrid, Clock, Info, X, Target, AlertTriangle, Menu } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
 
 interface HeaderProps {
@@ -14,6 +14,8 @@ interface HeaderProps {
   attemptsAllowed?: number | null;
   orgName?: string;
   orgLogoUrl?: string | null;
+  isSidebarOpen?: boolean;
+  setIsSidebarOpen?: (open: boolean) => void;
 }
 
 export function Header({ 
@@ -27,25 +29,27 @@ export function Header({
   attemptNumber,
   attemptsAllowed,
   orgName,
-  orgLogoUrl
+  orgLogoUrl,
+  isSidebarOpen,
+  setIsSidebarOpen
 }: HeaderProps) {
   const [showInfo, setShowInfo] = useState(false);
 
   return (
     <>
-      <header className="z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900 px-6 text-white">
+      <header className="z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900 px-4 md:px-6 text-white gap-2">
         {/* Left: branding */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
             {orgLogoUrl ? (
               <img src={orgLogoUrl} alt={orgName} className="h-full w-full object-cover" />
             ) : (
               <LayoutGrid className="h-5 w-5 text-slate-400" />
             )}
           </div>
-          <div>
-            <h1 className="text-sm font-bold uppercase tracking-wider text-white leading-tight">{testName}</h1>
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">
+          <div className="min-w-0">
+            <h1 className="text-xs md:text-sm font-bold uppercase tracking-wider text-white leading-tight truncate max-w-[140px] sm:max-w-xs md:max-w-md">{testName}</h1>
+            <p className="text-[8px] md:text-[10px] uppercase tracking-widest text-slate-500 font-medium truncate">
               {orgName ? `${orgName} · ` : ""}Secure Examination{attemptNumber ? ` · Attempt ${attemptNumber}` : ""}
               {attemptsAllowed ? ` of ${attemptsAllowed}` : ""}
             </p>
@@ -69,6 +73,15 @@ export function Header({
             className="flex h-9 w-9 items-center justify-center border border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white transition-colors"
           >
             <Info className="h-4 w-4" />
+          </button>
+
+          {/* Mobile Sidebar Toggle */}
+          <button
+            onClick={() => setIsSidebarOpen?.(!isSidebarOpen)}
+            title="Toggle Question Palette"
+            className="flex md:hidden h-9 w-9 items-center justify-center border border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white transition-colors"
+          >
+            <Menu className="h-4 w-4" />
           </button>
 
           {/* Theme Toggle */}

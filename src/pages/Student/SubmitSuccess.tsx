@@ -13,25 +13,25 @@ export default function SubmitSuccess() {
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-slate-950 font-sans select-none overflow-hidden">
       {/* Premium Dark Header matching the exam portal design */}
-      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md">
-        <div className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-4 md:px-8 shrink-0 shadow-md">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
             {orgLogoUrl ? (
               <img src={orgLogoUrl} alt={orgName} className="h-full w-full object-cover" />
             ) : (
               <ClipboardList className="h-5 w-5 text-slate-400" />
             )}
           </div>
-          <div>
-            <h1 className="text-sm font-black uppercase tracking-[0.2em]">
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-sm font-black uppercase tracking-[0.2em] truncate">
               {orgName ? `${orgName} Portal` : "Student Portal"}
             </h1>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Secure Testing System</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">Secure Testing System</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Candidate</p>
-          <p className="text-xs font-bold text-slate-200 truncate max-w-[200px]">{candidateName}</p>
+        <div className="text-right min-w-0 pl-2">
+          <p className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">Candidate</p>
+          <p className="text-xs font-bold text-slate-200 truncate max-w-[100px] sm:max-w-[200px]">{candidateName}</p>
         </div>
       </header>
 

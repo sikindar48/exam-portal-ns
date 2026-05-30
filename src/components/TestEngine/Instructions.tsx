@@ -88,21 +88,8 @@ export function Instructions({
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-slate-950 font-sans selection:bg-blue-100">
 
-      {/* Mobile blocker */}
-      <div className="md:hidden fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white dark:bg-slate-950 px-8 text-center gap-6">
-        <div className="flex h-16 w-16 items-center justify-center bg-slate-100 dark:bg-slate-800">
-          <Monitor className="h-8 w-8 text-slate-500" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Desktop Required</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            This examination must be taken on a desktop or laptop computer.
-          </p>
-        </div>
-      </div>
-
       {/* Header */}
-      <header className="hidden md:flex shrink-0 h-16 items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+      <header className="flex shrink-0 h-auto md:h-16 flex-col md:flex-row items-start md:items-center justify-between p-4 md:px-6 gap-3 md:gap-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
         <div className="flex items-center gap-4">
           <div className="flex h-9 w-9 items-center justify-center rounded-none bg-slate-800 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0">
             {orgLogoUrl ? (
@@ -121,7 +108,7 @@ export function Instructions({
           </div>
         </div>
         
-        <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between w-full md:w-auto gap-6">
           <div className="text-right">
             <h1 className="text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Instructions</h1>
           </div>
@@ -132,10 +119,10 @@ export function Instructions({
       </header>
 
       {/* Main Content Area */}
-      <main className="hidden md:flex flex-1 overflow-hidden">
+      <main className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
         
         {/* Left: Detailed Instructions */}
-        <div className="flex-1 overflow-y-auto p-8 border-r border-slate-200 dark:border-slate-800">
+        <div className="flex-1 p-4 md:p-8 md:border-r border-b md:border-b-0 border-slate-200 dark:border-slate-800 overflow-y-auto">
           <section className="max-w-4xl mx-auto space-y-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 border-b pb-2">General Instructions:</h2>
@@ -203,7 +190,7 @@ export function Instructions({
         </div>
 
         {/* Right: Candidate & Legend */}
-        <div className="w-80 shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900/50">
+        <div className="w-full md:w-80 shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900/50">
           <div className="p-6 space-y-8">
             {/* Candidate Name Only (No Dummy ID) */}
             <div>
@@ -261,13 +248,13 @@ export function Instructions({
       </main>
 
       {/* Footer / Agreement */}
-      <footer className="hidden md:flex shrink-0 h-20 items-center justify-between px-8 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="flex items-center gap-3">
+      <footer className="flex shrink-0 h-auto flex-col md:flex-row items-center justify-between p-4 md:px-8 gap-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div className="flex items-start md:items-center gap-3">
           <Checkbox 
             id="agree" 
             checked={agreed} 
             onCheckedChange={(val) => setAgreed(val === true)}
-            className="h-5 w-5 rounded-none border-slate-300"
+            className="h-5 w-5 rounded-none border-slate-300 mt-1 md:mt-0"
           />
           <label htmlFor="agree" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
             I have read and understood the instructions. I agree that in case of any disqualification, the decision of the authority will be final.
@@ -276,7 +263,7 @@ export function Instructions({
         <Button
           onClick={onStart}
           disabled={!agreed}
-          className={`h-11 px-10 rounded-none font-bold uppercase tracking-widest transition-all ${
+          className={`w-full md:w-auto h-11 px-10 rounded-none font-bold uppercase tracking-widest transition-all ${
             agreed 
               ? "bg-blue-600 hover:bg-blue-700 text-white" 
               : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
