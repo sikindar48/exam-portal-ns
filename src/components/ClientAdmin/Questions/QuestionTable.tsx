@@ -122,8 +122,8 @@ export function QuestionTable({
                   <div className="flex flex-col items-center gap-4 text-slate-400">
                     <FileQuestion className="h-12 w-12 opacity-20" />
                     <div>
-                      <p className="text-xs font-black uppercase tracking-widest">No Assessment Items Found</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Initialize your repository by adding questions manually or via CSV.</p>
+                      <p className="text-xs font-black uppercase tracking-widest">No Questions Found</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Get started by adding questions manually or via CSV.</p>
                     </div>
                   </div>
                 </TableCell>

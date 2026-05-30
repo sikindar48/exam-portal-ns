@@ -179,7 +179,7 @@ export default function ClientSettings() {
                       className="h-11 px-8 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px] shadow-lg disabled:opacity-50"
                     >
                       <Save className="mr-2 h-3.5 w-3.5" />
-                      {loading ? "Synchronizing..." : "Update Repository"}
+                      {loading ? "Saving..." : "Save Settings"}
                     </Button>
                   </div>
                 </form>

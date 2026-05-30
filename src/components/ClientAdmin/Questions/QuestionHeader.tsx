@@ -36,7 +36,7 @@ export function QuestionHeader({
           </Button>
           <div className="flex flex-col">
             <div className="flex items-center gap-1 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-              <span className="cursor-pointer hover:text-white" onClick={() => navigateToBreadcrumb(-1)}>Repository</span>
+              <span className="cursor-pointer hover:text-white" onClick={() => navigateToBreadcrumb(-1)}>Question Bank</span>
               {breadcrumbs.map((b, i) => (
                 <React.Fragment key={b.id}>
                   <ChevronRight className="h-2.5 w-2.5" />
@@ -46,10 +46,10 @@ export function QuestionHeader({
             </div>
             <h1 className="text-sm font-black uppercase tracking-[0.2em]">
               {openFolderId === "uncategorized" 
-                ? "Uncategorized Inventory" 
+                ? "All Questions" 
                 : openFolderId 
                   ? breadcrumbs[breadcrumbs.length - 1]?.name 
-                  : "Question Repository"}
+                  : "Question Bank"}
             </h1>
           </div>
         </div>

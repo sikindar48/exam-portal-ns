@@ -208,7 +208,7 @@ export function Instructions({
             {/* Candidate Name Only (No Dummy ID) */}
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Candidate Name</p>
-              <p className="text-base font-bold text-slate-900 dark:text-white truncate">{studentName || "Verified Candidate"}</p>
+              <p className="text-base font-bold text-slate-900 dark:text-white truncate">{studentName || "Student"}</p>
             </div>
 
             {/* Symbols Legend */}

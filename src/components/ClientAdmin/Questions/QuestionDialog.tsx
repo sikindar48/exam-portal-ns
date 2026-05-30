@@ -30,7 +30,7 @@ export function QuestionDialog({
       <DialogContent className="max-w-2xl rounded-none border-t-4 border-t-blue-600 dark:border-t-blue-500 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">
-            {editingQuestion ? "Modify Assessment Item" : "New Knowledge Unit"}
+            {editingQuestion ? "Edit Question" : "Add New Question"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
@@ -112,7 +112,7 @@ export function QuestionDialog({
               disabled={loading}
               className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px]"
             >
-              {loading ? "Processing..." : editingQuestion ? "Update Repository" : "Add to Inventory"}
+              {loading ? "Processing..." : editingQuestion ? "Update Question" : "Add Question"}
             </Button>
           </div>
         </form>

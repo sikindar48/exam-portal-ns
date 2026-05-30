@@ -35,13 +35,13 @@ export function AdminManagementDialog({
         <DialogHeader>
           <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
             <UserCog className="h-5 w-5 text-blue-600" />
-            Administrative Nodes — {selectedClient?.name}
+             Administrators — {selectedClient?.name}
           </DialogTitle>
         </DialogHeader>
 
         <div className="rounded-none border-2 border-dashed border-slate-200 dark:border-slate-800 p-6 space-y-4 bg-slate-50/50 dark:bg-slate-900/50">
           <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-slate-500">
-            <UserPlus className="h-3 w-3" /> Initialize New Administrator
+            <UserPlus className="h-3 w-3" /> Add New Admin
           </h3>
           <form onSubmit={handleAdminSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -70,7 +70,7 @@ export function AdminManagementDialog({
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="admin-password" className="text-[9px] font-black uppercase tracking-widest text-slate-400">Initial Credential *</Label>
+              <Label htmlFor="admin-password" className="text-[9px] font-black uppercase tracking-widest text-slate-400">Password *</Label>
               <Input
                 id="admin-password"
                 type="password"
@@ -90,7 +90,7 @@ export function AdminManagementDialog({
 
         <div className="space-y-4 mt-8">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-2">
-            Verified Administrators ({clientAdmins.length})
+            Administrators ({clientAdmins.length})
           </h3>
           <div className="border border-slate-100 dark:border-slate-800">
             <Table>
@@ -105,7 +105,7 @@ export function AdminManagementDialog({
                 {clientAdmins.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Zero Administrative Nodes Detected
+                      No Admins Found
                     </TableCell>
                   </TableRow>
                 ) : (

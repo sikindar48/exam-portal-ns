@@ -233,7 +233,7 @@ export default function StudentsManagement() {
     await Promise.all(pool);
     
     setImporting(false);
-    toast({ title: "Import Cycle Complete", description: "All CSV rows have been processed." });
+    toast({ title: "Import Complete", description: "All CSV rows have been processed." });
     fetchStudents(true);
   };
 
@@ -427,7 +427,7 @@ export default function StudentsManagement() {
             </Button>
             <div className="flex flex-col">
               <h1 className="text-sm font-black uppercase tracking-[0.2em]">Candidate Management</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Enrollment & Access Controls</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Management</p>
             </div>
           </div>
           
@@ -490,7 +490,7 @@ export default function StudentsManagement() {
                     <div className="space-y-4 flex-1 flex flex-col min-h-0">
                       <div className="flex justify-between items-center shrink-0">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {importRows.length} Candidate Records Detected
+                          {importRows.length} Students Found
                         </p>
                         {hasStartedImport && (
                           <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
@@ -638,7 +638,7 @@ export default function StudentsManagement() {
             {createdCredentials && (
               <div className="space-y-6 pt-4">
                 <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900">
-                  <p className="text-[10px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-[0.2em] mb-1">Security Protocol</p>
+                  <p className="text-[10px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-[0.2em] mb-1">Account Details</p>
                   <p className="text-xs text-amber-600 dark:text-amber-600/80 font-medium leading-relaxed">
                     Save these credentials immediately. For security reasons, passwords cannot be recovered once this window is closed.
                   </p>
@@ -661,7 +661,7 @@ export default function StudentsManagement() {
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Email Identifier</Label>
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
                     <div className="flex items-center gap-2">
                       <Input value={createdCredentials.email} readOnly className="h-10 rounded-none bg-white dark:bg-slate-950 font-medium border-slate-200 dark:border-slate-800" />
                       <Button
@@ -741,7 +741,7 @@ export default function StudentsManagement() {
                   <TableHeader>
                     <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2 border-slate-200 dark:border-slate-800">
                       <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Candidate Full Name</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Email Identifier</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Email Address</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Registration Date</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-widest py-4">Account Controls</TableHead>
                     </TableRow>

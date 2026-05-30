@@ -45,7 +45,7 @@ export function CredentialsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-green-600 font-black uppercase tracking-tight">
             <Check className="h-6 w-6" />
-            Node Deployment Successful
+            Organization Created Successfully
           </DialogTitle>
         </DialogHeader>
         {createdCredentials && (
@@ -55,7 +55,7 @@ export function CredentialsDialog({
             </p>
             <div className="space-y-4 rounded-none border border-slate-100 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-900/50">
               <div className="space-y-1">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Node Identifier</Label>
+                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Organization Name</Label>
                 <div className="flex items-center gap-2">
                   <Input value={createdCredentials.name} readOnly className="font-bold rounded-none h-9 bg-white dark:bg-slate-950" />
                   <Button size="sm" variant="outline" className="h-9 w-9 p-0 rounded-none" onClick={() => copyToClipboard(createdCredentials.name, "Name")}>

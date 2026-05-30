@@ -39,7 +39,7 @@ export function TestHeader({
               <h1 className="text-sm font-black uppercase tracking-[0.2em]">
                 {openFolderId === "uncategorized" ? "Uncategorized Items" : folders.find(f => f.id === openFolderId)?.name}
               </h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Test Repository / Category View</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Tests / Folder View</p>
             </div>
           </div>
         ) : (
@@ -53,7 +53,7 @@ export function TestHeader({
             </Button>
             <div className="flex flex-col">
               <h1 className="text-sm font-black uppercase tracking-[0.2em]">Test Management</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Examination Portal / Control Center</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Tests / Dashboard</p>
             </div>
           </div>
         )}
@@ -77,7 +77,7 @@ export function TestHeader({
           }}
           className="h-9 px-4 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
         >
-          <Plus className="mr-2 h-3.5 w-3.5" /> Initialize Test
+          <Plus className="mr-2 h-3.5 w-3.5" /> Create Test
         </Button>
       </div>
     </header>

@@ -31,12 +31,12 @@ export function TestDialog({
       <DialogContent className="max-w-2xl rounded-none border-t-4 border-t-blue-600 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">
-            {editingTest ? "Adjust Assessment Parameters" : "Initialize Examination"}
+            {editingTest ? "Edit Test" : "Create New Test"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="test_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assessment Identifier</Label>
+            <Label htmlFor="test_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Test Name</Label>
             <Input
               id="test_name"
               value={formData.test_name}
@@ -79,7 +79,7 @@ export function TestDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-y border-slate-100 dark:border-slate-800 py-6">
             <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">Protocol Settings</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">Test Settings</h3>
               <div className="flex items-center justify-between">
                 <Label htmlFor="shuffle" className="text-xs font-bold uppercase tracking-tight">Shuffle Questions</Label>
                 <Switch id="shuffle" checked={formData.shuffle} onCheckedChange={(checked) => setFormData({ ...formData, shuffle: checked })} />
@@ -150,7 +150,7 @@ export function TestDialog({
               disabled={loading}
               className="w-full h-12 rounded-none bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-900/20"
             >
-              {loading ? "COMMITTING TO DATABASE..." : editingTest ? "RE-ACTIVATE ASSESSMENT" : "INITIALIZE TEST SEQUENCE"}
+              {loading ? "SAVING..." : editingTest ? "UPDATE TEST" : "CREATE TEST"}
             </Button>
           </div>
         </form>

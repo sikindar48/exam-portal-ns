@@ -54,27 +54,27 @@ export function TestFolderDialogs({
     <>
       <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
         <DialogContent className="max-w-sm rounded-none border-t-4 border-t-slate-900 dark:border-t-blue-600">
-          <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Create Categorized Inventory</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Create Folder</DialogTitle></DialogHeader>
           <form onSubmit={handleCreateFolder} className="space-y-6 pt-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Identifier</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Folder Name</Label>
               <Input placeholder="e.g. SEMESTER-1, PLACEMENT-CELL" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold" required />
             </div>
-            <Button type="submit" disabled={loading} className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px]">{loading ? "Initializing..." : "Create Inventory"}</Button>
+             <Button type="submit" disabled={loading} className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px]">{loading ? "Creating..." : "Create Folder"}</Button>
           </form>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isMoveTestOpen} onOpenChange={setIsMoveTestOpen}>
         <DialogContent className="max-w-sm rounded-none border-t-4 border-t-blue-600">
-          <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Relocate Assessment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-xl font-black uppercase tracking-tight">Move Test</DialogTitle></DialogHeader>
           <div className="space-y-6 pt-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Destination Inventory</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Destination Folder</Label>
               <Select value={selectedMoveFolder} onValueChange={setSelectedMoveFolder}>
                 <SelectTrigger className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-black"><SelectValue placeholder="Choose a category..." /></SelectTrigger>
                 <SelectContent className="rounded-none">
-                  <SelectItem value="none">UNCLASSIFIED (GENERAL)</SelectItem>
+                  <SelectItem value="none">NO FOLDER (GENERAL)</SelectItem>
                   {folders.map((f) => <SelectItem key={f.id} value={f.id} className="uppercase font-bold">{f.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -90,9 +90,9 @@ export function TestFolderDialogs({
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Delete Assessment Cycle?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Delete Test?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium leading-relaxed">
-              You are about to permanently purge this examination and all associated results. This action is irreversible.
+              You are about to permanently delete this test and all associated results. This action is irreversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-4">
@@ -101,7 +101,7 @@ export function TestFolderDialogs({
               className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest"
               onClick={() => deleteTarget && handleDelete(deleteTarget)}
             >
-              Confirm Purge
+              Confirm Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -110,13 +110,13 @@ export function TestFolderDialogs({
       <AlertDialog open={!!deleteFolderTarget} onOpenChange={(open) => !open && setDeleteFolderTarget(null)}>
         <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Dissolve Inventory Category?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Delete Folder?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium leading-relaxed">
-              Purging this category will not delete the assessments inside; they will be relocated to the general unclassified directory.
+              Deleting this folder will not delete the tests inside; they will be moved to the general folder.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-4">
-            <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
             <AlertDialogAction 
               className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" 
               onClick={() => deleteFolderTarget && handleDeleteFolder(deleteFolderTarget)}

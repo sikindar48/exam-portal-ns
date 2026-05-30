@@ -77,7 +77,7 @@ export function TestTable({
                   <ClipboardList className="h-12 w-12 opacity-20" />
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest">No Assessment Records</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Create your first examination to begin assessment cycles.</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Create your first test to get started.</p>
                   </div>
                 </div>
               </TableCell>

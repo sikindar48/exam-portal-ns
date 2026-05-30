@@ -193,7 +193,7 @@ export default function QuestionsManagement() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Success", description: "Category dissolved" });
+      toast({ title: "Success", description: "Folder deleted" });
       fetchFolders();
       fetchQuestions();
       if (openFolderId === id) setOpenFolderId(null);
@@ -239,7 +239,7 @@ export default function QuestionsManagement() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Success", description: `${selectedIds.length} questions relocated` });
+      toast({ title: "Success", description: `${selectedIds.length} questions moved` });
       setIsBulkMoveOpen(false);
       setSelectedIds([]);
       fetchQuestions();

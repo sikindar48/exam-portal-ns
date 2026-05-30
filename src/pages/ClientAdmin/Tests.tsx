@@ -209,7 +209,7 @@ export default function TestsManagement() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Success", description: "Test relocated" });
+      toast({ title: "Success", description: "Test moved" });
       setIsMoveTestOpen(false);
       fetchTests();
     }
@@ -233,7 +233,7 @@ export default function TestsManagement() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Success", description: "Assessment purged" });
+      toast({ title: "Success", description: "Test deleted" });
       fetchTests();
     }
     setDeleteTarget(null);

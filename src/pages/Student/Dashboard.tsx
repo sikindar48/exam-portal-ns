@@ -189,7 +189,7 @@ export default function StudentDashboard() {
                               : "bg-slate-900 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-md"
                           }`}
                         >
-                          {exhausted ? "Limit Reached" : "Launch Examination"}
+                          {exhausted ? "Limit Reached" : "Start Test"}
                         </Button>
                       </div>
                     </div>

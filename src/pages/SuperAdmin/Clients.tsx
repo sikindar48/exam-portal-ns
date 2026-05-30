@@ -270,8 +270,8 @@ export default function ClientsManagement() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="pt-4">
-              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteClientTarget && handleDeleteClient(deleteClientTarget)}>Confirm Purge</AlertDialogAction>
+              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteClientTarget && handleDeleteClient(deleteClientTarget)}>Confirm Delete</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -280,13 +280,13 @@ export default function ClientsManagement() {
         <AlertDialog open={!!deleteAdminTarget} onOpenChange={(open) => !open && setDeleteAdminTarget(null)}>
           <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Remove Access Credentials?</AlertDialogTitle>
+              <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Delete Admin Account?</AlertDialogTitle>
               <AlertDialogDescription className="text-sm font-medium leading-relaxed">
                 This will revoke the administrator's access to this organization. Their profile data will be retained but their role will be stripped.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="pt-4">
-              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Abort</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
               <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteAdminTarget && handleDeleteAdmin(deleteAdminTarget)}>Confirm Revocation</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

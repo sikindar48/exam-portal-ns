@@ -157,7 +157,7 @@ export default function TestHistory() {
                 onClick={() => navigate("/student")}
                 className="h-11 rounded-none border-2 border-slate-900 dark:border-slate-700 font-black uppercase tracking-widest text-xs px-8 hover:bg-slate-900 hover:text-white transition-all"
               >
-                Launch Available Tests
+                Browse Available Tests
               </Button>
             </div>
           ) : (

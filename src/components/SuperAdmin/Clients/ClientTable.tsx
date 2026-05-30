@@ -95,7 +95,7 @@ export function ClientTable({
                         size="sm"
                         onClick={() => setDeleteClientTarget(client.id)}
                         className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-red-600 hover:border-red-200 transition-all p-0"
-                        title="Purge Organization Data"
+                        title="Delete Organization"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
