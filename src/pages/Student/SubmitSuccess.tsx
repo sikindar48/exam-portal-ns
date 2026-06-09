@@ -39,15 +39,15 @@ export default function SubmitSuccess() {
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center bg-slate-50 dark:bg-slate-950">
         <div className="max-w-md w-full space-y-6">
           <div className="flex justify-center">
-            <div className="h-16 w-16 bg-blue-50 dark:bg-blue-950/30 rounded-full flex items-center justify-center border border-blue-100 dark:border-blue-900 animate-bounce">
+            <div className="h-16 w-16 bg-blue-50 dark:bg-blue-950/30 rounded-full flex items-center justify-center border border-blue-100 dark:border-blue-900 animate-fade-in-scale">
               <CheckCircle2 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
           <div className="space-y-3">
-            <h2 className="text-2xl font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">
+            <h2 className="text-2xl font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight animate-fade-in-delay">
               Thanks for attending the test.
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium animate-fade-in-delay-2">
               It is now safe to close or navigate away from the current window.
             </p>
           </div>
@@ -55,7 +55,7 @@ export default function SubmitSuccess() {
           <div className="pt-4 flex flex-col gap-2">
             <Button
               onClick={() => navigate(isGuest ? "/join" : "/student")}
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-black uppercase tracking-widest rounded-none transition-all"
+              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-black uppercase tracking-widest rounded-none transition-all duration-300 animate-fade-in-delay-2"
             >
               {isGuest ? "Exit to Join Screen" : "Return to Dashboard"}
             </Button>
