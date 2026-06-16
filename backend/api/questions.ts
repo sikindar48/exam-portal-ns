@@ -113,9 +113,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (!fields.length) return res.status(400).json({ error: "Nothing to update" });
     fields.push("updated_at = datetime('now')");
-    args.push(id);
+    args.push(String(id));
     await db.execute({ sql: `UPDATE questions SET ${fields.join(", ")} WHERE id = ?`, args });
-    const { rows } = await db.execute({ sql: "SELECT * FROM questions WHERE id = ?", args: [id] });
+    const { rows } = await db.execute({ sql: "SELECT * FROM questions WHERE id = ?", args: [String(id)] });
     return res.status(200).json(rows[0]);
   }
 

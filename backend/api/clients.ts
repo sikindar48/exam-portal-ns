@@ -80,6 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id is required" });
+    const idStr = String(id);
 
     const isSuperAdmin = await hasRole(user.id, "superadmin");
     const isClientAdmin = await hasRole(user.id, "clientadmin");
@@ -90,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // clientadmin can only update their own client
     if (!isSuperAdmin) {
       const clientId = await getUserClientId(user.id);
-      if (clientId !== id) return res.status(403).json({ error: "Forbidden" });
+      if (clientId !== idStr) return res.status(403).json({ error: "Forbidden" });
     }
 
     const { name, address, logo_url, active_status } = req.body;
@@ -105,9 +106,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (fields.length === 1) return res.status(400).json({ error: "Nothing to update" });
 
-    args.push(id);
+    args.push(idStr);
     await db.execute({ sql: `UPDATE clients SET ${fields.join(", ")} WHERE id = ?`, args });
-    const { rows } = await db.execute({ sql: "SELECT * FROM clients WHERE id = ?", args: [id] });
+    const { rows } = await db.execute({ sql: "SELECT * FROM clients WHERE id = ?", args: [idStr] });
     return res.status(200).json(rowBools(rows[0] as any, BOOL_FIELDS));
   }
 
@@ -121,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id is required" });
 
-    await db.execute({ sql: "DELETE FROM clients WHERE id = ?", args: [id as string] });
+    await db.execute({ sql: "DELETE FROM clients WHERE id = ?", args: [String(id)] });
     return res.status(200).json({ success: true });
   }
 

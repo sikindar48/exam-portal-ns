@@ -16,7 +16,7 @@ export function getDb() {
 export function rowBools<T extends Record<string, any>>(row: T, fields: string[]): T {
   const out = { ...row };
   for (const f of fields) {
-    if (f in out && out[f] !== null) out[f] = out[f] === 1 || out[f] === true;
+    if (f in out && out[f] !== null) (out as any)[f] = out[f] === 1 || out[f] === true;
   }
   return out;
 }

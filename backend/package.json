@@ -2,17 +2,28 @@
   "name": "ns-exam-portal-backend",
   "private": true,
   "version": "0.0.0",
-  "description": "NS Exam Portal - Vercel Edge Functions Backend with Turso Database",
+  "description": "NS Exam Portal - Express Backend with Turso Database",
   "type": "module",
   "scripts": {
-    "dev": "echo 'Run this from the root: npm run dev'",
-    "build": "echo 'Built automatically by Vercel'",
+    "dev": "node --loader ts-node/esm server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "deploy": "vercel"
   },
+  "dependencies": {
+    "@libsql/client": "^0.11.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  },
   "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
     "@types/node": "^22.16.5",
     "@vercel/node": "^5.8.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "ts-node": "^10.9.2"
   }
 }
 

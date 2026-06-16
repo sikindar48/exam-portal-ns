@@ -39,3 +39,4 @@ bun.lock
 # Build outputs
 frontend/dist/
 backend/dist/
+.vercel
