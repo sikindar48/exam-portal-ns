@@ -1,45 +1,33 @@
-# GCP Deployment Status Check
+# GCP Deployment Status Check - UPDATED
 
-## Backend Status ✅
+## Actual Deployment Architecture
 
-**URL:** https://exam-portal-ns-479112457276.asia-south2.run.app  
-**Health Check:** ✅ Working (`/health` returns `{"status":"ok"}`)  
-**Configuration:** Correct
-- Docker image properly built
-- Port 8080 configured
-- HEALTHCHECK endpoint enabled
-- Environment variables should be set in Cloud Run
+### ✅ Frontend + Backend (Unified on GCP Cloud Run)
+- **Platform:** GCP Cloud Run
+- **URL:** https://exam-portal-ns-479112457276.asia-south2.run.app
+- **Status:** ✅ Both frontend and backend running
+- **Health Check:** ✅ Working (`/health` returns `{"status":"ok"}`)
+- **Build:** Multi-stage Docker build
+  - Frontend built to `frontend/dist`
+  - Backend built to `backend/dist`  
+  - Backend serves frontend static files
+  - All APIs available at `/api/*`
 
-## Frontend Status ⚠️ NEEDS ATTENTION
+## Not Using (Misleading Files)
 
-**Current Setup:** GitHub Pages deployment  
-**Issue:** The workflow deploys to GitHub Pages, NOT GCP Cloud Run
+**These files exist but are NOT USED:**
+- ❌ `vercel.json` - Vercel monorepo config (unused)
+- ❌ `frontend/vercel.json` - Frontend Vercel config (unused)
+- ❌ `backend/vercel.json` - Backend Vercel config (unused)
+- ❌ `.github/workflows/deploy.yml` - Says "GitHub Pages" but not active
+- ❌ `.github/workflows/keep-alive.yml` - References old Supabase (you use Turso now)
 
-### Current Deployment Flow:
-1. Root `package.json` has `build` script that builds `frontend/` 
-2. GitHub Actions builds frontend to `./dist`
-3. Deploys to GitHub Pages (not GCP)
+## Actually Using
 
-### Frontend Location:
-- GitHub Pages: https://sikindar48.github.io/exam-portal-ns (if enabled)
-- **NOT on GCP Cloud Run** like backend
-
-## What Needs to be Fixed
-
-### Option 1: Keep Separate (Current)
-- ✅ Backend: GCP Cloud Run
-- ✅ Frontend: GitHub Pages  
-- ❌ Different domains (CORS issues possible)
-
-### Option 2: Unified GCP Deployment (Recommended)
-- Create frontend Dockerfile
-- Deploy both to same GCP project
-- Same domain for frontend + backend
-
-### Option 3: Separate GCP Services  
-- Deploy frontend to GCP Cloud Run (separate service)
-- Deploy backend to GCP Cloud Run (separate service)
-- Use load balancer for same domain
+**What's really deployed:**
+- ✅ GCP Cloud Run (both frontend + backend)
+- ✅ Turso Database
+- ✅ Firebase Authentication
 
 ## Action Items
 
