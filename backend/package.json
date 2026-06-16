@@ -1,0 +1,18 @@
+{
+  "name": "ns-exam-portal-backend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "NS Exam Portal - Vercel Edge Functions Backend with Turso Database",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Run this from the root: npm run dev'",
+    "build": "echo 'Built automatically by Vercel'",
+    "deploy": "vercel"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@vercel/node": "^5.8.17",
+    "typescript": "^5.8.3"
+  }
+}
+

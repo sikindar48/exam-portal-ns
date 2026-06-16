@@ -1,0 +1,99 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                  NS EXAM PORTAL - REORGANIZED STRUCTURE                    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+exam-portal-ns/
+│
+├── 📦 FRONTEND (React + Vite)
+│   ├── frontend/
+│   │   ├── src/                    ← React components, pages, hooks
+│   │   ├── public/                 ← Static assets (images, fonts)
+│   │   ├── index.html              ← Entry point
+│   │   ├── package.json            ← Frontend dependencies
+│   │   ├── vite.config.ts          ← Build configuration
+│   │   ├── tsconfig.json           ← TypeScript config
+│   │   ├── tailwind.config.ts      ← Tailwind CSS config
+│   │   └── postcss.config.js       ← PostCSS config
+│
+├── 🔧 BACKEND (Vercel Edge Functions)
+│   ├── backend/
+│   │   ├── api/
+│   │   │   ├── _lib/               ← Shared utilities (auth, db, roles)
+│   │   │   ├── rpc/                ← Special RPC functions
+│   │   │   └── *.ts                ← API endpoints (auto-routed)
+│   │   ├── .env                    ← Backend environment variables
+│   │   └── package.json            ← Backend dependencies
+│
+├── 📚 DOCUMENTATION & CONFIG
+│   ├── docs/                       ← Project documentation
+│   │   ├── architecture-db-schema.md
+│   │   ├── features-flow.md
+│   │   ├── implementation-status.md
+│   │   └── supabase/               ← Reference config
+│   │
+│   ├── config/                     ← Configuration files
+│   │   ├── complete-setup.sql      ← Initial DB schema
+│   │   ├── turso-schema.sql        ← Turso schema
+│   │   └── vercel.json             ← Vercel config
+│
+├── 🛠️ UTILITIES & SCRIPTS
+│   ├── scripts/                    ← Helper scripts
+│   │   ├── migrate-to-turso.mjs
+│   │   └── test-api.mjs
+│
+├── 🔐 REPOSITORY & IDE
+│   ├── .github/workflows/          ← CI/CD pipelines
+│   │   ├── deploy.yml
+│   │   └── keep-alive.yml
+│   ├── .vscode/                    ← VS Code settings
+│   ├── .git/                       ← Git repository
+│
+├── 📋 ROOT LEVEL FILES
+│   ├── package.json                ← Orchestration (npm workspaces)
+│   ├── README.md                   ← Project overview
+│   ├── PROJECT_STRUCTURE.md        ← Detailed structure guide
+│   ├── RESTRUCTURE_CHECKLIST.md    ← What was changed
+│   └── .gitignore                  ← Git ignore rules
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                            KEY COMMANDS                                    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+From root directory:
+  npm run dev              → Start frontend dev server
+  npm run build            → Build frontend for production
+  npm run lint             → Lint frontend code
+  npm run preview          → Preview production build
+  npm run deploy:frontend  → Deploy frontend to Vercel
+  npm run deploy:backend   → Deploy API to Vercel
+
+From frontend/:
+  npm run dev              → Start dev server with hot reload
+  npm run build            → Production build
+  npm run lint             → ESLint + format check
+
+From backend/:
+  (API auto-deploys from Vercel)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                          TECH STACK                                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Frontend:  React 18 | TypeScript | Vite | Tailwind CSS | shadcn/ui
+Backend:   Vercel Edge Functions | Node.js
+Database:  Turso (SQLite) | Vercel Blob Storage
+Auth:      Supabase Auth (JWT)
+Deploy:    Vercel (frontend + backend)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                     WHAT'S BEEN PRESERVED                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+✓ All imports work (@ alias maintained)
+✓ Environment variables functional
+✓ Build process unchanged
+✓ Git history preserved
+✓ API endpoints working
+✓ Database connections intact
+✓ Supabase Auth functional
+✓ Deployment scripts ready
