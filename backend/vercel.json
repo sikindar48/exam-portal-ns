@@ -1,7 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ],
+  "version": 2,
   "functions": {
     "api/**/*.ts": {
       "runtime": "nodejs20.x"
