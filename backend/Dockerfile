@@ -1,18 +1,25 @@
-# Build stage
-FROM node:22-alpine AS builder
+# Build Frontend
+FROM node:22-alpine AS frontend-builder
 
-WORKDIR /app
+WORKDIR /frontend
 
-# Copy package files
-COPY package.json package-lock.json* bun.lock* bun.lockb* ./
+COPY frontend/package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
+COPY frontend/ .
 
-# Copy source code
-COPY . .
+RUN npm run build
 
-# Build TypeScript
+# Build Backend
+FROM node:22-alpine AS backend-builder
+
+WORKDIR /backend
+
+COPY backend/package*.json ./
+RUN npm ci
+
+COPY backend/ .
+
 RUN npm run build
 
 # Runtime stage
@@ -20,14 +27,17 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Copy package files from backend
+COPY backend/package.json backend/package-lock.json* ./
 
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
+# Copy built backend
+COPY --from=backend-builder /backend/dist ./dist
+
+# Copy built frontend
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
 # Expose port
 EXPOSE 8080

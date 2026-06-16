@@ -1,16 +1,28 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import "dotenv/config";
+import path from "path";
+import { fileURLToPath } from "url";
 import { getDb } from "./api/_lib/db.js";
 import { getUser } from "./api/_lib/auth.js";
 import { randomUUID } from "crypto";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Serve Frontend Static Files (if built into backend)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const frontendDist = path.join(__dirname, "../frontend/dist");
+app.use(express.static(frontendDist, { 
+  extensions: ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'woff', 'woff2'] 
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Middleware
@@ -160,6 +172,20 @@ app.post("/api/attempts", async (req: Request, res: Response) => {
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok" });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Catch-All: Serve Frontend SPA (must be after all API routes)
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get("*", (req: Request, res: Response) => {
+  // For API routes that don't match, return 404
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({ error: "API route not found" });
+  }
+  
+  // For all other routes, serve index.html for SPA routing
+  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
