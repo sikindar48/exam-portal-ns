@@ -6,7 +6,7 @@
   "installCommand": "cd frontend && npm install && cd ../backend && npm install",
   "functions": {
     "backend/api/**/*.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs@20"
     }
   },
   "rewrites": [
