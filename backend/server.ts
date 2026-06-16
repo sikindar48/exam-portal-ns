@@ -12,11 +12,24 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Middleware
+// Security headers for Firebase CORS
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
+
 app.use(cors({
-  origin: "*",
+  origin: [
+    "http://localhost:8081",
+    "http://localhost:3000",
+    "https://exam-portal-ns-479112457276.asia-south2.run.app",
+    /\.firebaseapp\.com$/,
+    /googleapis\.com$/
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false
+  credentials: true
 }));
 app.use(express.json());
 
