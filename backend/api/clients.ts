@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { getDb, rowBools } from "./_lib/db";
-import { requireUser } from "./_lib/auth";
-import { hasRole, getUserClientId } from "./_lib/roles";
+import { getDb, rowBools } from "./_lib/db.js";
+import { requireUser } from "./_lib/auth.js";
+import { hasRole, getUserClientId } from "./_lib/roles.js";
 import { randomUUID } from "crypto";
 
 const BOOL_FIELDS = ["active_status"];

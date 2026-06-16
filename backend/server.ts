@@ -7,6 +7,22 @@ import { getDb } from "./api/_lib/db.js";
 import { getUser } from "./api/_lib/auth.js";
 import { randomUUID } from "crypto";
 
+// Import API route handlers
+import clientsHandler from "./api/clients.js";
+import profilesHandler from "./api/profiles.js";
+import attemptsHandler from "./api/attempts.js";
+import attemptAnswersHandler from "./api/attempt-answers.js";
+import questionsHandler from "./api/questions.js";
+import testQuestionsHandler from "./api/test-questions.js";
+import testsHandler from "./api/tests.js";
+import userRolesHandler from "./api/user-roles.js";
+import questionFoldersHandler from "./api/question-folders.js";
+import testFoldersHandler from "./api/test-folders.js";
+import statsHandler from "./api/stats.js";
+import createUserHandler from "./api/create-user.js";
+import cloneTestHandler from "./api/rpc/clone-test.js";
+import submitAttemptHandler from "./api/rpc/submit-attempt.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -65,128 +81,31 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Attempts Routes
+// API Routes
 // ─────────────────────────────────────────────────────────────────────────────
 
-app.get("/api/attempts", async (req: Request, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+// Main API routes
+app.all("/api/clients", clientsHandler);
+app.all("/api/profiles", profilesHandler);
+app.all("/api/attempts", attemptsHandler);
+app.all("/api/attempt-answers", attemptAnswersHandler);
+app.all("/api/questions", questionsHandler);
+app.all("/api/test-questions", testQuestionsHandler);
+app.all("/api/tests", testsHandler);
+app.all("/api/user-roles", userRolesHandler);
+app.all("/api/question-folders", questionFoldersHandler);
+app.all("/api/test-folders", testFoldersHandler);
+app.all("/api/stats", statsHandler);
+app.all("/api/create-user", createUserHandler);
 
-  const db = getDb();
-  const { test_id, student_id, status, id, count_only, with_test_name } = req.query;
+// RPC/Custom endpoints
+app.all("/api/rpc/clone-test", cloneTestHandler);
+app.all("/api/rpc/submit-attempt", submitAttemptHandler);
 
-  try {
-    // Fetch single attempt by id
-    if (id) {
-      const { rows } = await db.execute({
-        sql: `SELECT a.*, t.test_name, t.timer, t.allow_review, t.negative_marking, t.negative_marks
-              FROM attempts a JOIN tests t ON t.id = a.test_id
-              WHERE a.id = ?`,
-        args: [id as string],
-      });
-      if (!rows.length) return res.status(404).json({ error: "Not found" });
-      const row = rows[0] as any;
-      return res.status(200).json({
-        ...row,
-        tests: {
-          test_name: row.test_name,
-          timer: row.timer,
-          allow_review: row.allow_review === 1,
-          negative_marking: row.negative_marking === 1,
-          negative_marks: row.negative_marks,
-        },
-      });
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// Attempts Routes (Legacy - keeping for compatibility)
+// ─────────────────────────────────────────────────────────────────────────────
 
-    // Count completed attempts
-    if (count_only === "true" && test_id && student_id) {
-      const { rows } = await db.execute({
-        sql: "SELECT COUNT(*) as count FROM attempts WHERE test_id = ? AND student_id = ? AND status = 'submitted'",
-        args: [test_id as string, student_id as string],
-      });
-      return res.status(200).json({ count: (rows[0] as any).count });
-    }
-
-    // Admin: results for a test
-    if (test_id && !student_id) {
-      const { rows } = await db.execute({
-        sql: `SELECT a.*,
-                (SELECT COUNT(*) FROM attempt_answers aa WHERE aa.attempt_id = a.id) as answer_count
-              FROM attempts a
-              WHERE a.test_id = ? AND a.status = 'submitted'
-              ORDER BY a.submitted_at DESC`,
-        args: [test_id as string],
-      });
-
-      if (rows.length > 0) {
-        const studentIds = [...new Set(rows.map((r: any) => r.student_id))];
-        const placeholders = studentIds.map(() => "?").join(",");
-        const { rows: profiles } = await db.execute({
-          sql: `SELECT id, name, email FROM profiles WHERE id IN (${placeholders})`,
-          args: studentIds,
-        });
-        const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
-        const result = rows.map((r: any) => ({
-          ...r,
-          attempt_answers: [{ count: r.answer_count }],
-          profiles: profileMap.get(r.student_id) ?? null,
-        }));
-        return res.status(200).json(result);
-      }
-      return res.status(200).json([]);
-    }
-
-    // Student: own history
-    const resolvedStudentId = (student_id as string) || req.user.id;
-    let sql = `SELECT a.*, t.test_name, t.timer, t.allow_review
-               FROM attempts a JOIN tests t ON t.id = a.test_id
-               WHERE a.student_id = ?`;
-    const args: any[] = [resolvedStudentId];
-
-    if (status) {
-      sql += " AND a.status = ?";
-      args.push(status);
-    }
-    if (test_id) {
-      sql += " AND a.test_id = ?";
-      args.push(test_id);
-    }
-
-    sql += " ORDER BY a.submitted_at DESC";
-
-    const { rows } = await db.execute({ sql, args });
-    return res.status(200).json(
-      rows.map((r: any) => ({
-        ...r,
-        tests: { test_name: r.test_name, timer: r.timer, allow_review: r.allow_review === 1 },
-      }))
-    );
-  } catch (error) {
-    console.error("Error fetching attempts:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/api/attempts", async (req: Request, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-
-  const db = getDb();
-  const { student_id, test_id, status = "in_progress" } = req.body;
-  const resolvedStudentId = student_id || req.user.id;
-
-  try {
-    const id = randomUUID();
-    await db.execute({
-      sql: `INSERT INTO attempts (id, student_id, test_id, status, submitted_at)
-            VALUES (?,?,?,?,datetime('now'))`,
-      args: [id, resolvedStudentId, test_id, status],
-    });
-    const { rows } = await db.execute({ sql: "SELECT * FROM attempts WHERE id = ?", args: [id] });
-    return res.status(201).json(rows[0]);
-  } catch (error) {
-    console.error("Error creating attempt:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Health Check

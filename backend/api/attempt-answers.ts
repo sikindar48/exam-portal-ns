@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { getDb } from "./_lib/db";
-import { requireUser } from "./_lib/auth";
+import { getDb } from "./_lib/db.js";
+import { requireUser } from "./_lib/auth.js";
 import { randomUUID } from "crypto";
 
 export default async function handler(req: Request, res: Response) {

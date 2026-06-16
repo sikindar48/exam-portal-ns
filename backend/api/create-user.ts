@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import { getAuth } from "firebase-admin/auth";
-import { getDb } from "./_lib/db";
-import { requireUser } from "./_lib/auth";
-import { hasRole, getUserClientId } from "./_lib/roles";
+import { getDb } from "./_lib/db.js";
+import { requireUser } from "./_lib/auth.js";
+import { hasRole, getUserClientId } from "./_lib/roles.js";
 
 /**
  * POST /api/create-user
