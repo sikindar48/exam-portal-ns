@@ -20,9 +20,13 @@ app.use(express.json());
 // ─────────────────────────────────────────────────────────────────────────────
 
 const frontendDist = path.join(__dirname, "../frontend/dist");
-app.use(express.static(frontendDist, { 
-  extensions: ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'woff', 'woff2'] 
-}));
+try {
+  app.use(express.static(frontendDist, { 
+    extensions: ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'woff', 'woff2'] 
+  }));
+} catch (e) {
+  console.warn("Frontend dist folder not found. API-only mode.");
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Middleware
@@ -184,8 +188,28 @@ app.get("*", (req: Request, res: Response) => {
     return res.status(404).json({ error: "API route not found" });
   }
   
-  // For all other routes, serve index.html for SPA routing
-  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+  // For all other routes, try to serve index.html for SPA routing
+  const indexPath = path.join(__dirname, "../frontend/dist/index.html");
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      // Fallback: return simple HTML if frontend not available
+      res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>NS Exam Portal</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body>
+            <h1>NS Exam Portal</h1>
+            <p>Frontend is being deployed. Please refresh in a moment...</p>
+            <p><a href="/">Refresh</a></p>
+          </body>
+        </html>
+      `);
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
