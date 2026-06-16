@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { getDb, rowBools } from "./_lib/db";
 import { requireUser } from "./_lib/auth";
 import { hasRole, getUserClientId } from "./_lib/roles";
@@ -6,7 +6,7 @@ import { randomUUID } from "crypto";
 
 const BOOL_FIELDS = ["active_status"];
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   const db = getDb();
 
   // ── GET /api/clients ────────────────────────────────────────────────────────

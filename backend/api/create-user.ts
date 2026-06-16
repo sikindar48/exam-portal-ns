@@ -1,16 +1,15 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
+import type { Request, Response } from "express";
+import { getAuth } from "firebase-admin/auth";
 import { getDb } from "./_lib/db";
 import { requireUser } from "./_lib/auth";
 import { hasRole, getUserClientId } from "./_lib/roles";
 
 /**
  * POST /api/create-user
- * Replaces the Supabase Edge Function `create-user`.
- * Uses Supabase Admin API to create the auth user (email pre-confirmed),
+ * Uses Firebase Admin to create the auth user,
  * then stores profile + role in Turso.
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const caller = await requireUser(req, res);
@@ -35,24 +34,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: "Cannot create user for a different organization" });
   }
 
-  // Create auth user via Supabase Admin API
-  const supabaseAdmin = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    (process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!,
-    { auth: { persistSession: false } }
-  );
+  // Create auth user via Firebase Admin
+  let userId: string;
+  try {
+    const userRecord = await getAuth().createUser({
+      email: email.trim(),
+      password,
+      displayName: name.trim(),
+      emailVerified: true,
+    });
+    userId = userRecord.uid;
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message ?? "Failed to create auth user" });
+  }
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: email.trim(),
-    password,
-    email_confirm: true,
-    user_metadata: { name: name.trim() },
-  });
-
-  if (authError || !authData.user)
-    return res.status(400).json({ error: authError?.message ?? "Failed to create auth user" });
-
-  const userId = authData.user.id;
   const db = getDb();
 
   try {
@@ -71,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ id: userId });
   } catch (err: any) {
     // Rollback auth user if Turso insert fails
-    await supabaseAdmin.auth.admin.deleteUser(userId);
+    await getAuth().deleteUser(userId);
     return res.status(500).json({ error: err.message ?? "Failed to store user profile" });
   }
 }

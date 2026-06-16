@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/integrations/firebase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Mail } from 'lucide-react';
 
 export default function Forgot() {
@@ -20,16 +21,16 @@ export default function Forgot() {
     if (!email) return;
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      await sendPasswordResetEmail(auth, email, {
+        url: `${window.location.origin}/auth`,
+      });
       setSent(true);
       toast({ title: 'Email Sent', description: 'Check your inbox for the reset link.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,7 +48,7 @@ export default function Forgot() {
             <div className="space-y-4 text-center">
               <Mail className="mx-auto h-12 w-12 text-primary" />
               <p className="text-muted-foreground">
-                We've sent a password reset link to <strong>{email}</strong>. 
+                We've sent a password reset link to <strong>{email}</strong>.
                 Please check your inbox and click the link to reset your password.
               </p>
               <Button variant="outline" onClick={() => navigate('/auth')} className="w-full">

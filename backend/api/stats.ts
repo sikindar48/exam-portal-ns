@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { getDb } from "./_lib/db";
 import { requireUser } from "./_lib/auth";
 import { hasRole, getUserClientId } from "./_lib/roles";
@@ -7,7 +7,7 @@ import { hasRole, getUserClientId } from "./_lib/roles";
  * GET /api/stats?scope=platform  → SuperAdmin dashboard
  * GET /api/stats?scope=client    → ClientAdmin dashboard
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await requireUser(req, res);

@@ -1,9 +1,9 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { getDb } from "./_lib/db";
 import { requireUser } from "./_lib/auth";
 import { randomUUID } from "crypto";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   const db = getDb();
   const user = await requireUser(req, res);
   if (!user) return;

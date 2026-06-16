@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { getDb } from "../_lib/db";
 import { requireUser } from "../_lib/auth";
 import { randomUUID } from "crypto";
@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
  * Body: { source_test_id: string }
  * Replaces Supabase RPC `clone_test`
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await requireUser(req, res);

@@ -6,14 +6,23 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  User,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
+import { auth } from "@/integrations/firebase/client";
+import { apiClient } from "@/integrations/turso/client";
 
 type AppRole = "superadmin" | "clientadmin" | "student";
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
   role: AppRole | null;
   clientId: string | null;
@@ -24,6 +33,8 @@ interface AuthContextType {
     name: string,
     clientId?: string,
   ) => Promise<{ error: any }>;
+  signInWithGoogle: (clientId?: string) => Promise<{ error: any }>;
+  signInAnonymously: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshRole: () => Promise<void>;
 }
@@ -35,7 +46,6 @@ const ROLE_PRIORITY: AppRole[] = ["superadmin", "clientadmin", "student"];
 const CACHE_KEY_ROLE = "kiro_cached_role";
 const CACHE_KEY_CLIENT = "kiro_cached_client_id";
 
-// Read synchronously from localStorage — no network, no delay
 function readCache(): { role: AppRole | null; clientId: string | null } {
   return {
     role: (localStorage.getItem(CACHE_KEY_ROLE) as AppRole | null) ?? null,
@@ -58,8 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const cache = readCache();
 
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  // Only block rendering if there is no cached role at all (first-ever visit)
   const [loading, setLoading] = useState(cache.role === null);
   const [role, setRole] = useState<AppRole | null>(cache.role);
   const [clientId, setClientId] = useState<string | null>(cache.clientId);
@@ -87,13 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const fetchUserRole = useCallback(
-    async (userId: string): Promise<void> => {
+    async (firebaseUser: User): Promise<void> => {
       try {
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role, client_id")
-          .eq("user_id", userId);
-        if (!error) applyRole(data ?? []);
+        const token = await firebaseUser.getIdToken();
+        const res = await apiClient("/api/user-roles", { token });
+        applyRole(res ?? []);
       } catch (err) {
         console.error("fetchUserRole error:", err);
       }
@@ -102,84 +108,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshRole = useCallback(async () => {
-    if (user) await fetchUserRole(user.id);
+    if (user) await fetchUserRole(user);
   }, [user, fetchUserRole]);
 
   useEffect(() => {
-    let mounted = true;
+    if (!auth) {
+      console.warn("Firebase auth not initialized");
+      setLoading(false);
+      return;
+    }
 
-    // Supabase stores the session in localStorage — getSession() reads it
-    // synchronously from storage first, then validates with the server in background.
-    // So this resolves almost instantly on return visits.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
+    try {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        setUser(firebaseUser);
 
-      if (session?.user) {
-        if (cache.role === null) {
-          // First visit — must fetch role before we can render
-          fetchUserRole(session.user.id).finally(() => {
-            if (mounted) setLoading(false);
-          });
+        if (firebaseUser) {
+          if (cache.role === null) {
+            await fetchUserRole(firebaseUser);
+            setLoading(false);
+          } else {
+            setLoading(false);
+            fetchUserRole(firebaseUser); // background refresh
+          }
         } else {
-          // Cache hit — render immediately, refresh role silently in background
+          clearCache();
+          setRole(null);
+          setClientId(null);
           setLoading(false);
-          fetchUserRole(session.user.id); // background, no await
         }
-      } else {
-        // No session — clear stale cache and go to login
-        clearCache();
-        setRole(null);
-        setClientId(null);
-        setLoading(false);
-      }
-    });
+      });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-
-      // These fire on every page load — handle silently
-      if (event === "INITIAL_SESSION") return;
-      if (event === "TOKEN_REFRESHED") {
-        if (session) {
-          setSession(session);
-          setUser(session.user);
-        }
-        return;
-      }
-
-      // Actual sign-in / sign-out
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        fetchUserRole(session.user.id).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      } else {
-        clearCache();
-        setRole(null);
-        setClientId(null);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+      return unsubscribe;
+    } catch (error) {
+      console.error("Error setting up auth listener:", error);
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      if (!auth) throw new Error("Firebase not initialized");
+      await signInWithEmailAndPassword(auth, email, password);
+      return { error: null };
+    } catch (err: any) {
+      console.error("Sign in error:", err);
+      return { error: { message: friendlyFirebaseError(err.code) } };
+    }
   };
 
   const signUp = async (
@@ -188,50 +163,120 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     clientId?: string,
   ) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
-    });
-    if (error || !data.user) return { error };
+    try {
+      if (!auth) throw new Error("Firebase not initialized");
+      const { user: newUser } = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: data.user.id,
-      name,
-      email,
-      client_id: clientId ?? null,
-    });
-    if (profileError) return { error: profileError };
+      // Set display name in Firebase
+      await updateProfile(newUser, { displayName: name });
 
-    const { error: roleError } = await supabase.from("user_roles").insert({
-      user_id: data.user.id,
-      role: "student",
-      client_id: clientId ?? null,
-    });
-    if (roleError) return { error: roleError };
+      // Store profile + role in Turso via backend API
+      const token = await newUser.getIdToken();
+      await apiClient("/api/profiles", {
+        token,
+        method: "POST",
+        body: { id: newUser.uid, name, email, client_id: clientId ?? null },
+      });
+      await apiClient("/api/user-roles", {
+        token,
+        method: "POST",
+        body: {
+          user_id: newUser.uid,
+          role: "student",
+          client_id: clientId ?? null,
+        },
+      });
 
-    return { error: null };
+      return { error: null };
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+      return { error: { message: friendlyFirebaseError(err.code) } };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (!auth) return;
+    await firebaseSignOut(auth);
     clearCache();
     setUser(null);
-    setSession(null);
     setRole(null);
     setClientId(null);
+  };
+
+  const signInWithGoogle = async (clientId?: string) => {
+    try {
+      if (!auth) throw new Error("Firebase not initialized");
+      const provider = new GoogleAuthProvider();
+      const { user: googleUser } = await signInWithPopup(auth, provider);
+
+      // Check if user exists in Turso, if not create profile
+      const token = await googleUser.getIdToken();
+      try {
+        // Try to fetch existing profile
+        await apiClient("/api/profiles", { token });
+      } catch {
+        // Profile doesn't exist, create it
+        await apiClient("/api/profiles", {
+          token,
+          method: "POST",
+          body: {
+            id: googleUser.uid,
+            name: googleUser.displayName || "Google User",
+            email: googleUser.email,
+            client_id: clientId ?? null,
+          },
+        });
+
+        // Create student role
+        await apiClient("/api/user-roles", {
+          token,
+          method: "POST",
+          body: {
+            user_id: googleUser.uid,
+            role: "student",
+            client_id: clientId ?? null,
+          },
+        });
+      }
+
+      await fetchUserRole(googleUser);
+      return { error: null };
+    } catch (err: any) {
+      console.error("Google sign in error:", err);
+      return { error: { message: friendlyFirebaseError(err.code) } };
+    }
+  };
+
+  const signInAnonymously = async () => {
+    try {
+      if (!auth) throw new Error("Firebase not initialized");
+      const { signInAnonymously: firebaseSignInAnonymously } = await import("firebase/auth");
+      const { user: anonUser } = await firebaseSignInAnonymously(auth);
+      // Anonymous users get student role by default
+      setRole("student");
+      writeCache("student", null);
+      return { error: null };
+    } catch (err: any) {
+      console.error("Anonymous sign in error:", err);
+      return { error: { message: friendlyFirebaseError(err.code) } };
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        session,
         loading,
         role,
         clientId,
         signIn,
         signUp,
+        signInWithGoogle,
+        signInAnonymously,
         signOut,
         refreshRole,
       }}
@@ -245,4 +290,24 @@ export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
+}
+
+// Convert Firebase error codes to readable messages
+function friendlyFirebaseError(code: string): string {
+  switch (code) {
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "Invalid email or password.";
+    case "auth/email-already-in-use":
+      return "An account with this email already exists.";
+    case "auth/weak-password":
+      return "Password must be at least 6 characters.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again later.";
+    default:
+      return "An unexpected error occurred. Please try again.";
+  }
 }

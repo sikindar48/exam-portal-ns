@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { getDb, rowBools } from "./_lib/db";
 import { requireUser, getUser } from "./_lib/auth";
 import { hasRole, getUserClientId } from "./_lib/roles";
@@ -10,7 +10,7 @@ function generateShareCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   const db = getDb();
 
   // ── GET /api/tests ──────────────────────────────────────────────────────────

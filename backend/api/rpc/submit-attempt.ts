@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { getDb } from "../_lib/db";
 import { requireUser } from "../_lib/auth";
 
@@ -12,7 +12,7 @@ import { requireUser } from "../_lib/auth";
  * - Applies negative marking if enabled
  * - Updates attempt: status=submitted, score, total_marks, time_taken
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await requireUser(req, res);

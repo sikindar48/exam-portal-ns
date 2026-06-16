@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
+import { auth } from '@/integrations/firebase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, Lock } from 'lucide-react';
 
 export default function Reset() {
@@ -13,30 +14,15 @@ export default function Reset() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [isRecovery, setIsRecovery] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Listen for PASSWORD_RECOVERY event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsRecovery(true);
-      }
-    });
-
-    // Check URL hash for recovery token
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      setIsRecovery(true);
-    }
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // Firebase sends oobCode as a query param: /reset-password?oobCode=...
+  const oobCode = new URLSearchParams(window.location.search).get('oobCode');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast({ title: 'Error', description: 'Passwords do not match', variant: 'destructive' });
       return;
@@ -47,20 +33,26 @@ export default function Reset() {
       return;
     }
 
-    setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    if (!oobCode) {
+      toast({ title: 'Error', description: 'Invalid or expired reset link.', variant: 'destructive' });
+      return;
+    }
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    setLoading(true);
+    try {
+      await verifyPasswordResetCode(auth, oobCode);
+      await confirmPasswordReset(auth, oobCode, password);
       setSuccess(true);
       toast({ title: 'Success', description: 'Password updated successfully!' });
       setTimeout(() => navigate('/auth'), 3000);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!isRecovery && !success) {
+  if (!oobCode && !success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted p-4">
         <Card className="w-full max-w-md">
@@ -115,7 +107,6 @@ export default function Reset() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  minLength={6}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>

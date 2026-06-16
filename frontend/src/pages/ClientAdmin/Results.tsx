@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { testsApi, testQuestionsApi, attemptsApi, profilesApi } from "@/integrations/turso/client";
 import { Button } from "@/components/ui/button";
 import {

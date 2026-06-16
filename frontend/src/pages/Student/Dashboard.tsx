@@ -11,7 +11,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { LogOut, ClipboardList, History, Trophy } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
-import { supabase } from "@/integrations/supabase/client";
 import { testsApi, attemptsApi, clientsApi } from "@/integrations/turso/client";
 import { Footer } from "@/components/Brand/Footer";
 

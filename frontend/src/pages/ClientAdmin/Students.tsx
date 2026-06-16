@@ -19,7 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/integrations/firebase/client';
 import { userRolesApi, profilesApi, createUser } from "@/integrations/turso/client";
 import {
   ArrowLeft,
@@ -165,10 +166,8 @@ export default function StudentsManagement() {
     setHasStartedImport(true);
     setProgressCount(0);
     
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const token = await auth.currentUser?.getIdToken();
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
 
     const processRow = async (row: ImportRow, index: number) => {
       setImportRows((prev) => {
@@ -178,12 +177,11 @@ export default function StudentsManagement() {
       });
 
       try {
-        const res = await fetch(`${baseUrl}/functions/v1/create-user`, {
+        const res = await fetch(`${apiBase}/create-user`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            apikey: apikey,
           },
           body: JSON.stringify({
             email: row.email.trim(),
@@ -306,10 +304,9 @@ export default function StudentsManagement() {
 
   const handleResetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      await sendPasswordResetEmail(auth, email, {
+        url: `${window.location.origin}/auth`,
       });
-      if (error) throw error;
       toast({
         title: "Reset Request Sent",
         description: `A password reset link has been sent to ${email}.`,

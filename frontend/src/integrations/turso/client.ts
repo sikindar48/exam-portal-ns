@@ -1,16 +1,15 @@
 /**
  * Turso API client
  * Drop-in replacement for supabase.from() data calls.
- * Auth (signIn/signOut/session) still goes through Supabase.
+ * Auth (signIn/signOut/session) goes through Firebase.
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/integrations/firebase/client";
 
 const API_BASE = "/api";
 
 async function getToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  return auth.currentUser ? auth.currentUser.getIdToken() : null;
 }
 
 async function apiFetch<T = any>(
@@ -33,6 +32,29 @@ async function apiFetch<T = any>(
   } catch (err: any) {
     return { data: null, error: { message: err.message ?? "Network error" } };
   }
+}
+
+/**
+ * Low-level fetch helper for use in AuthContext where we pass the token directly
+ * (user may not be set in Firebase yet at call time).
+ */
+export async function apiClient(
+  path: string,
+  options: { token?: string; method?: string; body?: any } = {}
+): Promise<any> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? res.statusText);
+  }
+  return res.json();
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Trophy, Clock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { attemptsApi } from "@/integrations/turso/client";
 import { Toggle } from "@/components/Theme/Toggle";
 import { Footer } from "@/components/Brand/Footer";

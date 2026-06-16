@@ -130,11 +130,11 @@ export default function Builder() {
     if (importedIds && importedIds.length > 0) {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from("questions").select("*").in("id", importedIds);
-        if (error) throw error;
+        const { data, error } = await questionsApi.getByIds(importedIds);
+        if (error) throw new Error(error.message);
         if (data) {
           setTestData((prev) => ({ ...prev, questions: [...prev.questions, ...(data as unknown as Question[])] }));
-          toast({ title: "Import Success", description: `${data.length} questions added.` });
+          toast({ title: "Import Success", description: `${(data as any[]).length} questions added.` });
         }
       } catch (err) {
         toast({ title: "Import Error", description: "Failed to display imported questions.", variant: "destructive" });
@@ -183,12 +183,12 @@ export default function Builder() {
 
       if (isNew) {
         const generatedCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const { data, error } = await supabase.from("tests").insert({ ...testPayload, share_code: generatedCode }).select().single();
-        if (error) throw error;
+        const { data, error } = await testsApi.create({ ...testPayload, share_code: generatedCode });
+        if (error) throw new Error(error.message);
         testRecord = data;
       } else {
-        const { data, error } = await supabase.from("tests").update(testPayload).eq("id", testData.id).select().single();
-        if (error) throw error;
+        const { data, error } = await testsApi.update(testData.id, testPayload);
+        if (error) throw new Error(error.message);
         testRecord = data;
       }
 
@@ -205,15 +205,8 @@ export default function Builder() {
         position: index,
       }));
 
-      const { data: rpcData, error: rpcError } = await supabase.rpc("upsert_test_questions", {
-        _test_id: testRecord.id,
-        _questions: questionsPayload,
-      });
-
-      if (rpcError) throw rpcError;
-      if (rpcData && (rpcData as any).error) {
-        throw new Error((rpcData as any).error);
-      }
+      const { error: rpcError } = await testQuestionsApi.replace(testRecord.id, questionsPayload);
+      if (rpcError) throw new Error(rpcError.message);
 
       toast({ title: "Success", description: "Test saved successfully" });
       navigate("/client-admin/tests");

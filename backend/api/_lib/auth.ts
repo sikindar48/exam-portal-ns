@@ -1,13 +1,23 @@
-import { createClient } from "@supabase/supabase-js";
-import type { VercelRequest } from "@vercel/node";
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import type { Request } from "express";
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
+// Initialize Firebase Admin once
+if (!getApps().length) {
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-// Single shared client for JWT verification (auth only — no DB queries)
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
-});
+  if (!projectId || !clientEmail || !privateKey) {
+    console.warn(
+      "Missing Firebase Admin env vars: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY"
+    );
+  } else {
+    initializeApp({
+      credential: cert({ projectId, clientEmail, privateKey }),
+    });
+  }
+}
 
 export interface AuthUser {
   id: string;
@@ -15,18 +25,20 @@ export interface AuthUser {
 }
 
 /**
- * Extracts and verifies the Supabase JWT from the Authorization header.
+ * Extracts and verifies the Firebase JWT from the Authorization header.
  * Returns the decoded user, or null if the token is missing/invalid.
  */
-export async function getUser(req: VercelRequest): Promise<AuthUser | null> {
+export async function getUser(req: Request): Promise<AuthUser | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) return null;
 
   const token = authHeader.slice(7);
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) return null;
-
-  return { id: data.user.id, email: data.user.email ?? "" };
+  try {
+    const decoded = await getAuth().verifyIdToken(token);
+    return { id: decoded.uid, email: decoded.email ?? "" };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -34,7 +46,7 @@ export async function getUser(req: VercelRequest): Promise<AuthUser | null> {
  * Usage: const user = await requireUser(req, res); if (!user) return;
  */
 export async function requireUser(
-  req: VercelRequest,
+  req: Request,
   res: { status: (n: number) => { json: (b: any) => void } }
 ): Promise<AuthUser | null> {
   const user = await getUser(req);
