@@ -4,11 +4,6 @@
   "outputDirectory": "frontend/dist",
   "devCommand": "cd frontend && npm run dev",
   "installCommand": "cd frontend && npm install && cd ../backend && npm install",
-  "functions": {
-    "backend/api/**/*.ts": {
-      "runtime": "nodejs@20"
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/backend/api/$1" }
   ],
