@@ -5,7 +5,7 @@ pages_build_output_dir = "./dist"
 [env.production]
 name = "exam-portal-frontend-production"
 
-[[env.production.vars]]
+[env.production.vars]
 VITE_API_URL = "https://exam-portal-api-479112457276.asia-south1.run.app"
 VITE_FIREBASE_API_KEY = "AIzaSyDeCd6Ek_fzMwxDGvwXjYxLdgvuYwghjj8"
 VITE_FIREBASE_AUTH_DOMAIN = "ns-exam-portal.firebaseapp.com"
@@ -14,10 +14,3 @@ VITE_FIREBASE_STORAGE_BUCKET = "ns-exam-portal.firebasestorage.app"
 VITE_FIREBASE_MESSAGING_SENDER_ID = "479112457276"
 VITE_FIREBASE_APP_ID = "1:479112457276:web:9c5bfddc5e0b6d1e286739"
 
-[build]
-command = "npm run build"
-upload_dir = "dist"
-
-[build.upload]
-format = "directory"
-dir = "dist"
