@@ -4,9 +4,9 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
       - '-t'
-      - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:latest'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:latest'
       - '-f'
       - 'backend/Dockerfile'
       - '.'
@@ -15,12 +15,12 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:latest'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:latest'
 
   # Step 3: Deploy using gcloud
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -28,9 +28,9 @@ steps:
       - 'run'
       - 'deploy'
       - 'exam-portal-ns'
-      - '--image=asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
       - '--platform=managed'
-      - '--region=asia-south2'
+      - '--region=$_REGION'
       - '--allow-unauthenticated'
       - '--set-env-vars=TURSO_CONNECTION_URL=$$TURSO_CONNECTION_URL,TURSO_AUTH_TOKEN=$$TURSO_AUTH_TOKEN,FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID,FIREBASE_PRIVATE_KEY=$$FIREBASE_PRIVATE_KEY,FIREBASE_CLIENT_EMAIL=$$FIREBASE_CLIENT_EMAIL'
     secretEnv:
@@ -41,8 +41,8 @@ steps:
       - 'FIREBASE_CLIENT_EMAIL'
 
 images:
-  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
-  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:latest'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:$SHORT_SHA'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-ns:latest'
 
 substitutions:
   _REGION: 'asia-south2'
