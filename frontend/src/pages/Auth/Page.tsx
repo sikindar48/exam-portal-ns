@@ -229,7 +229,15 @@ export default function AuthPage() {
                 <div>
                   <div className="flex justify-between mb-2">
                     <Label htmlFor="password">Password</Label>
-                    <Button variant="link" size="sm" onClick={() => navigate("/forgot-password")}>Forgot?</Button>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-sm"
+                      onClick={() => navigate("/forgot-password")}
+                    >
+                      Forgot?
+                    </Button>
                   </div>
                   <div className="relative">
                     <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" required/>
