@@ -8,9 +8,14 @@ if (!getApps().length) {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-  if (!projectId || !clientEmail || !privateKey) {
+  if (
+    !projectId ||
+    !clientEmail ||
+    !privateKey ||
+    !privateKey.startsWith("-----BEGIN PRIVATE KEY-----")
+  ) {
     console.warn(
-      "Missing Firebase Admin env vars: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY"
+      "Missing or invalid Firebase Admin credentials. Auth will run in fallback JWT mode."
     );
   } else {
     initializeApp({
