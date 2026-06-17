@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi, attemptsApi, attemptAnswersApi, testQuestionsApi, rpc, profilesApi } from "@/integrations/turso/client";
+import { testsApi, attemptsApi, attemptAnswersApi, testQuestionsApi, rpc, profilesApi } from "@/services/api/client";
 import {
   AlertDialog,
   AlertDialogAction,

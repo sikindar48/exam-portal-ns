@@ -1,4 +1,4 @@
-import { getDb } from "./db.js";
+import { getDb } from "../db/db.js";
 
 export type AppRole = "superadmin" | "clientadmin" | "student";
 

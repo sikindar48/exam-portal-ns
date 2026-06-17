@@ -18,7 +18,7 @@ import {
   signInAnonymously as firebaseSignInAnonymously,
 } from "firebase/auth";
 import { auth } from "@/integrations/firebase/client";
-import { apiClient } from "@/integrations/turso/client";
+import { apiClient } from "@/services/api/client";
 
 type AppRole = "superadmin" | "clientadmin" | "student";
 
@@ -244,10 +244,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = await googleUser.getIdToken();
 
       // Check if this user already has a profile in Turso (GET ?id=uid)
-      const existing = await fetch(`/api/profiles?id=${googleUser.uid}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const existingData = existing.ok ? await existing.json() : null;
+      let existingData = null;
+      try {
+        existingData = await apiClient(`/profiles?id=${googleUser.uid}`, { token });
+      } catch (err) {
+        // profile not found or network error, proceed with creation
+      }
 
       if (!existingData) {
         // First-time Google sign-in: create profile (upsert)

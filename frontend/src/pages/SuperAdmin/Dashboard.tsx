@@ -12,7 +12,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
-import { statsApi } from "@/integrations/turso/client";
+import { statsApi } from "@/services/api/client";
 import { Footer } from "@/components/Brand/Footer";
 import { SuperAdminSidebar } from "@/components/SuperAdmin/Sidebar";
 import {

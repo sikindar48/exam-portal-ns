@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { attemptsApi, attemptAnswersApi, testQuestionsApi } from "@/integrations/turso/client";
+import { attemptsApi, attemptAnswersApi, testQuestionsApi } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";

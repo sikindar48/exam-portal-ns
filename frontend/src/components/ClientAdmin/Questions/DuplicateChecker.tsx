@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Copy, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { questionsApi } from "@/integrations/turso/client";
+import { questionsApi } from "@/services/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 

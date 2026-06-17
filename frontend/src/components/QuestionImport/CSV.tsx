@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { questionsApi, testQuestionsApi } from "@/integrations/turso/client";
+import { questionsApi, testQuestionsApi } from "@/services/api/client";
 import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   parseCSV,

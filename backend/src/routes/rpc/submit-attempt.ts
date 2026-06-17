@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { getDb } from "../_lib/db.js";
-import { requireUser } from "../_lib/auth.js";
+import { getDb } from "../../db/db.js";
+import { requireUser } from "../../auth/auth.js";
 
 /**
  * POST /api/rpc/submit-attempt

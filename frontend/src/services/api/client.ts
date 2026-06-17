@@ -1,12 +1,26 @@
 /**
- * Turso API client
- * Drop-in replacement for supabase.from() data calls.
- * Auth (signIn/signOut/session) goes through Firebase.
+ * Restructured API client
+ * Handles all network requests to the backend API.
+ * Configured dynamically using VITE_API_URL.
  */
 
 import { auth } from "@/integrations/firebase/client";
 
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+function getUrl(path: string): string {
+  const cleanBase = API_BASE.replace(/\/$/, "");
+  
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  
+  if (path.startsWith("/api")) {
+    return `${cleanBase}${path}`;
+  }
+  
+  return `${cleanBase}/api${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 async function getToken(): Promise<string | null> {
   if (auth.currentUser) return auth.currentUser.getIdToken();
@@ -45,7 +59,7 @@ async function apiFetch<T = any>(
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const url = path.startsWith("/api") ? path : `${API_BASE}${path}`;
+    const url = getUrl(path);
     const res = await fetch(url, { ...options, headers });
     const json = await res.json();
 
@@ -67,7 +81,7 @@ export async function apiClient(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
 
-  const url = path.startsWith("/api") ? path : `${API_BASE}${path}`;
+  const url = getUrl(path);
   const res = await fetch(url, {
     method: options.method ?? "GET",
     headers,
@@ -188,6 +202,7 @@ export const profilesApi = {
   get: (id: string) => apiFetch(`/profiles?id=${id}`),
   getByIds: (ids: string[]) => apiFetch(`/profiles?ids=${ids.join(",")}`),
   upsert: (body: any) => apiFetch("/profiles", { method: "POST", body: JSON.stringify(body) }),
+  delete: (id: string) => apiFetch(`/profiles?id=${id}`, { method: "DELETE" }),
 };
 
 // ── User Roles ────────────────────────────────────────────────────────────────
@@ -222,7 +237,7 @@ export const rpc = {
     }),
 };
 
-// ── Create User (replaces Edge Function) ─────────────────────────────────────
+// ── Create User ──────────────────────────────────────────────────────────────
 
 export const createUser = (body: {
   email: string;

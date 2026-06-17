@@ -5,10 +5,9 @@
   "description": "NS Exam Portal - Express Backend with Turso Database",
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm server.ts",
+    "dev": "node --loader ts-node/esm src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "deploy": "vercel"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@libsql/client": "^0.11.0",

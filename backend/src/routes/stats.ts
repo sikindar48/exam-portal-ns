@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { getDb } from "./_lib/db.js";
-import { requireUser } from "./_lib/auth.js";
-import { hasRole, getUserClientId } from "./_lib/roles.js";
+import { getDb } from "../db/db.js";
+import { requireUser } from "../auth/auth.js";
+import { hasRole, getUserClientId } from "../services/roles.js";
 
 /**
  * GET /api/stats?scope=platform  → SuperAdmin dashboard

@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi } from "@/integrations/turso/client";
+import { testsApi } from "@/services/api/client";
 import { ClipboardList, User, ArrowLeft } from "lucide-react";
 
 export default function Join() {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { clientsApi, userRolesApi, profilesApi, createUser } from "@/integrations/turso/client";
+import { clientsApi, userRolesApi, profilesApi, createUser } from "@/services/api/client";
 import { useNavigate } from "react-router-dom";
 import { Footer } from "@/components/Brand/Footer";
 import { SuperAdminSidebar } from "@/components/SuperAdmin/Sidebar";

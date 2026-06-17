@@ -4,9 +4,9 @@ let client: ReturnType<typeof createClient> | null = null;
 
 export function getDb() {
   if (!client) {
-    const url = process.env.VITE_TURSO_URL || process.env.TURSO_URL;
-    const authToken = process.env.VITE_TURSO_TOKEN || process.env.TURSO_TOKEN;
-    if (!url || !authToken) throw new Error("Missing TURSO_URL or TURSO_TOKEN env vars");
+    const url = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL || process.env.VITE_TURSO_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_TOKEN || process.env.VITE_TURSO_TOKEN;
+    if (!url || !authToken) throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN env vars");
     client = createClient({ url, authToken });
   }
   return client;

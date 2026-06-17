@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { clientsApi } from "@/integrations/turso/client";
+import { clientsApi } from "@/services/api/client";
 import { Eye, EyeOff, Loader2, ArrowLeft, GraduationCap, Globe, CheckCircle2, Lock, Mail } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
 

@@ -35,8 +35,12 @@ export interface AuthUser {
  */
 export async function getUser(req: Request): Promise<AuthUser | null> {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    console.log("Auth header missing or invalid format:", authHeader);
+  if (!authHeader) {
+    return null;
+  }
+
+  if (!authHeader.startsWith("Bearer ")) {
+    console.log("Auth header invalid format (must start with Bearer):", authHeader);
     return null;
   }
 

@@ -14,7 +14,7 @@ import {
   Award,
 } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
-import { statsApi } from "@/integrations/turso/client";
+import { statsApi } from "@/services/api/client";
 import { Footer } from "@/components/Brand/Footer";
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
 import {

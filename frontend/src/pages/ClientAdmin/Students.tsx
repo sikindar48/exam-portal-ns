@@ -21,7 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/client';
-import { userRolesApi, profilesApi, createUser } from "@/integrations/turso/client";
+import { userRolesApi, profilesApi, createUser } from "@/services/api/client";
 import {
   ArrowLeft,
   Plus,
@@ -165,9 +165,6 @@ export default function StudentsManagement() {
     setImporting(true);
     setHasStartedImport(true);
     setProgressCount(0);
-    
-    const token = await auth.currentUser?.getIdToken();
-    const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
 
     const processRow = async (row: ImportRow, index: number) => {
       setImportRows((prev) => {
@@ -177,24 +174,16 @@ export default function StudentsManagement() {
       });
 
       try {
-        const res = await fetch(`${apiBase}/create-user`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            email: row.email.trim(),
-            password: row.password,
-            name: row.name.trim(),
-            client_id: clientId,
-            role: "student",
-          }),
+        const { data, error } = await createUser({
+          email: row.email.trim(),
+          password: row.password,
+          name: row.name.trim(),
+          client_id: clientId || "",
+          role: "student",
         });
 
-        const result = await res.json();
-        if (!res.ok) {
-          throw new Error(result.error || "Failed to create account");
+        if (error) {
+          throw new Error(error.message || "Failed to create account");
         }
 
         setImportRows((prev) => {
@@ -384,12 +373,12 @@ export default function StudentsManagement() {
       return;
     }
 
-    // Call delete via API - the backend should handle the delete_student RPC
-    const deleteResult = await fetch(`/api/profiles?id=${id}`, { method: "DELETE" });
-    if (!deleteResult.ok) {
+    // Call delete via API
+    const { error: deleteError } = await profilesApi.delete(id);
+    if (deleteError) {
       toast({
         title: "Error",
-        description: "Failed to delete student",
+        description: deleteError.message || "Failed to delete student",
         variant: "destructive",
       });
     } else {

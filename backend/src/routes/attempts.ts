@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { getDb } from "./_lib/db.js";
-import { requireUser } from "./_lib/auth.js";
-import { getUserClientId, hasRole } from "./_lib/roles.js";
+import { getDb } from "../db/db.js";
+import { requireUser } from "../auth/auth.js";
+import { getUserClientId, hasRole } from "../services/roles.js";
 import { randomUUID } from "crypto";
 
 export default async function handler(req: Request, res: Response) {

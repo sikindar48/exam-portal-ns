@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { questionFoldersApi, questionsApi } from "@/integrations/turso/client";
+import { questionFoldersApi, questionsApi } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Folder, FolderOpen, ArrowLeft, FileQuestion, Search } from "lucide-react";

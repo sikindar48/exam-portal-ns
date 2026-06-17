@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { getDb, rowBools } from "./_lib/db.js";
-import { requireUser, getUser } from "./_lib/auth.js";
-import { hasRole, getUserClientId } from "./_lib/roles.js";
+import { getDb, rowBools } from "../db/db.js";
+import { requireUser, getUser } from "../auth/auth.js";
+import { hasRole, getUserClientId } from "../services/roles.js";
 import { randomUUID } from "crypto";
 
 const BOOL_FIELDS = ["shuffle","allow_review","negative_marking","restrict_navigation","active","allow_guests","public_link_enabled"];

@@ -1,0 +1,118 @@
+import express, { Request, Response } from "express";
+import cors from "cors";
+import "dotenv/config";
+import { authMiddleware } from "./middleware/auth.js";
+
+// Import API route handlers from new routes folder
+import clientsHandler from "./routes/clients.js";
+import profilesHandler from "./routes/profiles.js";
+import attemptsHandler from "./routes/attempts.js";
+import attemptAnswersHandler from "./routes/attempt-answers.js";
+import questionsHandler from "./routes/questions.js";
+import testQuestionsHandler from "./routes/test-questions.js";
+import testsHandler from "./routes/tests.js";
+import userRolesHandler from "./routes/user-roles.js";
+import questionFoldersHandler from "./routes/question-folders.js";
+import testFoldersHandler from "./routes/test-folders.js";
+import statsHandler from "./routes/stats.js";
+import createUserHandler from "./routes/create-user.js";
+import cloneTestHandler from "./routes/rpc/clone-test.js";
+import submitAttemptHandler from "./routes/rpc/submit-attempt.js";
+
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+// Security headers for Firebase CORS
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+});
+
+// Configure CORS for decoupled frontend
+const allowedOrigins = [
+  "http://localhost:8081",
+  "http://localhost:3000",
+  "https://exam-portal-ns-479112457276.asia-south2.run.app"
+];
+
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return callback(null, true);
+      
+      const isAllowed =
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".firebaseapp.com") ||
+        origin.endsWith(".pages.dev") || // Support Cloudflare Pages preview/prod deploys
+        origin.endsWith(".googleapis.com");
+        
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+// Apply Firebase Auth verification middleware globally
+app.use(authMiddleware);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API Routes
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.all("/api/clients", clientsHandler);
+app.all("/api/profiles", profilesHandler);
+app.all("/api/attempts", attemptsHandler);
+app.all("/api/attempt-answers", attemptAnswersHandler);
+app.all("/api/questions", questionsHandler);
+app.all("/api/test-questions", testQuestionsHandler);
+app.all("/api/tests", testsHandler);
+app.all("/api/user-roles", userRolesHandler);
+app.all("/api/question-folders", questionFoldersHandler);
+app.all("/api/test-folders", testFoldersHandler);
+app.all("/api/stats", statsHandler);
+app.all("/api/create-user", createUserHandler);
+
+// RPC / Custom endpoints
+app.all("/api/rpc/clone-test", cloneTestHandler);
+app.all("/api/rpc/submit-attempt", submitAttemptHandler);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Health Check
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
+});
+
+// Root route greeting/info
+app.get("/", (req: Request, res: Response) => {
+  res.status(200).json({
+    name: "NS Exam Portal Backend API",
+    version: "1.0.0",
+    status: "healthy",
+  });
+});
+
+// 404 handler for API or other unmatched paths
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ error: "API route not found" });
+});
+
+// Start Server
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { clientsApi } from "@/integrations/turso/client";
+import { clientsApi } from "@/services/api/client";
 import { Toggle } from "@/components/Theme/Toggle";
 import { Button } from "@/components/ui/button";
 import {

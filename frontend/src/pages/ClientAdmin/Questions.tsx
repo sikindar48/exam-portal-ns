@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { questionsApi, questionFoldersApi } from "@/integrations/turso/client";
+import { questionsApi, questionFoldersApi } from "@/services/api/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";

@@ -11,7 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { LogOut, ClipboardList, History, Trophy } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
-import { testsApi, attemptsApi, clientsApi } from "@/integrations/turso/client";
+import { testsApi, attemptsApi, clientsApi } from "@/services/api/client";
 import { Footer } from "@/components/Brand/Footer";
 
 export default function StudentDashboard() {

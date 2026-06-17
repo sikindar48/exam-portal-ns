@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi } from "@/integrations/turso/client";
+import { testsApi } from "@/services/api/client";
 import { Copy, Link, QrCode, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 

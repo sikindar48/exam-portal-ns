@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi } from "@/integrations/turso/client";
+import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Table,
