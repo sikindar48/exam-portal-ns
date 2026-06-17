@@ -29,11 +29,12 @@ exam-portal-ns/
 │   │   ├── architecture-db-schema.md
 │   │   ├── features-flow.md
 │   │   ├── implementation-status.md
-│   │   └── supabase/               ← Reference config
+│   │   ├── supabase/               ← Database setup SQL & reference config
+│   │   │   ├── complete-setup.sql  ← Initial DB schema
+│   │   │   ├── turso-schema.sql    ← Turso schema
+│   │   │   └── config.toml         ← Supabase reference config
 │   │
 │   ├── config/                     ← Configuration files
-│   │   ├── complete-setup.sql      ← Initial DB schema
-│   │   ├── turso-schema.sql        ← Turso schema
 │   │   └── vercel.json             ← Vercel config
 │
 ├── 🛠️ UTILITIES & SCRIPTS

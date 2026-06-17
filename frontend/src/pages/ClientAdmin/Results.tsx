@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { testsApi, testQuestionsApi, attemptsApi, profilesApi } from "@/integrations/turso/client";
+import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi } from "@/integrations/turso/client";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,12 +16,13 @@ import { Toggle } from "@/components/Theme/Toggle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Footer } from "@/components/Brand/Footer";
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
-import { testQuestionsApi, attemptAnswersApi } from "@/integrations/turso/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Results() {
   const { testId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { loading: authLoading } = useAuth();
   const [results, setResults] = useState<any[]>([]);
   const [testInfo, setTestInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -33,10 +34,10 @@ export default function Results() {
   const [filterTab, setFilterTab] = useState<"all" | "correct" | "incorrect" | "unattempted" | "review">("all");
 
   useEffect(() => {
-    if (testId) {
+    if (testId && !authLoading) {
       fetchResults();
     }
-  }, [testId]);
+  }, [testId, authLoading]);
 
   const fetchResults = async () => {
     setLoading(true);

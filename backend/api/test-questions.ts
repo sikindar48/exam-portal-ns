@@ -16,8 +16,8 @@ export default async function handler(req: Request, res: Response) {
 
     const withAnswers = req.query.with_answers === "true";
     const selectCols = withAnswers
-      ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id"
-      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id";
+      ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
+      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
 
     const { rows } = await db.execute({
       sql: `SELECT ${selectCols}
@@ -35,10 +35,26 @@ export default async function handler(req: Request, res: Response) {
     });
     const sectionMap = new Map(sections.map((s: any) => [s.id, s.name]));
 
-    const result = rows.map((r: any) => ({
-      ...r,
-      section_name: r.section_id ? (sectionMap.get(r.section_id) ?? "General Section") : "General Section",
-    }));
+    const result = rows.map((r: any) => {
+      const questionObj: any = {
+        id: r.id,
+        question_text: r.question_text,
+        option_a: r.option_a,
+        option_b: r.option_b,
+        option_c: r.option_c,
+        option_d: r.option_d,
+        marks: r.marks,
+        difficulty: r.difficulty,
+      };
+      if (withAnswers) {
+        questionObj.correct_answer = r.correct_answer;
+      }
+      return {
+        ...r,
+        section_name: r.section_id ? (sectionMap.get(r.section_id) ?? "General Section") : "General Section",
+        questions: questionObj,
+      };
+    });
 
     return res.status(200).json(result);
   }

@@ -9,7 +9,28 @@ import { auth } from "@/integrations/firebase/client";
 const API_BASE = "/api";
 
 async function getToken(): Promise<string | null> {
-  return auth.currentUser ? auth.currentUser.getIdToken() : null;
+  if (auth.currentUser) return auth.currentUser.getIdToken();
+  
+  // On fresh page reload, Firebase currentUser might be null for a brief moment
+  // while restoring the session. We wait for the first auth state event to resolve it.
+  return new Promise((resolve) => {
+    let resolved = false;
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!resolved) {
+        resolved = true;
+        unsubscribe();
+        resolve(user ? user.getIdToken() : null);
+      }
+    });
+    // Fallback safety timeout
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        unsubscribe();
+        resolve(null);
+      }
+    }, 2000);
+  });
 }
 
 async function apiFetch<T = any>(
@@ -24,7 +45,8 @@ async function apiFetch<T = any>(
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    const url = path.startsWith("/api") ? path : `${API_BASE}${path}`;
+    const res = await fetch(url, { ...options, headers });
     const json = await res.json();
 
     if (!res.ok) return { data: null, error: { message: json.error ?? res.statusText } };
@@ -45,7 +67,8 @@ export async function apiClient(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = path.startsWith("/api") ? path : `${API_BASE}${path}`;
+  const res = await fetch(url, {
     method: options.method ?? "GET",
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,

@@ -35,6 +35,15 @@ export function Protected({
   const isGuestTest = window.location.search.includes("guest=true");
   if (isGuestTest) return <>{children}</>;
 
+  // Redirect anonymous guests away from dashboard, history, or review pages
+  if (user?.isAnonymous) {
+    const isAllowedGuestRoute = window.location.pathname.startsWith("/student/test/") || 
+                               window.location.pathname === "/student/submit-success";
+    if (!isAllowedGuestRoute) {
+      return <Navigate to="/join" replace />;
+    }
+  }
+
   // No session and no cached role → go to login
   if (!user && !role) return <Navigate to="/auth" replace />;
 

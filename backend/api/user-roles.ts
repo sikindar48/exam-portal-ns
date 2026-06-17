@@ -10,14 +10,53 @@ export default async function handler(req: Request, res: Response) {
   if (!user) return;
 
   if (req.method === "GET") {
+    // Auto-migrate user ID from old Supabase UUID to new Firebase UID if email matches
+    if (user.email) {
+      const { rows: existingProfiles } = await db.execute({
+        sql: "SELECT id FROM profiles WHERE email = ? AND id != ?",
+        args: [user.email, user.id],
+      });
+      if (existingProfiles.length > 0) {
+        const oldId = existingProfiles[0].id as string;
+        console.log(`Auto-migrating user ${user.email} from ${oldId} to new Firebase UID ${user.id}`);
+        try {
+          // Delete any new duplicate profile/roles to prevent unique constraint failures during migration
+          await db.execute({ sql: "DELETE FROM user_roles WHERE user_id = ?", args: [user.id] });
+          await db.execute({ sql: "DELETE FROM profiles WHERE id = ?", args: [user.id] });
+
+          // Migrate old records to the new Firebase UID
+          await db.execute({
+            sql: "UPDATE profiles SET id = ? WHERE id = ?",
+            args: [user.id, oldId],
+          });
+          await db.execute({
+            sql: "UPDATE user_roles SET user_id = ? WHERE user_id = ?",
+            args: [user.id, oldId],
+          });
+          await db.execute({
+            sql: "UPDATE attempts SET student_id = ? WHERE student_id = ?",
+            args: [user.id, oldId],
+          });
+        } catch (migrateErr) {
+          console.error("Migration error:", migrateErr);
+        }
+      }
+    }
+
     const { user_id, client_id, role } = req.query;
 
     let sql = "SELECT * FROM user_roles WHERE 1=1";
     const args: any[] = [];
 
-    if (user_id) { sql += " AND user_id = ?"; args.push(user_id); }
-    if (client_id) { sql += " AND client_id = ?"; args.push(client_id); }
-    if (role) { sql += " AND role = ?"; args.push(role); }
+    // If no specific filters are requested, default to the logged-in user's own roles
+    if (!user_id && !client_id && !role) {
+      sql += " AND user_id = ?";
+      args.push(user.id);
+    } else {
+      if (user_id) { sql += " AND user_id = ?"; args.push(user_id); }
+      if (client_id) { sql += " AND client_id = ?"; args.push(client_id); }
+      if (role) { sql += " AND role = ?"; args.push(role); }
+    }
 
     const { rows } = await db.execute({ sql, args });
     return res.status(200).json(rows);

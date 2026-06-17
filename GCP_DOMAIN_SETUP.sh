@@ -1,8 +1,3 @@
-
-cd /Users/nssikinar/Sites/exam-portal/exam-portal-ns
-chmod +x GCP_DOMAIN_SETUP.sh
-./GCP_DOMAIN_SETUP.sh
-./GCP_DOMAIN_SETUP.sh
 #!/bin/bash
 
 # GCP Cloud Load Balancer Setup for Custom Domain

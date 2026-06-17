@@ -75,15 +75,15 @@ export default function QuestionsManagement() {
   });
 
   const { toast } = useToast();
-  const { clientId } = useAuth();
+  const { clientId, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (clientId) {
+    if (clientId && !authLoading) {
       fetchQuestions();
       fetchFolders();
     }
-  }, [clientId]);
+  }, [clientId, authLoading]);
 
   const fetchFolders = async () => {
     const { data, error } = await questionFoldersApi.list();

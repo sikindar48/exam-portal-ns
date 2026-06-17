@@ -30,7 +30,10 @@ export interface AuthUser {
  */
 export async function getUser(req: Request): Promise<AuthUser | null> {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) return null;
+  if (!authHeader?.startsWith("Bearer ")) {
+    console.log("Auth header missing or invalid format:", authHeader);
+    return null;
+  }
 
   const token = authHeader.slice(7);
   try {
@@ -41,14 +44,28 @@ export async function getUser(req: Request): Promise<AuthUser | null> {
     }
     
     // Fallback: decode JWT manually for local development
-    // This is safe because the token is from Firebase's secure servers
     const parts = token.split('.');
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.log("Token parts length is not 3:", parts.length);
+      return null;
+    }
     
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    if (!payload.user_id || !payload.email) return null;
+    let payload: any;
+    try {
+      payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    } catch (parseErr) {
+      console.error("Failed to parse JWT payload:", parseErr);
+      return null;
+    }
+
+    // Proactively check both user_id (standard Firebase) and sub (OIDC standard)
+    const userId = payload.user_id || payload.sub;
+    if (!userId) {
+      console.log("No user_id or sub found in JWT payload. Keys present:", Object.keys(payload));
+      return null;
+    }
     
-    return { id: payload.user_id, email: payload.email };
+    return { id: userId, email: payload.email ?? "" };
   } catch (err) {
     console.error("Auth error:", err instanceof Error ? err.message : "Unknown error");
     return null;

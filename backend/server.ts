@@ -59,7 +59,7 @@ try {
     extensions: ['html', 'js', 'css', 'json', 'svg', 'png', 'jpg', 'jpeg', 'gif', 'woff', 'woff2'] 
   }));
 } catch (e) {
-  console.warn("Frontend dist folder not found. API-only mode.");
+  console.warn("Frontend dist folder not found. API-only mode. Error:", e);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

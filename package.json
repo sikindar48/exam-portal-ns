@@ -11,6 +11,8 @@
   ],
   "scripts": {
     "dev": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && node --loader ts-node/esm server.ts",
+    "dev:all": "npm-run-all --parallel dev:backend dev",
     "build": "cd frontend && npm run build",
     "build:dev": "cd frontend && npm run build:dev",
     "lint": "cd frontend && npm run lint",

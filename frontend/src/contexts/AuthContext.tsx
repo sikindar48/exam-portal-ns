@@ -15,6 +15,7 @@ import {
   updateProfile,
   signInWithPopup,
   GoogleAuthProvider,
+  signInAnonymously as firebaseSignInAnonymously,
 } from "firebase/auth";
 import { auth } from "@/integrations/firebase/client";
 import { apiClient } from "@/integrations/turso/client";
@@ -67,9 +68,14 @@ function clearCache() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const cache = readCache();
 
+  // If cache has role="student" but no clientId, it's likely a stale anonymous guest
+  // session. Treat as unresolved (loading=true) so onAuthStateChanged can validate it.
+  const isLikelyStaleGuestCache = cache.role === "student" && !cache.clientId
+    && sessionStorage.getItem("guest_session_active") !== "1";
+
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(cache.role === null);
-  const [role, setRole] = useState<AppRole | null>(cache.role);
+  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<AppRole | null>(isLikelyStaleGuestCache ? null : cache.role);
   const [clientId, setClientId] = useState<string | null>(cache.clientId);
 
   const applyRole = useCallback(
@@ -120,6 +126,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser?.isAnonymous) {
+          // Only keep anonymous users alive if they intentionally started a guest session
+          // in this tab (flag is set by signInAnonymously and cleared on signOut/tab close).
+          const isActiveGuestSession = sessionStorage.getItem("guest_session_active") === "1";
+          if (!isActiveGuestSession) {
+            // Stale anonymous session from a previous visit — evict silently
+            await firebaseSignOut(auth);
+            clearCache();
+            setUser(null);
+            setRole(null);
+            setClientId(null);
+            setLoading(false);
+            return;
+          }
+          // Active guest session — restore in-memory state without touching localStorage
+          setUser(firebaseUser);
+          setRole("student");
+          setClientId(null);
+          setLoading(false);
+          return;
+        }
+
         setUser(firebaseUser);
 
         if (firebaseUser) {
@@ -202,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) return;
     await firebaseSignOut(auth);
     clearCache();
+    sessionStorage.removeItem("guest_session_active");
     setUser(null);
     setRole(null);
     setClientId(null);
@@ -212,14 +241,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!auth) throw new Error("Firebase not initialized");
       const provider = new GoogleAuthProvider();
       const { user: googleUser } = await signInWithPopup(auth, provider);
-
-      // Check if user exists in Turso, if not create profile
       const token = await googleUser.getIdToken();
-      try {
-        // Try to fetch existing profile
-        await apiClient("/api/profiles", { token });
-      } catch {
-        // Profile doesn't exist, create it
+
+      // Check if this user already has a profile in Turso (GET ?id=uid)
+      const existing = await fetch(`/api/profiles?id=${googleUser.uid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const existingData = existing.ok ? await existing.json() : null;
+
+      if (!existingData) {
+        // First-time Google sign-in: create profile (upsert)
         await apiClient("/api/profiles", {
           token,
           method: "POST",
@@ -231,18 +262,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         });
 
-        // Create student role
-        await apiClient("/api/user-roles", {
-          token,
-          method: "POST",
-          body: {
-            user_id: googleUser.uid,
-            role: "student",
-            client_id: clientId ?? null,
-          },
-        });
+        // Only create a student role if they selected an org (clientId provided)
+        // Admins are created by superadmin — don't auto-assign student role without an org
+        if (clientId) {
+          await apiClient("/api/user-roles", {
+            token,
+            method: "POST",
+            body: { user_id: googleUser.uid, role: "student", client_id: clientId },
+          });
+        }
       }
 
+      // Always fetch role from DB (handles existing admins correctly)
       await fetchUserRole(googleUser);
       return { error: null };
     } catch (err: any) {
@@ -254,13 +285,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInAnonymously = async () => {
     try {
       if (!auth) throw new Error("Firebase not initialized");
-      const { signInAnonymously: firebaseSignInAnonymously } = await import("firebase/auth");
-      const { user: anonUser } = await firebaseSignInAnonymously(auth);
-      // Anonymous users get student role by default
+      // Mark this tab as having an intentional active guest session BEFORE signing in,
+      // so that onAuthStateChanged will detect it immediately when it fires.
+      sessionStorage.setItem("guest_session_active", "1");
+
+      await firebaseSignInAnonymously(auth);
       setRole("student");
-      writeCache("student", null);
+      // Deliberately skip writeCache() — no localStorage pollution for guests
       return { error: null };
     } catch (err: any) {
+      sessionStorage.removeItem("guest_session_active");
       console.error("Anonymous sign in error:", err);
       return { error: { message: friendlyFirebaseError(err.code) } };
     }

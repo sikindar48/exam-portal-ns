@@ -40,7 +40,8 @@ export default function AuthPage() {
   }, []);
 
   useEffect(() => {
-    if (user && role) {
+    // Never auto-redirect anonymous/guest users — they have no real session
+    if (user && !user.isAnonymous && role) {
       navigate(redirectTo ?? ROLE_ROUTES[role] ?? "/auth", { replace: true });
     }
   }, [user, role, navigate, redirectTo]);
@@ -88,6 +89,8 @@ export default function AuthPage() {
     setLoading(false);
     if (error) {
       toast({ title: "Anonymous sign in failed", description: error.message, variant: "destructive" });
+    } else {
+      navigate(redirectTo ?? "/join", { replace: true });
     }
   };
 

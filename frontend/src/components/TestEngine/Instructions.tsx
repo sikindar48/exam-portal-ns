@@ -63,7 +63,7 @@ export function Instructions({
 
   useEffect(() => {
     const checkSpeed = () => {
-      // @ts-ignore
+      // @ts-expect-error: navigator.connection is a non-standard Network Information API not in TypeScript's lib
       const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
       if (connection) {
         const downlink = connection.downlink; // Speed in Mbps

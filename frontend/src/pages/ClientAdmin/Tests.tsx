@@ -82,15 +82,15 @@ export default function TestsManagement() {
   });
 
   const { toast } = useToast();
-  const { clientId } = useAuth();
+  const { clientId, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (clientId) {
+    if (clientId && !authLoading) {
       fetchTests();
       fetchFolders();
     }
-  }, [clientId]);
+  }, [clientId, authLoading]);
 
   const fetchFolders = async () => {
     const { data, error } = await testFoldersApi.list();

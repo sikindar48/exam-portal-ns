@@ -8,6 +8,13 @@ export default defineConfig({
   server: {
     host: "::",
     port: 8081,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [react()],
   resolve: {
@@ -57,7 +64,6 @@ export default defineConfig({
             'zod'
           ],
           'chart-vendor': ['recharts'],
-          'supabase-vendor': ['@supabase/supabase-js'],
           'utils-vendor': [
             'clsx',
             'class-variance-authority',

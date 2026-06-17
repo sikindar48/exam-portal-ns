@@ -12,6 +12,7 @@ import { Toggle } from "@/components/Theme/Toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Footer } from "@/components/Brand/Footer";
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
+import { ArrowLeft, Save } from "lucide-react";
 
 export default function ClientSettings() {
   const [loading, setLoading] = useState(false);
@@ -23,13 +24,13 @@ export default function ClientSettings() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { clientId } = useAuth();
+  const { clientId, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (clientId) {
+    if (clientId && !authLoading) {
       fetchClientInfo();
     }
-  }, [clientId]);
+  }, [clientId, authLoading]);
 
   const fetchClientInfo = async () => {
     setFetchLoading(true);

@@ -21,7 +21,7 @@ export default function Builder() {
   const { testId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { clientId } = useAuth();
+  const { clientId, loading: authLoading } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -42,8 +42,8 @@ export default function Builder() {
   const [repoDialogOpen, setRepoDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (testId) loadTest();
-  }, [testId]);
+    if (testId && !authLoading) loadTest();
+  }, [testId, authLoading]);
 
   const loadTest = async () => {
     setLoading(true);

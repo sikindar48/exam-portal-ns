@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Clock, Target, ShieldAlert, BookOpen, Infinity, RotateCcw, Shuffle, MinusCircle, Users } from "lucide-react";
+import { Settings, Clock, Target, ShieldAlert, RotateCcw, Shuffle, MinusCircle, Users } from "lucide-react";
 import { TestData } from "@/types/test";
 
 interface SidebarProps {

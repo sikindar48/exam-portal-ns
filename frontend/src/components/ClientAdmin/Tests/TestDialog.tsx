@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, Infinity } from "lucide-react";
+import { Calendar, Infinity as InfinityIcon } from "lucide-react";
 
 interface TestDialogProps {
   isOpen: boolean;
@@ -127,7 +127,7 @@ export function TestDialog({
                     onChange={(e) => setFormData({ ...formData, attempts_allowed: parseInt(e.target.value) })}
                     className="h-9 rounded-none border-slate-200 dark:border-slate-800 font-bold pr-8"
                   />
-                  {formData.attempts_allowed === 0 && <Infinity className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />}
+                  {formData.attempts_allowed === 0 && <InfinityIcon className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />}
                 </div>
               </div>
             </div>

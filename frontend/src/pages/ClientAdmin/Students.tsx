@@ -89,7 +89,7 @@ export default function StudentsManagement() {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { clientId } = useAuth();
+  const { clientId, loading: authLoading } = useAuth();
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
@@ -321,12 +321,12 @@ export default function StudentsManagement() {
   };
 
   useEffect(() => {
-    if (clientId) {
+    if (clientId && !authLoading) {
       setPage(0);
       setAllStudentIds([]);
       fetchStudents(true);
     }
-  }, [clientId]);
+  }, [clientId, authLoading]);
 
   useEffect(() => {
     if (clientId && page > 0) {

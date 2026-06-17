@@ -256,13 +256,14 @@ export default function Engine() {
       const { data: testData } = await testsApi.get(testId!);
       if (!testData) throw new Error("Test not found");
 
-      let finalStudentId = user?.id;
+      let finalStudentId = user?.uid;
 
       if (isGuest) {
         // For guests, we need a profile in the database to store results
         const existingGuestId = sessionStorage.getItem(`guest_profile_id_${testId}`);
         const guestIdToUse = existingGuestId || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
           return v.toString(16);
         });
 
@@ -300,15 +301,17 @@ export default function Engine() {
 
       // Attempt management
       console.log("Verifying attempt for ID:", finalStudentId);
-      const { data: existing, error: fetchError } = await attemptsApi.getInProgress(testId!, finalStudentId);
+      const { data: existingList, error: fetchError } = await attemptsApi.getInProgress(testId!, finalStudentId);
 
       if (fetchError) {
         console.error("Attempt lookup failed:", fetchError);
         throw new Error(`Security policy blocked reading attempt status. (Error: ${fetchError})`);
       }
 
-      if (existing) {
-        setAttemptId(existing.id);
+      const activeAttempt = existingList && existingList.length > 0 ? existingList[0] : null;
+
+      if (activeAttempt) {
+        setAttemptId(activeAttempt.id);
       } else {
         const { data: newAttempt, error: attemptError } = await attemptsApi.create({ 
           student_id: finalStudentId, 
@@ -336,9 +339,9 @@ export default function Engine() {
         initialVisited[finalQuestions[0].id] = true;
       }
 
-      if (existing) {
+      if (activeAttempt) {
         // Fetch any existing answers for this attempt to resume seamlessly
-        const { data: answersData } = await attemptAnswersApi.list(existing.id);
+        const { data: answersData } = await attemptAnswersApi.list(activeAttempt.id);
 
         if (answersData && answersData.length > 0) {
           const answerMap: Record<string, string> = {};

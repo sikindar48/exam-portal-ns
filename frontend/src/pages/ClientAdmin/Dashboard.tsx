@@ -29,7 +29,7 @@ import {
 } from "recharts";
 
 export default function ClientAdminDashboard() {
-  const { signOut, clientId } = useAuth();
+  const { signOut, clientId, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -43,8 +43,8 @@ export default function ClientAdminDashboard() {
   const [testPerformance, setTestPerformance] = useState<any[]>([]);
 
   useEffect(() => {
-    if (clientId) fetchStats();
-  }, [clientId]);
+    if (clientId && !authLoading) fetchStats();
+  }, [clientId, authLoading]);
 
   const fetchStats = async () => {
     if (!clientId) return;

@@ -17,7 +17,7 @@ import { ClipboardList, User, ArrowLeft } from "lucide-react";
 
 export default function Join() {
   const { code } = useParams();
-  const { user, role } = useAuth();
+  const { user, role, signInAnonymously } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [test, setTest] = useState<any>(null);
@@ -74,7 +74,11 @@ export default function Join() {
       // Logged in student — always allowed
       navigate(`/student/test/${test.id}`);
     } else if (user && role !== "student") {
-      toast({ title: "Info", description: "Only students can take tests." });
+      toast({ 
+        title: "Access Restricted", 
+        description: "Only students can take tests. Please sign out of your admin account to continue.", 
+        variant: "warning" 
+      });
     } else {
       // Guest — check if test allows guests
       if (!test.allow_guests) {
@@ -89,7 +93,7 @@ export default function Join() {
     }
   };
 
-  const handleGuestJoin = (e: React.FormEvent) => {
+  const handleGuestJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentName.trim()) {
       toast({
@@ -97,6 +101,19 @@ export default function Join() {
         description: "Please enter your name to continue.",
         variant: "destructive",
       });
+      return;
+    }
+
+    setLoading(true);
+    // Authenticate anonymously so the guest has a valid Firebase token for API calls
+    const { error: authError } = await signInAnonymously();
+    if (authError) {
+      toast({
+        title: "Authentication Failed",
+        description: authError.message || "Could not start guest session. Please try again.",
+        variant: "destructive",
+      });
+      setLoading(false);
       return;
     }
 

@@ -33,7 +33,9 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       if (sessionData) {
         try {
           return JSON.parse(sessionData).name;
-        } catch {}
+        } catch {
+          // ignore invalid session cache
+        }
       }
     }
     return "";
@@ -46,7 +48,9 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       if (sessionData) {
         try {
           return JSON.parse(sessionData).logoUrl;
-        } catch {}
+        } catch {
+          // ignore invalid session cache
+        }
       }
     }
     return null;
@@ -70,7 +74,9 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
           setOrgName(parsed.name);
           setLogoUrl(parsed.logoUrl);
           return;
-        } catch {}
+        } catch {
+          // ignore invalid session cache, will re-fetch from API
+        }
       }
 
       try {

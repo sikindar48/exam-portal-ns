@@ -15,7 +15,7 @@ import { testsApi, attemptsApi, clientsApi } from "@/integrations/turso/client";
 import { Footer } from "@/components/Brand/Footer";
 
 export default function StudentDashboard() {
-  const { signOut, user, clientId } = useAuth();
+  const { signOut, user, clientId, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tests, setTests] = useState<any[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
@@ -26,10 +26,16 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && clientId) {
+    // Real students with no org assignment → redirect to join
+    // (Anonymous users are handled by AuthContext — never reaches this)
+    if (!authLoading && user && !user.isAnonymous && !clientId) {
+      navigate("/join");
+      return;
+    }
+    if (user && !user.isAnonymous && clientId) {
       fetchData();
     }
-  }, [user, clientId]);
+  }, [user, clientId, authLoading]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -37,7 +43,7 @@ export default function StudentDashboard() {
     try {
       const [testsResult, attemptsResult] = await Promise.all([
         testsApi.list({ client_id: clientId }),
-        attemptsApi.list({ student_id: user?.id, status: "submitted" }),
+        attemptsApi.list({ student_id: user?.uid, status: "submitted" }),
       ]);
 
       if (testsResult.error) console.error("Tests fetch error:", testsResult.error);
@@ -71,6 +77,19 @@ export default function StudentDashboard() {
   const handleStartTest = (testId: string) => {
     navigate(`/student/test/${testId}`);
   };
+
+
+  // Wait for auth to finish resolving before rendering anything
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="relative h-10 w-10">
+          <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
