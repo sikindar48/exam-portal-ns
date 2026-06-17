@@ -40,7 +40,7 @@ export function Protected({
     const isAllowedGuestRoute = window.location.pathname.startsWith("/student/test/") || 
                                window.location.pathname === "/student/submit-success";
     if (!isAllowedGuestRoute) {
-      return <Navigate to="/join" replace />;
+      return <Navigate to="/auth" replace />;
     }
   }
 
