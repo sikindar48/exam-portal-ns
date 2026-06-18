@@ -52,7 +52,16 @@ export default async function handler(req: Request, res: Response) {
 
       // Tenant isolation check
       if (!isSuper && row.client_id !== callerClientId) {
-        return res.status(403).json({ error: "Access denied" });
+        const isPublicTest = row.active === 1 && row.status === "published";
+        if (!isPublicTest) {
+          const { rows: attemptRows } = await db.execute({
+            sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ?",
+            args: [user.id, row.id],
+          });
+          if (attemptRows.length === 0) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        }
       }
 
       return res.status(200).json({

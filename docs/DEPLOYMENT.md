@@ -28,13 +28,7 @@ cd /Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend
 gcloud run deploy exam-portal-api \
   --source . \
   --region asia-south1 \
-  --allow-unauthenticated \
-  --set-env-vars="PORT=8080" \
-  --set-env-vars="TURSO_DATABASE_URL=$(grep TURSO_DATABASE_URL .env | cut -d= -f2-)" \
-  --set-env-vars="TURSO_AUTH_TOKEN=$(grep TURSO_AUTH_TOKEN .env | cut -d= -f2-)" \
-  --memory=512Mi \
-  --cpu=1 \
-  --platform=managed
+  --allow-unauthenticated
 ```
 
 ## Complete Step-by-Step Guide

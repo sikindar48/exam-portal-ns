@@ -52,7 +52,8 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   "http://localhost:8081",
   "http://localhost:3000",
-  "https://exam-portal-ns-479112457276.asia-south2.run.app"
+  "https://exam-portal-ns-479112457276.asia-south2.run.app",
+  "https://test.nssoftwaresolutions.in"
 ];
 
 if (process.env.FRONTEND_URL) {
