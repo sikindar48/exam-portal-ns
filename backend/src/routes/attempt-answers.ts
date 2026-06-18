@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { randomUUID } from "crypto";
-import { hasRole, getUserClientId } from "../services/roles.js";
+import { hasRole, getUserClientId, isGuestStudent } from "../services/roles.js";
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -36,7 +36,10 @@ export default async function handler(req: Request, res: Response) {
         }
       } else {
         if (attempt.student_id !== user.id) {
-          return res.status(403).json({ error: "Permission denied" });
+          const isGuest = await isGuestStudent(attempt.student_id);
+          if (!isGuest) {
+            return res.status(403).json({ error: "Permission denied" });
+          }
         }
       }
     }
@@ -66,7 +69,8 @@ export default async function handler(req: Request, res: Response) {
     if (!attemptRows.length) return res.status(404).json({ error: "Attempt not found" });
     const attempt = attemptRows[0] as any;
 
-    if (!isSuper && attempt.student_id !== user.id) {
+    const isGuest = await isGuestStudent(attempt.student_id);
+    if (!isSuper && attempt.student_id !== user.id && !isGuest) {
       return res.status(403).json({ error: "Permission denied" });
     }
 

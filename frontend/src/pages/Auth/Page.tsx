@@ -90,7 +90,7 @@ export default function AuthPage() {
     if (error) {
       toast({ title: "Anonymous sign in failed", description: error.message, variant: "destructive" });
     } else {
-      navigate(redirectTo ?? "/student", { replace: true });
+      navigate(redirectTo ?? "/join", { replace: true });
     }
   };
 

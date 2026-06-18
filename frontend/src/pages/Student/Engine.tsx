@@ -308,11 +308,9 @@ export default function Engine() {
         throw new Error(`Security policy blocked reading attempt status. (Error: ${fetchError})`);
       }
 
-      const activeAttempt = existingList && existingList.length > 0 ? existingList[0] : null;
+      let activeAttemptId = existingList && existingList.length > 0 ? existingList[0].id : null;
 
-      if (activeAttempt) {
-        setAttemptId(activeAttempt.id);
-      } else {
+      if (!activeAttemptId) {
         const { data: newAttempt, error: attemptError } = await attemptsApi.create({ 
           student_id: finalStudentId, 
           test_id: testId, 
@@ -320,7 +318,12 @@ export default function Engine() {
         });
         
         if (attemptError) throw attemptError;
-        if (newAttempt) setAttemptId(newAttempt.id);
+        if (newAttempt) {
+          activeAttemptId = newAttempt.id;
+          setAttemptId(newAttempt.id);
+        }
+      } else {
+        setAttemptId(activeAttemptId);
       }
 
       setTest(testData);
@@ -339,9 +342,9 @@ export default function Engine() {
         initialVisited[finalQuestions[0].id] = true;
       }
 
-      if (activeAttempt) {
+      if (activeAttemptId) {
         // Fetch any existing answers for this attempt to resume seamlessly
-        const { data: answersData } = await attemptAnswersApi.list(activeAttempt.id);
+        const { data: answersData } = await attemptAnswersApi.list(activeAttemptId);
 
         if (answersData && answersData.length > 0) {
           const answerMap: Record<string, string> = {};

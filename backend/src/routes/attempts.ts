@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
-import { getUserClientId, hasRole } from "../services/roles.js";
+import { getUserClientId, hasRole, isGuestStudent } from "../services/roles.js";
 import { randomUUID } from "crypto";
 import { attemptCreateSchema } from "../validation/schemas.js";
 
@@ -38,12 +38,8 @@ export default async function handler(req: Request, res: Response) {
         } else {
           // Student / Guest
           if (row.student_id !== user.id) {
-            // Check if it's a guest session (guestId session matches sessionStorage)
-            const isGuestProfile = row.student_id.startsWith("guest_") || (row.email && row.email.endsWith("@temp.exam"));
-            // For security, if they are authenticated as the anonymous user, they are allowed if they created it
-            // Let's compare target profile ID to see if the session is allowed.
-            // A simple and secure check: the student_id of the attempt must match the user's ID
-            if (row.student_id !== user.id) {
+            const isGuest = await isGuestStudent(row.student_id);
+            if (!isGuest) {
               return res.status(403).json({ error: "Permission denied" });
             }
           }
@@ -140,7 +136,10 @@ export default async function handler(req: Request, res: Response) {
     // Student: own history
     const resolvedStudentId = (student_id as string) || user.id;
     if (!isSuper && !isClientAdmin && resolvedStudentId !== user.id) {
-      return res.status(403).json({ error: "Permission denied" });
+      const isGuest = await isGuestStudent(resolvedStudentId);
+      if (!isGuest) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
     }
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
@@ -205,8 +204,39 @@ export default async function handler(req: Request, res: Response) {
     const { student_id, test_id, status = "in_progress" } = validation.data;
     const resolvedStudentId = student_id || user.id;
 
-    if (!isSuper && !isClientAdmin && resolvedStudentId !== user.id) {
+    const isGuest = await isGuestStudent(resolvedStudentId);
+
+    if (!isSuper && !isClientAdmin && resolvedStudentId !== user.id && !isGuest) {
       return res.status(403).json({ error: "Permission denied" });
+    }
+
+    const ipAddress = req.ip || "";
+
+    // For guests, check if an in_progress attempt already exists for this test by IP address
+    // AND the existing attempt's student must also be a guest (to avoid hijacking registered students' attempts)
+    if (isGuest && ipAddress) {
+      const { rows: existingAttempts } = await db.execute({
+        sql: `SELECT a.*, p.email
+              FROM attempts a
+              LEFT JOIN profiles p ON p.id = a.student_id
+              WHERE a.test_id = ? AND a.ip_address = ? AND a.status = 'in_progress'`,
+        args: [test_id, ipAddress],
+      });
+
+      const existingIpAttempt = existingAttempts.filter((row: any) =>
+        row.email && row.email.startsWith("guest_") && row.email.endsWith("@temp.exam")
+      );
+
+      if (existingIpAttempt.length > 0) {
+        const attempt = existingIpAttempt[0];
+        // Resume seamlessly: update the existing attempt's student_id to the new guest ID
+        await db.execute({
+          sql: "UPDATE attempts SET student_id = ? WHERE id = ?",
+          args: [resolvedStudentId, attempt.id],
+        });
+        attempt.student_id = resolvedStudentId;
+        return res.status(200).json(attempt);
+      }
     }
 
     // Prevent duplicate in_progress attempts: check if one already exists
@@ -222,9 +252,9 @@ export default async function handler(req: Request, res: Response) {
 
     const id = randomUUID();
     await db.execute({
-      sql: `INSERT INTO attempts (id, student_id, test_id, status, submitted_at)
-            VALUES (?,?,?,?,datetime('now'))`,
-      args: [id, resolvedStudentId, test_id, status],
+      sql: `INSERT INTO attempts (id, student_id, test_id, status, submitted_at, ip_address)
+            VALUES (?,?,?,?,datetime('now'),?)`,
+      args: [id, resolvedStudentId, test_id, status, ipAddress],
     });
     const { rows } = await db.execute({ sql: "SELECT * FROM attempts WHERE id = ?", args: [id] });
     return res.status(201).json(rows[0]);

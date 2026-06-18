@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { getDb } from "../../db/db.js";
 import { requireUser } from "../../auth/auth.js";
-import { hasRole } from "../../services/roles.js";
+import { hasRole, isGuestStudent } from "../../services/roles.js";
 
 /**
  * POST /api/rpc/submit-attempt
@@ -36,7 +36,8 @@ export default async function handler(req: Request, res: Response) {
 
   // Authorization Check
   const isSuper = await hasRole(user.id, "superadmin");
-  if (!isSuper && attempt.student_id !== user.id) {
+  const isGuest = await isGuestStudent(attempt.student_id);
+  if (!isSuper && attempt.student_id !== user.id && !isGuest) {
     return res.status(403).json({ error: "Permission denied" });
   }
 

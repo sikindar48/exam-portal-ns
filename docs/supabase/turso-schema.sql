@@ -121,7 +121,8 @@ CREATE TABLE IF NOT EXISTS attempts (
   total_marks  REAL,
   submitted_at TEXT DEFAULT (datetime('now')),
   time_taken   INTEGER,
-  status       TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted'))
+  status       TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted')),
+  ip_address   TEXT
 );
 
 -- attempt_answers

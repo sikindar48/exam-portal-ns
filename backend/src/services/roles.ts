@@ -43,3 +43,16 @@ export async function getUserClientId(userId: string): Promise<string | null> {
   });
   return (rows[0] as any)?.client_id ?? null;
 }
+
+/** Check if user/student ID belongs to a guest profile */
+export async function isGuestStudent(userId: string): Promise<boolean> {
+  const db = getDb();
+  const { rows } = await db.execute({
+    sql: "SELECT email FROM profiles WHERE id = ?",
+    args: [userId],
+  });
+  if (rows.length === 0) return false;
+  const email = (rows[0] as any).email || "";
+  return email.startsWith("guest_") && email.endsWith("@temp.exam");
+}
+

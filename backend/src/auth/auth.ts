@@ -4,15 +4,17 @@ import type { Request } from "express";
 
 // Initialize Firebase Admin once
 if (!getApps().length) {
-  // Try Application Default Credentials first (for GCP Cloud Run)
-  try {
-    initializeApp({
-      credential: applicationDefault(),
-    });
-    console.log("Firebase Admin initialized using Application Default Credentials");
-  } catch (adcError: any) {
-    console.log("Application Default Credentials not available, trying manual credentials:", adcError.message);
-    
+  // Try Application Default Credentials first ONLY if running on Cloud Run or explicitly configured
+  if (process.env.K_SERVICE || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    try {
+      initializeApp({
+        credential: applicationDefault(),
+      });
+      console.log("Firebase Admin initialized using Application Default Credentials");
+    } catch (adcError: any) {
+      console.log("Application Default Credentials not available:", adcError.message);
+    }
+  } else {
     // Fallback to manual credentials (for local development)
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -65,7 +67,7 @@ export async function getUser(req: Request): Promise<AuthUser | null> {
     }
     
     // Fallback: decode JWT manually ONLY for local development
-    if (process.env.NODE_ENV !== "development") {
+    if (process.env.NODE_ENV === "production") {
       console.error("Manual JWT signature-less decode rejected in production environment");
       return null;
     }
