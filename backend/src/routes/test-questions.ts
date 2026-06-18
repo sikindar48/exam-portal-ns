@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { randomUUID } from "crypto";
+import { hasRole, getUserClientId } from "../services/roles.js";
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -14,7 +15,36 @@ export default async function handler(req: Request, res: Response) {
   if (req.method === "GET") {
     if (!test_id) return res.status(400).json({ error: "test_id required" });
 
-    const withAnswers = req.query.with_answers === "true";
+    let withAnswers = req.query.with_answers === "true";
+    
+    if (withAnswers) {
+      const isSuper = await hasRole(user.id, "superadmin");
+      const isClientAdmin = await hasRole(user.id, "clientadmin");
+      
+      if (!isSuper && !isClientAdmin) {
+        // Student requested correct answers. Verify if they submitted the test and review is enabled.
+        const { rows: testRows } = await db.execute({
+          sql: "SELECT allow_review FROM tests WHERE id = ?",
+          args: [test_id as string],
+        });
+        
+        if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+        const test = testRows[0] as any;
+        
+        const { rows: attemptRows } = await db.execute({
+          sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'submitted'",
+          args: [user.id, test_id as string],
+        });
+        
+        const allowReview = test.allow_review === 1;
+        const hasSubmitted = attemptRows.length > 0;
+        
+        if (!allowReview || !hasSubmitted) {
+          return res.status(403).json({ error: "Access to answer key forbidden" });
+        }
+      }
+    }
+
     const selectCols = withAnswers
       ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
       : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
@@ -63,6 +93,24 @@ export default async function handler(req: Request, res: Response) {
   if (req.method === "POST") {
     if (!test_id) return res.status(400).json({ error: "test_id required" });
 
+    const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
+    if (!isSuper && !isClientAdmin) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    if (isClientAdmin && !isSuper) {
+      const callerClientId = await getUserClientId(user.id);
+      const { rows: testRows } = await db.execute({
+        sql: "SELECT client_id FROM tests WHERE id = ?",
+        args: [test_id as string],
+      });
+      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+      if (testRows[0].client_id !== callerClientId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+    }
+
     const body = Array.isArray(req.body) ? req.body : [req.body];
 
     const stmts = body.map((row: any) => ({
@@ -78,6 +126,24 @@ export default async function handler(req: Request, res: Response) {
   // ── PUT: full replace — delete all then re-insert (used by Builder save)
   if (req.method === "PUT") {
     if (!test_id) return res.status(400).json({ error: "test_id required" });
+
+    const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
+    if (!isSuper && !isClientAdmin) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    if (isClientAdmin && !isSuper) {
+      const callerClientId = await getUserClientId(user.id);
+      const { rows: testRows } = await db.execute({
+        sql: "SELECT client_id FROM tests WHERE id = ?",
+        args: [test_id as string],
+      });
+      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+      if (testRows[0].client_id !== callerClientId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+    }
 
     const questions: any[] = req.body;
 
@@ -137,6 +203,24 @@ export default async function handler(req: Request, res: Response) {
     const { question_id } = req.query;
     if (!test_id || !question_id)
       return res.status(400).json({ error: "test_id and question_id required" });
+
+    const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
+    if (!isSuper && !isClientAdmin) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    if (isClientAdmin && !isSuper) {
+      const callerClientId = await getUserClientId(user.id);
+      const { rows: testRows } = await db.execute({
+        sql: "SELECT client_id FROM tests WHERE id = ?",
+        args: [test_id as string],
+      });
+      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+      if (testRows[0].client_id !== callerClientId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+    }
 
     await db.execute({
       sql: "DELETE FROM test_questions WHERE test_id = ? AND question_id = ?",

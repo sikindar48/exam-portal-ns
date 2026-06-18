@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
-import { getUserClientId } from "../services/roles.js";
+import { getUserClientId, hasRole } from "../services/roles.js";
 import { randomUUID } from "crypto";
 
 export default async function handler(req: Request, res: Response) {
@@ -9,24 +9,39 @@ export default async function handler(req: Request, res: Response) {
   const user = await requireUser(req, res);
   if (!user) return;
 
+  const isSuper = await hasRole(user.id, "superadmin");
+  const isClientAdmin = await hasRole(user.id, "clientadmin");
+  if (!isSuper && !isClientAdmin) {
+    return res.status(403).json({ error: "Permission denied" });
+  }
+
   const clientId = await getUserClientId(user.id);
-  if (!clientId) return res.status(403).json({ error: "No client" });
+  if (!isSuper && !clientId) return res.status(403).json({ error: "No client" });
 
   if (req.method === "GET") {
+    const targetClientId = clientId || req.query.client_id;
+    if (!targetClientId) return res.status(400).json({ error: "client_id required" });
     const { rows } = await db.execute({
       sql: "SELECT * FROM test_folders WHERE client_id = ? ORDER BY name",
-      args: [clientId],
+      args: [targetClientId as string],
     });
     return res.status(200).json(rows);
   }
 
   if (req.method === "POST") {
-    const { name } = req.body;
+    const { name, client_id } = req.body;
     if (!name) return res.status(400).json({ error: "name required" });
+    const targetClientId = client_id || clientId;
+    if (!targetClientId) return res.status(400).json({ error: "client_id required" });
+
+    if (isClientAdmin && !isSuper && targetClientId !== clientId) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
     const id = randomUUID();
     await db.execute({
       sql: "INSERT INTO test_folders (id, client_id, name) VALUES (?,?,?)",
-      args: [id, clientId, name],
+      args: [id, targetClientId, name],
     });
     const { rows } = await db.execute({ sql: "SELECT * FROM test_folders WHERE id = ?", args: [id] });
     return res.status(201).json(rows[0]);
@@ -35,7 +50,19 @@ export default async function handler(req: Request, res: Response) {
   if (req.method === "DELETE") {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id required" });
-    await db.execute({ sql: "DELETE FROM test_folders WHERE id = ? AND client_id = ?", args: [id as string, clientId] });
+
+    if (isClientAdmin && !isSuper) {
+      const { rows } = await db.execute({
+        sql: "SELECT client_id FROM test_folders WHERE id = ?",
+        args: [id as string],
+      });
+      if (!rows.length) return res.status(404).json({ error: "Folder not found" });
+      if (rows[0].client_id !== clientId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+    }
+
+    await db.execute({ sql: "DELETE FROM test_folders WHERE id = ?", args: [id as string] });
     return res.status(200).json({ success: true });
   }
 

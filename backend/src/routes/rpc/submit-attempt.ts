@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { getDb } from "../../db/db.js";
 import { requireUser } from "../../auth/auth.js";
+import { hasRole } from "../../services/roles.js";
 
 /**
  * POST /api/rpc/submit-attempt
@@ -32,6 +33,17 @@ export default async function handler(req: Request, res: Response) {
   });
   if (!attemptRows.length) return res.status(404).json({ error: "Attempt not found" });
   const attempt = attemptRows[0] as any;
+
+  // Authorization Check
+  const isSuper = await hasRole(user.id, "superadmin");
+  if (!isSuper && attempt.student_id !== user.id) {
+    return res.status(403).json({ error: "Permission denied" });
+  }
+
+  // Prevent duplicate submission
+  if (attempt.status === "submitted") {
+    return res.status(400).json({ error: "Attempt has already been submitted" });
+  }
 
   // 2. Load student's answers
   const { rows: answerRows } = await db.execute({

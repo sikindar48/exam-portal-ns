@@ -64,7 +64,12 @@ export async function getUser(req: Request): Promise<AuthUser | null> {
       return { id: decoded.uid, email: decoded.email ?? "" };
     }
     
-    // Fallback: decode JWT manually for local development
+    // Fallback: decode JWT manually ONLY for local development
+    if (process.env.NODE_ENV !== "development") {
+      console.error("Manual JWT signature-less decode rejected in production environment");
+      return null;
+    }
+    
     const parts = token.split('.');
     if (parts.length !== 3) {
       console.log("Token parts length is not 3:", parts.length);

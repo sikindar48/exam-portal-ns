@@ -1,10 +1,11 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
-import { hasRole } from "../services/roles.js";
+import { hasRole, getUserClientId } from "../services/roles.js";
 import { randomUUID } from "crypto";
 import { getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { profileUpsertSchema } from "../validation/schemas.js";
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -13,15 +14,52 @@ export default async function handler(req: Request, res: Response) {
 
   // ── GET /api/profiles ───────────────────────────────────────────────────────
   if (req.method === "GET") {
-    const { id, ids, client_id } = req.query;
+    const { id, ids, client_id, page, limit } = req.query;
+
+    const callerClientId = await getUserClientId(user.id);
+    const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
 
     if (id) {
+      if (!isSuper) {
+        if (id !== user.id) {
+          if (isClientAdmin) {
+            const targetClientId = await getUserClientId(id as string);
+            if (targetClientId !== callerClientId) {
+              return res.status(403).json({ error: "Access denied" });
+            }
+          } else {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        }
+      }
+
       const { rows } = await db.execute({ sql: "SELECT * FROM profiles WHERE id = ?", args: [id as string] });
       return res.status(200).json(rows[0] ?? null);
     }
 
     if (ids) {
       const idList = (ids as string).split(",").filter(Boolean);
+      if (!idList.length) return res.status(200).json([]);
+
+      if (!isSuper) {
+        if (isClientAdmin) {
+          const placeholders = idList.map(() => "?").join(",");
+          const { rows } = await db.execute({
+            sql: `SELECT COUNT(*) as count FROM profiles WHERE id IN (${placeholders}) AND client_id != ?`,
+            args: [...idList, callerClientId],
+          });
+          if ((rows[0] as any).count > 0) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        } else {
+          // Student role can only fetch their own ID
+          if (idList.length > 1 || idList[0] !== user.id) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        }
+      }
+
       const placeholders = idList.map(() => "?").join(",");
       const { rows } = await db.execute({
         sql: `SELECT id, name, email, created_at FROM profiles WHERE id IN (${placeholders})`,
@@ -31,10 +69,43 @@ export default async function handler(req: Request, res: Response) {
     }
 
     if (client_id) {
-      const { rows } = await db.execute({
-        sql: "SELECT id, name, email, client_id, created_at FROM profiles WHERE client_id = ?",
+      if (!isSuper) {
+        if (!isClientAdmin || client_id !== callerClientId) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+
+      const isPaginationRequested = page !== undefined && limit !== undefined;
+      const { rows: countRows } = await db.execute({
+        sql: "SELECT COUNT(*) as total FROM profiles WHERE client_id = ?",
         args: [client_id as string],
       });
+      const total = (countRows[0] as any).total;
+
+      let sql = "SELECT id, name, email, client_id, created_at FROM profiles WHERE client_id = ?";
+      const args: any[] = [client_id as string];
+
+      if (isPaginationRequested) {
+        const pNum = Math.max(1, parseInt(page as string, 10));
+        const lNum = Math.max(1, parseInt(limit as string, 10));
+        const offset = (pNum - 1) * lNum;
+        sql += " LIMIT ? OFFSET ?";
+        args.push(lNum, offset);
+      }
+
+      const { rows } = await db.execute({ sql, args });
+
+      if (isPaginationRequested) {
+        return res.status(200).json({
+          data: rows,
+          pagination: {
+            page: Math.max(1, parseInt(page as string, 10)),
+            limit: Math.max(1, parseInt(limit as string, 10)),
+            total,
+          },
+        });
+      }
+
       return res.status(200).json(rows);
     }
 
@@ -43,8 +114,28 @@ export default async function handler(req: Request, res: Response) {
 
   // ── POST /api/profiles (upsert — used by guest student registration) ─────────
   if (req.method === "POST") {
-    const { id, name, email, client_id } = req.body;
+    const validation = profileUpsertSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    const { id, name, email, client_id } = validation.data;
     const profileId = id || randomUUID();
+
+    // Prevent profile hijacking / overwrite of non-guest accounts
+    const isSuper = await hasRole(user.id, "superadmin");
+    if (!isSuper && profileId !== user.id) {
+      const { rows } = await db.execute({
+        sql: "SELECT email FROM profiles WHERE id = ?",
+        args: [profileId],
+      });
+      if (rows.length > 0) {
+        const existingEmail = (rows[0] as any).email || "";
+        const isGuestEmail = existingEmail.startsWith("guest_") && existingEmail.endsWith("@temp.exam");
+        if (!isGuestEmail) {
+          return res.status(403).json({ error: "Cannot modify this profile" });
+        }
+      }
+    }
 
     await db.execute({
       sql: `INSERT INTO profiles (id, name, email, client_id)
@@ -66,6 +157,20 @@ export default async function handler(req: Request, res: Response) {
   if (req.method === "DELETE") {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id is required" });
+
+    const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
+    if (!isSuper && !isClientAdmin) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    if (isClientAdmin && !isSuper) {
+      const callerClientId = await getUserClientId(user.id);
+      const targetClientId = await getUserClientId(id as string);
+      if (!callerClientId || callerClientId !== targetClientId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+    }
 
     // Clean up all related student records in a batch transaction
     await db.batch([

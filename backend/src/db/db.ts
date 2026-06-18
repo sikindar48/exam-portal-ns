@@ -8,6 +8,10 @@ export function getDb() {
     const authToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_TOKEN || process.env.VITE_TURSO_TOKEN;
     if (!url || !authToken) throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN env vars");
     client = createClient({ url, authToken });
+    // Enable SQLite foreign key constraint enforcement
+    client.execute("PRAGMA foreign_keys = ON;").catch((err) => {
+      console.error("Failed to enable SQLite foreign key support:", err);
+    });
   }
   return client;
 }

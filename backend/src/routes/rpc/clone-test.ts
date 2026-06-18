@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { getDb } from "../../db/db.js";
 import { requireUser } from "../../auth/auth.js";
 import { randomUUID } from "crypto";
+import { hasRole, getUserClientId } from "../../services/roles.js";
 
 /**
  * POST /api/rpc/clone-test
@@ -13,6 +14,12 @@ export default async function handler(req: Request, res: Response) {
 
   const user = await requireUser(req, res);
   if (!user) return;
+
+  const isSuper = await hasRole(user.id, "superadmin");
+  const isClientAdmin = await hasRole(user.id, "clientadmin");
+  if (!isSuper && !isClientAdmin) {
+    return res.status(403).json({ error: "Permission denied" });
+  }
 
   const { source_test_id } = req.body;
   if (!source_test_id) return res.status(400).json({ error: "source_test_id required" });
@@ -26,6 +33,13 @@ export default async function handler(req: Request, res: Response) {
   });
   if (!testRows.length) return res.status(404).json({ error: "Source test not found" });
   const src = testRows[0] as any;
+
+  if (isClientAdmin && !isSuper) {
+    const callerClientId = await getUserClientId(user.id);
+    if (src.client_id !== callerClientId) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+  }
 
   // 2. Create new test with a fresh share_code
   const newTestId = randomUUID();
