@@ -20,11 +20,12 @@ export default async function handler(req: Request, res: Response) {
 
     // Public share_code lookup (Join page)
     if (share_code) {
+      const normalizedCode = String(share_code).trim().toUpperCase();
       const { rows } = await db.execute({
         sql: `SELECT t.*, c.name as client_name, c.logo_url as client_logo_url
               FROM tests t LEFT JOIN clients c ON c.id = t.client_id
-              WHERE t.share_code = ? COLLATE NOCASE`,
-        args: [share_code as string],
+              WHERE t.share_code = ?`,
+        args: [normalizedCode],
       });
       if (!rows.length) return res.status(404).json({ error: "Not found" });
       const row = rows[0] as any;
