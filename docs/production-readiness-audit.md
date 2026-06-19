@@ -43,6 +43,18 @@ The following vulnerabilities have been fully mitigated in the active codebase:
 * **Vulnerability**: Public lookup permitted draft and inactive test configurations to be fetched by invite code.
 * **Mitigation**: The share code search query in [tests.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/tests.ts#L22-L29) now filters tests by enforcing `status = 'published'` and `active = 1`.
 
+### Fixed: Score Leakage in Attempts & Submission Endpoints
+* **Vulnerability**: Scores and grading details were returned in submission RPC and attempts retrieval payloads even when tests were marked as draft/hidden.
+* **Mitigation**: Filtered and masked score details out of Express responses for student/guest roles if `show_results_after_submission` is disabled or `result_status` is `"draft"`.
+
+### Fixed: BOLA Vulnerability in XLSX Performance Reports
+* **Vulnerability**: Candidates could download other candidates' detailed performance report spreadsheets by replacing UUID parameters.
+* **Mitigation**: Implemented strict ownership checks in [report.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/report.ts) matching student IDs, and secured guest report downloads with dynamic cryptographically random `attempt_token` verification gates.
+
+### Fixed: Cascading Orphan Mappings on Section Deletion
+* **Vulnerability**: Deleting a section risked leaving orphaned question references or dropping mapped questions from the database.
+* **Mitigation**: Added database transactional cascades set to NULL on section references inside `test_questions` table, cleanly migrating questions to the default flat palette on section removal.
+
 ---
 
 ## 4. Scalability Review & Concurrency Limits

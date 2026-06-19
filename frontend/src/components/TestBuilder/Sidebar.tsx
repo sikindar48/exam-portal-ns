@@ -19,7 +19,8 @@ import {
   ArrowDown,
   Layers,
   Settings2,
-  HelpCircle
+  HelpCircle,
+  ShieldCheck
 } from "lucide-react";
 import { TestData, TestSection } from "@/types/test";
 
@@ -29,6 +30,7 @@ interface SidebarProps {
   totalMarks: number;
   deletedSectionIds: string[];
   setDeletedSectionIds: React.Dispatch<React.SetStateAction<string[]>>;
+  features?: string[];
 }
 
 export function Sidebar({
@@ -36,7 +38,8 @@ export function Sidebar({
   setTestData,
   totalMarks,
   deletedSectionIds,
-  setDeletedSectionIds
+  setDeletedSectionIds,
+  features = []
 }: SidebarProps) {
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
 
@@ -272,6 +275,24 @@ export function Sidebar({
                   onCheckedChange={(checked) => updateField("allow_guests", checked)}
                 />
               </div>
+
+              {features.includes("camera_proctoring") && (
+                <div className="flex items-center justify-between group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded">
+                      <ShieldCheck className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-bold text-blue-600 dark:text-blue-400">Camera Proctoring</Label>
+                      <p className="text-[10px] text-slate-500">Require webcam feed during test</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={testData.camera_required ?? false}
+                    onCheckedChange={(checked) => updateField("camera_required", checked)}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

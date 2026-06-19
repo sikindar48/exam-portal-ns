@@ -37,6 +37,7 @@ export interface TestData {
   active: boolean;
   allow_guests: boolean;
   share_code?: string;
+  camera_required?: boolean;
   questions: Question[];
   sections?: TestSection[];
 }

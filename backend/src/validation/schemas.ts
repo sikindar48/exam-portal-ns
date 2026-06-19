@@ -17,6 +17,7 @@ export const testCreateSchema = z.object({
   public_link_enabled: z.boolean().optional(),
   folder_id: z.string().nullable().optional(),
   share_code: z.string().max(20).optional(),
+  camera_required: z.boolean().optional(),
 });
 
 export const testUpdateSchema = testCreateSchema.partial();

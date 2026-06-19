@@ -23,9 +23,10 @@ interface InstructionsProps {
   negativeMarks: number;
   sections: Section[];
   studentName?: string;
-  onStart: () => void;
+  onStart: (stream: MediaStream | null) => void;
   orgName?: string;
   orgLogoUrl?: string | null;
+  cameraRequired?: boolean;
 }
 
 const RULES = [
@@ -56,10 +57,49 @@ export function Instructions({
   onStart,
   orgName,
   orgLogoUrl,
+  cameraRequired,
 }: InstructionsProps) {
   const [agreed, setAgreed] = useState(false);
   const [speed, setSpeed] = useState<number | null>(null);
   const [isStable, setIsStable] = useState(false);
+  
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [requestingCamera, setRequestingCamera] = useState(false);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (!startedRef.current && cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  useEffect(() => {
+    if (cameraRequired) {
+      const requestCamera = async () => {
+        setRequestingCamera(true);
+        setCameraError(null);
+        try {
+          const s = await navigator.mediaDevices.getUserMedia({
+            video: { width: 320, height: 240, facingMode: "user" }
+          });
+          setCameraStream(s);
+        } catch (err: any) {
+          console.error("Camera access error:", err);
+          setCameraError(
+            err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+              ? "Permission Denied: Please enable camera access in your browser settings to take this exam."
+              : "Camera Error: Could not start the webcam. Please ensure it is connected and not in use by another app."
+          );
+        } finally {
+          setRequestingCamera(false);
+        }
+      };
+      requestCamera();
+    }
+  }, [cameraRequired]);
 
   useEffect(() => {
     const checkSpeed = () => {
@@ -86,7 +126,7 @@ export function Instructions({
   );
 
   return (
-    <div className="flex h-screen flex-col bg-white dark:bg-slate-950 font-sans selection:bg-blue-100">
+    <div className="flex min-h-screen md:h-screen flex-col bg-white dark:bg-slate-950 font-sans selection:bg-blue-100">
 
       {/* Header */}
       <header className="flex shrink-0 h-auto md:h-16 flex-col md:flex-row items-start md:items-center justify-between p-4 md:px-6 gap-3 md:gap-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
@@ -119,11 +159,23 @@ export function Instructions({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
+      <main className="flex flex-col md:flex-row flex-1 overflow-visible md:overflow-hidden">
         
         {/* Left: Detailed Instructions */}
-        <div className="flex-1 p-4 md:p-8 md:border-r border-b md:border-b-0 border-slate-200 dark:border-slate-800 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 md:border-r border-b md:border-b-0 border-slate-200 dark:border-slate-800 overflow-visible md:overflow-y-auto">
           <section className="max-w-4xl mx-auto space-y-8">
+            {cameraRequired && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 flex gap-3 items-start rounded-sm">
+                <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wide">Privacy & Monitoring Notice</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
+                    This exam uses camera-based monitoring. No video recording is performed. No continuous image uploads are performed. Only violation snapshots may be stored for exam integrity purposes.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 border-b pb-2">General Instructions:</h2>
               <div className="space-y-4">
@@ -190,7 +242,7 @@ export function Instructions({
         </div>
 
         {/* Right: Candidate & Legend */}
-        <div className="w-full md:w-80 shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900/50">
+        <div className="w-full md:w-80 shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900/50 overflow-visible md:overflow-y-auto">
           <div className="p-6 space-y-8">
             {/* Candidate Name Only (No Dummy ID) */}
             <div>
@@ -243,6 +295,37 @@ export function Instructions({
               </div>
             </div>
 
+            {cameraRequired && (
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Webcam Feed Verification</p>
+                <div className="relative aspect-video w-full bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden flex items-center justify-center">
+                  {cameraStream ? (
+                    <video
+                      ref={(el) => {
+                        if (el && cameraStream) el.srcObject = cameraStream;
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-full w-full object-cover scale-x-[-1]"
+                    />
+                  ) : requestingCamera ? (
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider animate-pulse">Requesting webcam...</p>
+                  ) : (
+                    <div className="p-4 text-center">
+                      <AlertTriangle className="h-6 w-6 text-red-500 mx-auto mb-2" />
+                      <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Webcam Required</p>
+                    </div>
+                  )}
+                </div>
+                {cameraError && (
+                  <p className="text-[10px] text-red-600 font-semibold mt-2 bg-red-50 dark:bg-red-950/20 p-2 border border-red-200 dark:border-red-800/30">
+                    {cameraError}
+                  </p>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </main>
@@ -261,10 +344,14 @@ export function Instructions({
           </label>
         </div>
         <Button
-          onClick={onStart}
-          disabled={!agreed}
+          onClick={() => {
+            if (cameraRequired && !cameraStream) return;
+            startedRef.current = true;
+            onStart(cameraStream);
+          }}
+          disabled={!agreed || (cameraRequired && !cameraStream)}
           className={`w-full md:w-auto h-11 px-10 rounded-none font-bold uppercase tracking-widest transition-all ${
-            agreed 
+            agreed && (!cameraRequired || cameraStream)
               ? "bg-blue-600 hover:bg-blue-700 text-white" 
               : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
           }`}

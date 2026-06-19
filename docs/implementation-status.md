@@ -87,3 +87,35 @@ This document tracks the current implementation status of the features and archi
 * **Confirm Submit Dialog**: Needs a modal showing a count of unanswered or marked-for-review questions before submission.
 * **Repository Picker Search**: Test builder question picker needs a debounced search query filter to allow admins to search large databases.
 * **Student Soft Delete**: Replacing cascades with an `is_active` profile status key to prevent complete history deletion.
+
+---
+
+## Future Roadmap
+
+### 1. AI-Powered Camera & Audio Proctoring
+* **Objective**: Introduce enterprise-grade cheating prevention and identity verification.
+* **Key Features**:
+  * **Face Verification & Gaze Tracking**: Periodic or continuous web-camera verification matching the student's registration profile; flag anomalies such as gaze diversion, face absence, or multiple faces.
+  * **Browser Security Integration**: Native desktop client/app or extension to enforce strict operating system level lockdown.
+  * **Audio Monitoring**: Background voice detection and noise analysis using built-in microphone streams.
+
+### 2. Integrated Interactive Coding Sandbox
+* **Objective**: Support programming assessments, coding rounds, and technical placements.
+* **Key Features**:
+  * **Secure Code Execution Engine**: Sandboxed container runtime (supporting Python, JavaScript, Java, C++, Go, and SQL) to execute candidate code safely.
+  * **Test Case Validation**: Admin interface to configure public/hidden test cases with custom time and memory limit constraints.
+  * **Integrated Development Environment (IDE)**: Code editor with syntax highlighting, autocomplete, and code formatting.
+
+### 3. LLM-Assisted Subjective Question Grading
+* **Objective**: Automate evaluation of descriptive essays, code explanations, and open-ended questions.
+* **Key Features**:
+  * **Gemini integration**: Connect to LLM services to evaluate candidate responses against an admin-supplied rubric and target keywords.
+  * **Assisted Feedback Generation**: Provide constructive feedback explanations along with suggested marks to the client-admin reviewers.
+
+### 4. Advanced Statistics & Distractor Analytics
+* **Objective**: Evaluate assessment quality and distractor effectiveness.
+* **Key Features**:
+  * **Item Analysis**: Automatically compute Item Difficulty Index ($p$-value) and Discrimination Index ($d$) for all repository questions.
+  * **Distractor Efficiency**: Identify misleading, unused, or ineffective MCQ options to refine question banks over time.
+  * **Real-time Live Proctoring Dashboard**: Live feed showing candidate progress, active section, network latency, and current score metrics.
+

@@ -260,3 +260,18 @@ export const createUser = (body: {
   client_id: string;
   role: "clientadmin" | "student";
 }) => apiFetch("/create-user", { method: "POST", body: JSON.stringify(body) });
+
+// ── Proctoring ────────────────────────────────────────────────────────────────
+
+export const proctoringApi = {
+  logEvent: (body: {
+    attempt_id: string;
+    test_id: string;
+    event_type: string;
+    duration_seconds?: number;
+    image_payload?: string | null;
+    metadata?: any;
+  }) => apiFetch("/proctoring/events", { method: "POST", body: JSON.stringify(body) }),
+  listEvents: (attempt_id: string) => apiFetch<{ events: any[]; total_risk_score: number }>(`/proctoring/events?attempt_id=${attempt_id}`),
+};
+

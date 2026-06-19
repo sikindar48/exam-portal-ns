@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi, testFoldersApi, rpc } from "@/services/api/client";
+import { testsApi, testFoldersApi, rpc, clientsApi } from "@/services/api/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";
@@ -82,7 +82,10 @@ export default function TestsManagement() {
     show_results_after_submission: false,
     allow_report_download: false,
     result_status: "draft",
+    camera_required: false,
   });
+
+  const [features, setFeatures] = useState<string[]>([]);
 
   const { toast } = useToast();
   const { clientId, loading: authLoading } = useAuth();
@@ -92,8 +95,16 @@ export default function TestsManagement() {
     if (clientId && !authLoading) {
       fetchTests();
       fetchFolders();
+      fetchClientFeatures();
     }
   }, [clientId, authLoading]);
+
+  const fetchClientFeatures = async () => {
+    const { data, error } = await clientsApi.get(clientId!);
+    if (!error && data && data.features) {
+      setFeatures(data.features);
+    }
+  };
 
   const fetchFolders = async () => {
     const { data, error } = await testFoldersApi.list();
@@ -251,6 +262,7 @@ export default function TestsManagement() {
       show_results_after_submission: (test as any).show_results_after_submission === 1,
       allow_report_download: (test as any).allow_report_download === 1,
       result_status: (test as any).result_status || "draft",
+      camera_required: !!(test as any).camera_required,
     });
     setIsDialogOpen(true);
   };
@@ -272,6 +284,7 @@ export default function TestsManagement() {
       show_results_after_submission: false,
       allow_report_download: false,
       result_status: "draft",
+      camera_required: false,
     });
     setEditingTest(null);
   };
@@ -333,6 +346,7 @@ export default function TestsManagement() {
           handleSubmit={handleSubmit}
           editingTest={editingTest}
           folders={folders}
+          features={features}
         />
 
         <TestFolderDialogs 

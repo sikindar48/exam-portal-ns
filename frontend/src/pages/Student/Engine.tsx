@@ -3,7 +3,8 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi, attemptsApi, attemptAnswersApi, testQuestionsApi, rpc, profilesApi, testSectionsApi } from "@/services/api/client";
+import { testsApi, attemptsApi, attemptAnswersApi, testQuestionsApi, rpc, profilesApi, testSectionsApi, proctoringApi } from "@/services/api/client";
+import { useProctoring } from "@/hooks/useProctoring";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +84,9 @@ export default function Engine() {
   const [showSecurityAlert, setShowSecurityAlert] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const alertTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Camera stream state
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
   // Section States
   const [sectionsDataList, setSectionsDataList] = useState<any[]>([]);
@@ -199,6 +203,12 @@ export default function Engine() {
     }
     if (autoSubmitTriggered.current) return;
     autoSubmitTriggered.current = true;
+    
+    // Stop all webcam tracks immediately on submit
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     setLoading(true);
     try {
@@ -582,6 +592,14 @@ export default function Engine() {
         setIsFullscreen(false);
         setFullscreenExitCount(prev => {
           const next = prev + 1;
+          
+          proctoringApi.logEvent({
+            attempt_id: attemptId,
+            test_id: testId!,
+            event_type: "FULLSCREEN_EXIT",
+            duration_seconds: 0
+          }).catch(console.error);
+
           if (next >= 3) handleSubmit(true);
           else { setShowFullscreenWarning(true); triggerAlert(); }
           return next;
@@ -590,13 +608,21 @@ export default function Engine() {
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [handleSubmit, triggerAlert]);
+  }, [handleSubmit, triggerAlert, attemptId, testId]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && !showInstructions && !loading) {
         setFullscreenExitCount(prev => {
           const next = prev + 1;
+
+          proctoringApi.logEvent({
+            attempt_id: attemptId,
+            test_id: testId!,
+            event_type: "TAB_SWITCH",
+            duration_seconds: 0
+          }).catch(console.error);
+
           if (next >= 3) handleSubmit(true);
           else { setShowFullscreenWarning(true); triggerAlert(); }
           return next;
@@ -605,7 +631,40 @@ export default function Engine() {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [handleSubmit, triggerAlert, showInstructions, loading]);
+  }, [handleSubmit, triggerAlert, showInstructions, loading, attemptId, testId]);
+
+  // Window Blur Listener
+  useEffect(() => {
+    const handleBlur = () => {
+      if (!showInstructions && !loading) {
+        proctoringApi.logEvent({
+          attempt_id: attemptId,
+          test_id: testId!,
+          event_type: "WINDOW_BLUR",
+          duration_seconds: 0
+        }).catch(console.error);
+      }
+    };
+    window.addEventListener("blur", handleBlur);
+    return () => window.removeEventListener("blur", handleBlur);
+  }, [showInstructions, loading, attemptId, testId]);
+
+  // Cleanup camera tracks on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  // Camera Proctoring Hook initialization
+  useProctoring({
+    enabled: !!(test?.camera_required && !showInstructions && cameraStream),
+    stream: cameraStream,
+    attemptId,
+    testId: testId!,
+  });
 
   // Secure Browsing
   useEffect(() => {
@@ -738,9 +797,14 @@ export default function Engine() {
         negativeMarks={test?.negative_marks} 
         sections={sections}
         studentName={isGuest ? guestName : user?.user_metadata?.full_name || user?.email}
-        onStart={() => { setShowInstructions(false); enterFullscreen(); }} 
+        onStart={(stream) => { 
+          if (stream) setCameraStream(stream);
+          setShowInstructions(false); 
+          enterFullscreen(); 
+        }} 
         orgName={test?.clients?.name}
         orgLogoUrl={test?.clients?.logo_url}
+        cameraRequired={!!test?.camera_required}
       />
     );
   }

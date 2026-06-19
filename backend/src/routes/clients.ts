@@ -33,7 +33,17 @@ export default async function handler(req: Request, res: Response) {
         args: [id as string],
       });
       if (!rows.length) return res.status(404).json({ error: "Not found" });
-      return res.status(200).json(rowBools(rows[0] as any, BOOL_FIELDS));
+      
+      const { rows: features } = await db.execute({
+        sql: "SELECT feature_name FROM client_features WHERE client_id = ? AND enabled = 1",
+        args: [id as string],
+      });
+      const featureList = features.map((f: any) => f.feature_name);
+
+      return res.status(200).json({
+        ...rowBools(rows[0] as any, BOOL_FIELDS),
+        features: featureList,
+      });
     }
 
     if (isSuperAdmin) {

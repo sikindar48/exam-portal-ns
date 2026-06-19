@@ -15,6 +15,8 @@ interface TestDialogProps {
   setFormData: (data: any) => void;
   loading: boolean;
   handleSubmit: (e: React.FormEvent) => void;
+  features?: string[];
+  folders?: any[];
 }
 
 export function TestDialog({
@@ -25,6 +27,7 @@ export function TestDialog({
   setFormData,
   loading,
   handleSubmit,
+  features = [],
 }: TestDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -96,6 +99,13 @@ export function TestDialog({
                 <Label htmlFor="public_link_enabled" className="text-xs font-bold uppercase tracking-tight">Public Access Link</Label>
                 <Switch id="public_link_enabled" checked={formData.public_link_enabled} onCheckedChange={(checked) => setFormData({ ...formData, public_link_enabled: checked })} />
               </div>
+              
+              {features.includes("camera_proctoring") && (
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="camera_required" className="text-xs font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">Enforce Camera Proctoring</Label>
+                  <Switch id="camera_required" checked={formData.camera_required} onCheckedChange={(checked) => setFormData({ ...formData, camera_required: checked })} />
+                </div>
+              )}
               
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-2">Result Publishing</h3>

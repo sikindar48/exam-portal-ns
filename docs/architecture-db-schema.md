@@ -210,44 +210,53 @@ Exam configurations created by client administrators.
 * `negative_marks` (REAL): Penalty deduction score per incorrect answer (Default `0`).
 * `restrict_navigation` (INTEGER): Prevent backing up to previous questions (`1` = true, `0` = false).
 * `attempts_allowed` (INTEGER): Allowed attempt limit per student (Default `1`).
-* `status` (TEXT): CHECK constraint `status IN ('draft', 'published')`.
-* `active` (INTEGER): Active status flag (Default `1`).
-* `allow_guests` (INTEGER): Guest login allowed (`1` = true, `0` = false).
-* `scheduled_start` (TEXT, Nullable): Start date-time string.
-* `scheduled_end` (TEXT, Nullable): End date-time string.
-* `share_code` (TEXT): Unique invite join code.
-* `public_link_enabled` (INTEGER): Direct access link active (`1` = true, `0` = false).
-* `created_at` (TEXT): Timestamp.
-* `updated_at` (TEXT): Timestamp.
-
-#### `test_sections`
-Sections within a test to group questions (e.g. Section A, Section B).
-* `id` (TEXT, PK): Section UID.
-* `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
-* `name` (TEXT): Section header.
-* `position` (INTEGER): Ordering sequence index.
-* `created_at` (TEXT): Timestamp.
-
-#### `test_questions`
-Junction table linking tests to questions, ordering them within specific sections.
-* `id` (TEXT, PK): Primary key UID.
-* `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
-* `question_id` (TEXT): FK → `questions(id)` ON DELETE CASCADE.
-* `section_id` (TEXT, Nullable): FK → `test_sections(id)` ON DELETE SET NULL.
-* `position` (INTEGER): Question position order index.
-* **Constraints**: `UNIQUE(test_id, question_id)`.
-
-#### `attempts`
-Tracks candidate test executions.
-* `id` (TEXT, PK): Attempt UID.
-* `student_id` (TEXT): User ID (linked to profile ID / anonymous student profile ID).
-* `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
-* `score` (REAL, Nullable): Total score computed upon submission.
-* `total_marks` (REAL, Nullable): Sum of all correct question marks.
-* `submitted_at` (TEXT, Nullable): Submission timestamp string.
-* `time_taken` (INTEGER, Nullable): Elasped time in seconds.
-* `status` (TEXT): CHECK constraint `status IN ('in_progress', 'submitted')` (Default `'in_progress'`).
-* `ip_address` (TEXT, Nullable): Candidate IP address.
+    * `status` (TEXT): CHECK constraint `status IN ('draft', 'published')`.
+    * `active` (INTEGER): Active status flag (Default `1`).
+    * `allow_guests` (INTEGER): Guest login allowed (`1` = true, `0` = false).
+    * `scheduled_start` (TEXT, Nullable): Start date-time string.
+    * `scheduled_end` (TEXT, Nullable): End date-time string.
+    * `share_code` (TEXT): Unique invite join code.
+    * `public_link_enabled` (INTEGER): Direct access link active (`1` = true, `0` = false).
+    * `show_results_after_submission` (INTEGER): Render grading scorecard to candidates (`1` = true, `0` = false, Default `0`).
+    * `allow_report_download` (INTEGER): Allow candidates to download XLSX performance report (`1` = true, `0` = false, Default `0`).
+    * `result_status` (TEXT): Check constraint `result_status IN ('draft', 'published')` (Default `'draft'`).
+    * `created_at` (TEXT): Timestamp.
+    * `updated_at` (TEXT): Timestamp.
+    
+    #### `test_sections`
+    Sections within a test to group questions (e.g. Section A, Section B) with individual configuration rules.
+    * `id` (TEXT, PK): Section UID.
+    * `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
+    * `name` (TEXT): Section header.
+    * `position` (INTEGER): Ordering sequence index.
+    * `duration_minutes` (INTEGER, Nullable): Custom countdown timer for the section in minutes.
+    * `negative_marks` (REAL): Negative marks penalty score per incorrect answer (Default `0`).
+    * `shuffle_questions` (INTEGER): Shuffling active for questions (`1` = true, `0` = false, Default `0`).
+    * `shuffle_options` (INTEGER): Shuffling active for options (`1` = true, `0` = false, Default `0`).
+    * `navigation_locked` (INTEGER): Prevent returning to this section once completed (`1` = true, `0` = false, Default `0`).
+    * `created_at` (TEXT): Timestamp.
+    
+    #### `test_questions`
+    Junction table linking tests to questions, ordering them within specific sections.
+    * `id` (TEXT, PK): Primary key UID.
+    * `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
+    * `question_id` (TEXT): FK → `questions(id)` ON DELETE CASCADE.
+    * `section_id` (TEXT, Nullable): FK → `test_sections(id)` ON DELETE SET NULL.
+    * `position` (INTEGER): Question position order index.
+    * **Constraints**: `UNIQUE(test_id, question_id)`.
+    
+    #### `attempts`
+    Tracks candidate test executions.
+    * `id` (TEXT, PK): Attempt UID.
+    * `student_id` (TEXT): User ID (linked to profile ID / anonymous student profile ID).
+    * `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
+    * `score` (REAL, Nullable): Total score computed upon submission.
+    * `total_marks` (REAL, Nullable): Sum of all correct question marks.
+    * `submitted_at` (TEXT, Nullable): Submission timestamp string.
+    * `time_taken` (INTEGER, Nullable): Elasped time in seconds.
+    * `status` (TEXT): CHECK constraint `status IN ('in_progress', 'submitted')` (Default `'in_progress'`).
+    * `ip_address` (TEXT, Nullable): Candidate IP address.
+    * `attempt_token` (TEXT, Nullable): Secure access token used for report downloads.
 
 #### `attempt_answers`
 Saves candidate selected options for active or completed test attempts.
@@ -337,6 +346,9 @@ erDiagram
         TEXT scheduled_end
         TEXT share_code
         INTEGER public_link_enabled
+        INTEGER show_results_after_submission
+        INTEGER allow_report_download
+        TEXT result_status
         TEXT created_at
         TEXT updated_at
     }
@@ -345,6 +357,11 @@ erDiagram
         TEXT test_id FK
         TEXT name
         INTEGER position
+        INTEGER duration_minutes
+        REAL negative_marks
+        INTEGER shuffle_questions
+        INTEGER shuffle_options
+        INTEGER navigation_locked
         TEXT created_at
     }
     test_questions {
@@ -364,6 +381,7 @@ erDiagram
         INTEGER time_taken
         TEXT status
         TEXT ip_address
+        TEXT attempt_token
     }
     attempt_answers {
         TEXT id PK

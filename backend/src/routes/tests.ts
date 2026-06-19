@@ -5,7 +5,7 @@ import { hasRole, getUserClientId } from "../services/roles.js";
 import { randomUUID } from "crypto";
 import { testCreateSchema, testUpdateSchema } from "../validation/schemas.js";
 
-const BOOL_FIELDS = ["shuffle","allow_review","negative_marking","restrict_navigation","active","allow_guests","public_link_enabled"];
+const BOOL_FIELDS = ["shuffle","allow_review","negative_marking","restrict_navigation","active","allow_guests","public_link_enabled","camera_required"];
 
 function generateShareCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -160,8 +160,8 @@ export default async function handler(req: Request, res: Response) {
             (id, client_id, folder_id, test_name, timer, shuffle, allow_review,
              negative_marking, negative_marks, restrict_navigation, attempts_allowed,
              status, active, allow_guests, scheduled_start, scheduled_end,
-             share_code, public_link_enabled)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+             share_code, public_link_enabled, camera_required)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [
         id, clientId, b.folder_id ?? null, b.test_name, b.timer ?? 60,
         b.shuffle ? 1 : 0, b.allow_review !== false ? 1 : 0,
@@ -171,6 +171,7 @@ export default async function handler(req: Request, res: Response) {
         b.allow_guests ? 1 : 0,
         b.scheduled_start ?? null, b.scheduled_end ?? null,
         shareCode, b.public_link_enabled ? 1 : 0,
+        b.camera_required ? 1 : 0,
       ],
     });
 
@@ -212,7 +213,7 @@ export default async function handler(req: Request, res: Response) {
 
     const allowed = ["test_name","timer","shuffle","allow_review","negative_marking",
       "negative_marks","restrict_navigation","attempts_allowed","status","active",
-      "allow_guests","scheduled_start","scheduled_end","public_link_enabled","folder_id"];
+      "allow_guests","scheduled_start","scheduled_end","public_link_enabled","folder_id","camera_required"];
 
     const fields: string[] = [];
     const args: any[] = [];

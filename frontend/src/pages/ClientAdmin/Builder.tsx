@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { testsApi, testQuestionsApi, questionsApi, testSectionsApi } from "@/services/api/client";
+import { testsApi, testQuestionsApi, questionsApi, testSectionsApi, clientsApi } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,11 +37,23 @@ export default function Builder() {
     restrict_navigation: false,
     active: true,
     allow_guests: false,
+    camera_required: false,
     questions: [],
     sections: [],
   });
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [repoDialogOpen, setRepoDialogOpen] = useState(false);
+  const [features, setFeatures] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (clientId && !authLoading) {
+      const fetchClientFeatures = async () => {
+        const { data } = await clientsApi.get(clientId);
+        if (data && data.features) setFeatures(data.features);
+      };
+      fetchClientFeatures();
+    }
+  }, [clientId, authLoading]);
 
   useEffect(() => {
     if (testId && !authLoading) loadTest();
@@ -100,6 +112,7 @@ export default function Builder() {
         active: !!t.active,
         allow_guests: !!t.allow_guests,
         share_code: t.share_code,
+        camera_required: !!t.camera_required,
         questions,
         sections,
       });
@@ -204,6 +217,7 @@ export default function Builder() {
         scheduled_start: (testData as any).scheduled_start || null,
         scheduled_end: (testData as any).scheduled_end || null,
         client_id: clientId,
+        camera_required: testData.camera_required ? 1 : 0,
       };
 
       if (isNew) {
@@ -306,6 +320,7 @@ export default function Builder() {
               totalMarks={totalMarks} 
               deletedSectionIds={deletedSectionIds}
               setDeletedSectionIds={setDeletedSectionIds}
+              features={features}
             />
           </div>
 

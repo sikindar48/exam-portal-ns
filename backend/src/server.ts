@@ -21,6 +21,7 @@ import cloneTestHandler from "./routes/rpc/clone-test.js";
 import submitAttemptHandler from "./routes/rpc/submit-attempt.js";
 import reportHandler from "./routes/report.js";
 import testSectionsHandler from "./routes/test-sections.js";
+import proctoringHandler from "./routes/proctoring.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -114,6 +115,7 @@ app.all("/api/question-folders", questionFoldersHandler);
 app.all("/api/test-folders", testFoldersHandler);
 app.all("/api/stats", statsHandler);
 app.all("/api/create-user", createUserHandler);
+app.all("/api/proctoring/events", proctoringHandler);
 
 // RPC / Custom endpoints
 app.all("/api/rpc/clone-test", cloneTestHandler);

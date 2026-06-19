@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi } from "@/services/api/client";
+import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi, proctoringApi } from "@/services/api/client";
+import { ProctoringTimeline } from "@/components/Admin/ProctoringTimeline";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -32,6 +33,12 @@ export default function Results() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [attemptQuestions, setAttemptQuestions] = useState<any[]>([]);
   const [filterTab, setFilterTab] = useState<"all" | "correct" | "incorrect" | "unattempted" | "review">("all");
+
+  // Proctoring States
+  const [proctoringEvents, setProctoringEvents] = useState<any[]>([]);
+  const [totalRiskScore, setTotalRiskScore] = useState<number>(0);
+  const [proctoringLoading, setProctoringLoading] = useState(false);
+  const [detailTab, setDetailTab] = useState<"questions" | "proctoring">("questions");
 
   useEffect(() => {
     if (testId && !authLoading) {
@@ -115,6 +122,19 @@ export default function Results() {
 
       setAttemptQuestions(questionsList);
       setFilterTab("all");
+      setDetailTab("questions");
+
+      // Fetch proctoring events
+      setProctoringLoading(true);
+      const { data: procRes, error: procError } = await proctoringApi.listEvents(attempt.id);
+      if (!procError && procRes) {
+        setProctoringEvents(procRes.events || []);
+        setTotalRiskScore(procRes.total_risk_score || 0);
+      } else {
+        setProctoringEvents([]);
+        setTotalRiskScore(0);
+      }
+      setProctoringLoading(false);
     } catch (err: any) {
       toast({ title: "Failed to load details", description: err.message, variant: "destructive" });
       setShowDetailDialog(false);
@@ -304,6 +324,32 @@ export default function Results() {
               </DialogDescription>
             </DialogHeader>
 
+            {/* Tab navigation inside Dialog */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
+              <button
+                onClick={() => setDetailTab("questions")}
+                className={`px-4 py-2 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
+                  detailTab === "questions"
+                    ? "border-blue-600 text-blue-600 font-black"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                Question Sheets
+              </button>
+              {(testInfo?.camera_required === 1 || proctoringEvents.length > 0) && (
+                <button
+                  onClick={() => setDetailTab("proctoring")}
+                  className={`px-4 py-2 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
+                    detailTab === "proctoring"
+                      ? "border-blue-600 text-blue-600 font-black"
+                      : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Proctoring Logs ({proctoringEvents.length})
+                </button>
+              )}
+            </div>
+
             {detailLoading ? (
               <div className="py-12 flex flex-col items-center justify-center gap-4">
                 <div className="relative h-10 w-10">
@@ -312,6 +358,12 @@ export default function Results() {
                 </div>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Loading Evaluation Sheets...</p>
               </div>
+            ) : detailTab === "proctoring" ? (
+              <ProctoringTimeline
+                events={proctoringEvents}
+                totalRiskScore={totalRiskScore}
+                loading={proctoringLoading}
+              />
             ) : (() => {
               const counts = {
                 all: attemptQuestions.length,

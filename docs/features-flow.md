@@ -298,6 +298,28 @@ For registered student accounts, the exam flow follows an identical pattern to t
 
 ---
 
+## Section-Based Test Builder & Candidate Experience
+
+The portal supports breaking down tests into multiple configurable sections (e.g. Aptitude, Reasoning, Technical), complete with section-level configurations and restricted candidate flows.
+
+### 1. Section Configurations
+Administrators can define the following constraints per section:
+* **Custom Section Timer**: A countdown timer in minutes (`duration_minutes`) dedicated strictly to the section.
+* **Negative Marks Override**: Section-specific marks penalty score per incorrect answer.
+* **Shuffle Questions**: Randomizes question order within the section.
+* **Shuffle Options**: Shuffles the choices (A, B, C, D) within questions in that section.
+* **Navigation Lock**: Blocks candidates from navigating back to a section once they proceed to the next one.
+
+### 2. Candidate Section Flow & UI Transitions
+* **Section Transition Instructions Screen**: Before entering a section, candidates see a full-screen transition overlay highlighting the section name, total questions, cumulative marks, section duration, and whether navigation is locked.
+* **Active Section Timers**: If a section has a timer, a section countdown timer displays next to the overall test timer. When the section timer expires, the candidate is auto-advanced to the next section or submitted (if on the final section).
+* **Navigation Boundaries**: If Navigation Lock is enabled on the current section, the candidate can only click and answer questions inside the active section. Moving to the next section locks the previous questions from edits or selection clicks, displaying a "LOCKED" indicator on the sidebar question palette.
+* **Grading Integrity with Option Shuffling**: To ensure options shuffling works transparently with the backend grading engine:
+  * When options are shuffled on the client, a client-side `option_mapping` records the randomized sequence.
+  * When candidates submit an answer, the client maps the selected choice back to the database's original correct key before executing `attemptAnswersApi.upsert` or submitting attempts.
+
+---
+
 ## Upgraded CSV Question Import System
 
 The portal features a robust, validation-driven bulk import engine to upload questions directly into the bank or sections of a test.

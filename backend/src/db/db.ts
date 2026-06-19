@@ -36,7 +36,8 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
     const testCols = [
       { name: "show_results_after_submission", type: "INTEGER DEFAULT 0" },
       { name: "allow_report_download", type: "INTEGER DEFAULT 0" },
-      { name: "result_status", type: "TEXT DEFAULT 'draft'" }
+      { name: "result_status", type: "TEXT DEFAULT 'draft'" },
+      { name: "camera_required", type: "INTEGER DEFAULT 0" }
     ];
     for (const col of testCols) {
       try {
@@ -124,6 +125,41 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         failed_count INTEGER NOT NULL
       );
     `);
+
+    // Client feature gating table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS client_features (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        feature_name TEXT NOT NULL,
+        enabled INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(client_id, feature_name)
+      );
+    `);
+
+    // Proctoring events table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS proctoring_events (
+        id TEXT PRIMARY KEY,
+        attempt_id TEXT NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+        test_id TEXT NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+        event_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        severity_score INTEGER DEFAULT 0,
+        storage_path TEXT,
+        has_evidence INTEGER DEFAULT 0,
+        metadata TEXT,
+        duration_seconds REAL DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Performance Indexes for timeline
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_attempt ON proctoring_events(attempt_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_test ON proctoring_events(test_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_created ON proctoring_events(created_at);`);
+
     console.log("Database migrations ran successfully.");
   } catch (err) {
     console.error("Database migrations failed:", err);
