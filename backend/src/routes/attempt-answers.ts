@@ -62,7 +62,7 @@ export default async function handler(req: Request, res: Response) {
     // Validate that the target attempt belongs to the user and is in_progress
     const targetAttemptId = body[0].attempt_id;
     const { rows: attemptRows } = await db.execute({
-      sql: "SELECT student_id, status FROM attempts WHERE id = ?",
+      sql: "SELECT student_id, status, test_id, started_at FROM attempts WHERE id = ?",
       args: [targetAttemptId],
     });
 
@@ -76,6 +76,76 @@ export default async function handler(req: Request, res: Response) {
 
     if (attempt.status !== "in_progress") {
       return res.status(403).json({ error: "Cannot modify answers of a submitted attempt" });
+    }
+
+    // Fetch test sections
+    const { rows: secRows } = await db.execute({
+      sql: "SELECT id, duration_minutes, navigation_locked, position FROM test_sections WHERE test_id = ? ORDER BY position ASC",
+      args: [attempt.test_id]
+    });
+
+    const lockedSectionIds = new Set<string>();
+    if (secRows.length > 0) {
+      // 1. Check timer expiration
+      if (attempt.started_at) {
+        const startStr = attempt.started_at.replace(" ", "T") + "Z";
+        const startMs = new Date(startStr).getTime();
+        let elapsedSecs = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+        
+        for (const sec of secRows as any[]) {
+          if (sec.duration_minutes !== null) {
+            const durationSecs = sec.duration_minutes * 60;
+            if (elapsedSecs >= durationSecs) {
+              lockedSectionIds.add(sec.id);
+              elapsedSecs -= durationSecs;
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+      }
+
+      // 2. Check navigation lock progression
+      // Fetch the highest section position already answered by the student
+      const { rows: progressionRows } = await db.execute({
+        sql: `SELECT ts.position 
+              FROM attempt_answers aa 
+              JOIN test_questions tq ON tq.question_id = aa.question_id 
+              JOIN test_sections ts ON ts.id = tq.section_id 
+              WHERE aa.attempt_id = ? AND tq.test_id = ?
+              ORDER BY ts.position DESC LIMIT 1`,
+        args: [targetAttemptId, attempt.test_id]
+      });
+
+      if (progressionRows.length > 0) {
+        const maxPosition = (progressionRows[0] as any).position;
+        // Lock any prior sections that have navigation_locked enabled
+        for (const sec of secRows as any[]) {
+          if (sec.position < maxPosition && sec.navigation_locked === 1) {
+            lockedSectionIds.add(sec.id);
+          }
+        }
+      }
+    }
+
+    if (lockedSectionIds.size > 0) {
+      // Fetch section_id for the questions being updated
+      const questionIds = body.map((row: any) => row.question_id);
+      const placeholders = questionIds.map(() => "?").join(",");
+      const { rows: tqRows } = await db.execute({
+        sql: `SELECT question_id, section_id FROM test_questions WHERE test_id = ? AND question_id IN (${placeholders})`,
+        args: [attempt.test_id, ...questionIds]
+      });
+      const questionSectionMap = new Map(tqRows.map((r: any) => [r.question_id, r.section_id]));
+
+      for (const row of body) {
+        const qSectionId = questionSectionMap.get(row.question_id);
+        if (qSectionId && lockedSectionIds.has(qSectionId)) {
+          return res.status(403).json({ error: "Access denied. Target section is locked or expired." });
+        }
+      }
     }
 
     const stmts = body.map((row: any) => ({

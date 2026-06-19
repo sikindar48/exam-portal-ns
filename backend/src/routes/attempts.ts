@@ -250,8 +250,8 @@ export default async function handler(req: Request, res: Response) {
     const id = randomUUID();
     const attempt_token = randomUUID();
     await db.execute({
-      sql: `INSERT INTO attempts (id, student_id, test_id, status, submitted_at, ip_address, attempt_token)
-            VALUES (?,?,?,?,datetime('now'),?,?)`,
+      sql: `INSERT INTO attempts (id, student_id, test_id, status, started_at, submitted_at, ip_address, attempt_token)
+            VALUES (?,?,?,?,datetime('now'),NULL,?,?)`,
       args: [id, resolvedStudentId, test_id, status, ipAddress, attempt_token],
     });
     const { rows } = await db.execute({ sql: "SELECT * FROM attempts WHERE id = ?", args: [id] });

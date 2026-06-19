@@ -60,6 +60,20 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       }
     }
 
+    // Migration for attempts table: started_at
+    try {
+      await db.execute(`ALTER TABLE attempts ADD COLUMN started_at TEXT`);
+      console.log(`Added column started_at to attempts table.`);
+      // Migrate legacy rows
+      await db.execute(`UPDATE attempts SET started_at = submitted_at WHERE started_at IS NULL`);
+      await db.execute(`UPDATE attempts SET submitted_at = NULL WHERE status = 'in_progress' AND submitted_at IS NOT NULL`);
+      console.log(`Migrated legacy attempts timestamps successfully.`);
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error(`Error adding column started_at to attempts:`, err);
+      }
+    }
+
     // Migration for test_sections table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS test_sections (
@@ -159,6 +173,8 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_attempt ON proctoring_events(attempt_id);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_test ON proctoring_events(test_id);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_created ON proctoring_events(created_at);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_attempts_student_test ON attempts(student_id, test_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_test_questions_test ON test_questions(test_id);`);
 
     console.log("Database migrations ran successfully.");
   } catch (err) {

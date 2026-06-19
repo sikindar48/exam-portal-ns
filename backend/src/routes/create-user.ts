@@ -34,18 +34,36 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: "Cannot create user for a different organization" });
   }
 
-  // Create auth user via Firebase Admin
+  // Check if auth user already exists in Firebase
   let userId: string;
+  let userExists = false;
   try {
-    const userRecord = await getAuth().createUser({
-      email: email.trim(),
+    const existingUser = await getAuth().getUserByEmail(email.trim());
+    userId = existingUser.uid;
+    userExists = true;
+    
+    // Update existing user credentials/name
+    await getAuth().updateUser(userId, {
       password,
       displayName: name.trim(),
-      emailVerified: true,
     });
-    userId = userRecord.uid;
   } catch (err: any) {
-    return res.status(400).json({ error: err.message ?? "Failed to create auth user" });
+    if (err.code === "auth/user-not-found") {
+      // Create auth user via Firebase Admin
+      try {
+        const userRecord = await getAuth().createUser({
+          email: email.trim(),
+          password,
+          displayName: name.trim(),
+          emailVerified: true,
+        });
+        userId = userRecord.uid;
+      } catch (createErr: any) {
+        return res.status(400).json({ error: createErr.message ?? "Failed to create auth user" });
+      }
+    } else {
+      return res.status(400).json({ error: err.message ?? "Failed to check existing auth user" });
+    }
   }
 
   const db = getDb();
@@ -54,7 +72,9 @@ export default async function handler(req: Request, res: Response) {
     // Insert profile + role into Turso
     await db.batch([
       {
-        sql: `INSERT INTO profiles (id, name, email, client_id) VALUES (?,?,?,?)`,
+        sql: `INSERT INTO profiles (id, name, email, client_id) 
+              VALUES (?,?,?,?)
+              ON CONFLICT(id) DO UPDATE SET name=excluded.name, email=excluded.email, client_id=excluded.client_id`,
         args: [userId, name.trim(), email.trim(), client_id],
       },
       {
@@ -65,8 +85,10 @@ export default async function handler(req: Request, res: Response) {
 
     return res.status(200).json({ id: userId });
   } catch (err: any) {
-    // Rollback auth user if Turso insert fails
-    await getAuth().deleteUser(userId);
+    // Rollback auth user ONLY if it was newly created in this request
+    if (!userExists) {
+      await getAuth().deleteUser(userId);
+    }
     return res.status(500).json({ error: err.message ?? "Failed to store user profile" });
   }
 }

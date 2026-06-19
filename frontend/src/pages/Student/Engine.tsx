@@ -377,7 +377,6 @@ export default function Engine() {
       }
 
       setTest(testData);
-      setTimeLeft(testData.timer * 60);
 
       // Fetch test sections
       const { data: secsData } = await testSectionsApi.list(testId!);
@@ -499,6 +498,69 @@ export default function Engine() {
         }
       }
 
+      // Calculate remaining time securely based on the server-authoritative attempt start time (started_at)
+      let calculatedTimeLeft = testData.timer * 60;
+      let startQIndex = 0;
+      let finalLockedSectionIds: string[] = [];
+
+      if (activeAttemptId && existingList && existingList.length > 0) {
+        const attempt = existingList[0];
+        if (attempt.started_at) {
+          // Normalize SQLite UTC datetime to JS Date object
+          const startStr = attempt.started_at.replace(" ", "T") + "Z";
+          const startMs = new Date(startStr).getTime();
+          const nowMs = Date.now();
+          let elapsedSecs = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+          calculatedTimeLeft = Math.max(0, testData.timer * 60 - elapsedSecs);
+
+          // If there are section-specific timers, calculate active section and lock expired sections
+          const hasSectionTimers = dbSections.some(s => s.duration_minutes !== null);
+          if (hasSectionTimers && dbSections.length > 0) {
+            let activeSecId = dbSections[0].id;
+            
+            // Loop through sections in position order
+            for (let i = 0; i < dbSections.length; i++) {
+              const sec = dbSections[i];
+              if (sec.duration_minutes !== null) {
+                const secDurationSecs = sec.duration_minutes * 60;
+                if (elapsedSecs >= secDurationSecs) {
+                  // This section has fully expired! Lock it.
+                  finalLockedSectionIds.push(sec.id);
+                  elapsedSecs -= secDurationSecs;
+                } else {
+                  // The user belongs in this section, with the remaining section time!
+                  activeSecId = sec.id;
+                  const secRemaining = secDurationSecs - elapsedSecs;
+                  localStorage.setItem(`section_time_${activeAttemptId}_${sec.id}`, String(secRemaining));
+                  break;
+                }
+              } else {
+                activeSecId = sec.id;
+                break;
+              }
+            }
+
+            // Find the first question index for the active section
+            const activeQIndex = finalQuestionsList.findIndex(q => q.section_id === activeSecId);
+            if (activeQIndex !== -1) {
+              startQIndex = activeQIndex;
+            }
+          }
+        }
+      }
+
+      setTimeLeft(calculatedTimeLeft);
+      if (finalLockedSectionIds.length > 0) {
+        setLockedSectionIds(finalLockedSectionIds);
+        localStorage.setItem(`locked_sections_${activeAttemptId}`, JSON.stringify(finalLockedSectionIds));
+      }
+      if (startQIndex > 0) {
+        setCurrentQuestionIndex(startQIndex);
+        if (finalQuestionsList[startQIndex]) {
+          initialVisited[finalQuestionsList[startQIndex].id] = true;
+        }
+      }
+
       setVisitedQuestions(initialVisited);
     } catch (err: any) {
       toast({ title: "Loading Failed", description: err.message, variant: "destructive" });
@@ -528,6 +590,27 @@ export default function Engine() {
       }
     }
   }, [currentSection, attemptId]);
+
+  // Load locked sections from localStorage on mount/resume
+  useEffect(() => {
+    if (attemptId) {
+      const saved = localStorage.getItem(`locked_sections_${attemptId}`);
+      if (saved) {
+        try {
+          setLockedSectionIds(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse locked sections", e);
+        }
+      }
+    }
+  }, [attemptId]);
+
+  // Save locked sections to localStorage whenever it changes
+  useEffect(() => {
+    if (attemptId && lockedSectionIds.length > 0) {
+      localStorage.setItem(`locked_sections_${attemptId}`, JSON.stringify(lockedSectionIds));
+    }
+  }, [lockedSectionIds, attemptId]);
 
   const handleSectionTimeout = useCallback(() => {
     if (!currentSection) return;

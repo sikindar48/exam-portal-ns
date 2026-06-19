@@ -21,21 +21,38 @@ export default async function handler(req: Request, res: Response) {
     const isSuper = await hasRole(user.id, "superadmin");
     const isClientAdmin = await hasRole(user.id, "clientadmin");
 
-    if (!isSuper && !isClientAdmin) {
-      // Verify the student/guest has either an active (in_progress) or completed (submitted) attempt for this test
-      const { rows: attemptRows } = await db.execute({
-        sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'in_progress'",
-        args: [user.id, test_id as string],
+    if (!isSuper) {
+      // Fetch test to check its client_id
+      const { rows: testRows } = await db.execute({
+        sql: "SELECT client_id FROM tests WHERE id = ?",
+        args: [test_id as string],
       });
+      if (testRows.length === 0) {
+        return res.status(404).json({ error: "Test not found" });
+      }
+      const testClientId = (testRows[0] as any).client_id;
 
-      if (attemptRows.length === 0) {
-        // Fallback: check if they have a submitted attempt to allow review/history pages to load questions
-        const { rows: submittedRows } = await db.execute({
-          sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'submitted'",
+      const callerClientId = await getUserClientId(user.id);
+      if (callerClientId !== testClientId) {
+        return res.status(403).json({ error: "Access denied. Client mismatch." });
+      }
+
+      if (!isClientAdmin) {
+        // Verify the student/guest has either an active (in_progress) or completed (submitted) attempt for this test
+        const { rows: attemptRows } = await db.execute({
+          sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'in_progress'",
           args: [user.id, test_id as string],
         });
-        if (submittedRows.length === 0) {
-          return res.status(403).json({ error: "Access denied. Active attempt required." });
+
+        if (attemptRows.length === 0) {
+          // Fallback: check if they have a submitted attempt to allow review/history pages to load questions
+          const { rows: submittedRows } = await db.execute({
+            sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'submitted'",
+            args: [user.id, test_id as string],
+          });
+          if (submittedRows.length === 0) {
+            return res.status(403).json({ error: "Access denied. Active attempt required." });
+          }
         }
       }
     }

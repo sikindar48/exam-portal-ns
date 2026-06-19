@@ -53,14 +53,21 @@ export default async function handler(req: Request, res: Response) {
     args: [attempt_id],
   });
 
-  // 3. Load correct answers + marks for all questions in the test
+  // 3. Load correct answers + marks + section mapping for all questions in the test
   const { rows: questionRows } = await db.execute({
-    sql: `SELECT q.id, q.correct_answers, q.correct_answer, q.marks
+    sql: `SELECT q.id, q.correct_answers, q.correct_answer, q.marks, tq.section_id
           FROM questions q
           JOIN test_questions tq ON tq.question_id = q.id
           WHERE tq.test_id = ?`,
     args: [attempt.test_id],
   });
+
+  // Load sections for this test to fetch section-specific negative marks
+  const { rows: sectionRows } = await db.execute({
+    sql: "SELECT id, negative_marks FROM test_sections WHERE test_id = ?",
+    args: [attempt.test_id],
+  });
+  const sectionPenaltyMap = new Map(sectionRows.map((s: any) => [s.id, s.negative_marks]));
 
   // 4. Calculate score
   const answerMap = new Map(answerRows.map((r: any) => [r.question_id, r.selected_option]));
@@ -101,7 +108,11 @@ export default async function handler(req: Request, res: Response) {
       } else {
         wrong++;
         if (negativeMarkingEnabled) {
-          score -= negativeMarksPerWrong;
+          let penalty = negativeMarksPerWrong;
+          if (q.section_id && sectionPenaltyMap.has(q.section_id)) {
+            penalty = sectionPenaltyMap.get(q.section_id) ?? negativeMarksPerWrong;
+          }
+          score -= penalty;
         }
       }
     }

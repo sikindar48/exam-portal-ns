@@ -175,7 +175,35 @@ export default async function handler(req: Request, res: Response) {
 
     const isProd = process.env.NODE_ENV === "production";
 
-    // 5. Handle evidence snapshot upload if required and payload exists
+    const nowISO = new Date().toISOString();
+
+    // 5. Deduplication check (last 30 seconds for the same attempt and event_type)
+    const { rows: recentEvents } = await db.execute({
+      sql: `SELECT * FROM proctoring_events 
+            WHERE attempt_id = ? AND event_type = ? 
+            ORDER BY created_at DESC LIMIT 1`,
+      args: [attempt_id, event_type],
+    });
+
+    if (recentEvents.length > 0) {
+      const recent = recentEvents[0] as any;
+      const recentTime = new Date(recent.created_at).getTime();
+      const nowTime = new Date(nowISO).getTime();
+      const diffSecs = (nowTime - recentTime) / 1000;
+
+      if (diffSecs <= 30) {
+        // Update existing record duration
+        await db.execute({
+          sql: `UPDATE proctoring_events 
+                SET duration_seconds = duration_seconds + ?, created_at = ?
+                WHERE id = ?`,
+          args: [duration_seconds, nowISO, recent.id],
+        });
+        return res.status(200).json({ success: true, deduplicated: true, id: recent.id });
+      }
+    }
+
+    // 6. Handle evidence snapshot upload if required and payload exists (only for new events)
     let storage_path = null;
     let has_evidence = 0;
 
@@ -224,34 +252,6 @@ export default async function handler(req: Request, res: Response) {
             console.error("Local mock GCS write failed:", err);
           }
         }
-      }
-    }
-
-    // 6. Deduplication check (last 30 seconds for the same attempt and event_type)
-    const { rows: recentEvents } = await db.execute({
-      sql: `SELECT * FROM proctoring_events 
-            WHERE attempt_id = ? AND event_type = ? 
-            ORDER BY created_at DESC LIMIT 1`,
-      args: [attempt_id, event_type],
-    });
-
-    const nowISO = new Date().toISOString();
-
-    if (recentEvents.length > 0) {
-      const recent = recentEvents[0] as any;
-      const recentTime = new Date(recent.created_at).getTime();
-      const nowTime = new Date(nowISO).getTime();
-      const diffSecs = (nowTime - recentTime) / 1000;
-
-      if (diffSecs <= 30) {
-        // Update existing record duration
-        await db.execute({
-          sql: `UPDATE proctoring_events 
-                SET duration_seconds = duration_seconds + ?, created_at = ?
-                WHERE id = ?`,
-          args: [duration_seconds, nowISO, recent.id],
-        });
-        return res.status(200).json({ success: true, deduplicated: true, id: recent.id });
       }
     }
 

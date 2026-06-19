@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Monitor, Info, HelpCircle, AlertTriangle, Wifi, ShieldCheck } from "lucide-react";
