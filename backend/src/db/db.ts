@@ -2,16 +2,95 @@ import { createClient } from "@libsql/client";
 
 let client: ReturnType<typeof createClient> | null = null;
 
+let migrated = false;
+
+async function runMigrations(db: ReturnType<typeof createClient>) {
+  if (migrated) return;
+  migrated = true;
+
+  try {
+    const columns = [
+      { name: "question_type", type: "TEXT DEFAULT 'mcq'" },
+      { name: "options", type: "TEXT DEFAULT '[]'" },
+      { name: "correct_answers", type: "TEXT DEFAULT '[]'" },
+      { name: "negative_marks", type: "REAL DEFAULT 0" },
+      { name: "difficulty", type: "TEXT DEFAULT 'medium'" },
+      { name: "explanation", type: "TEXT DEFAULT ''" },
+      { name: "is_case_sensitive", type: "INTEGER DEFAULT 0" },
+      { name: "import_batch_id", type: "TEXT" },
+      { name: "version", type: "INTEGER DEFAULT 1" }
+    ];
+
+    for (const col of columns) {
+      try {
+        await db.execute(`ALTER TABLE questions ADD COLUMN ${col.name} ${col.type}`);
+        console.log(`Added column ${col.name} to questions table.`);
+      } catch (err: any) {
+        if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+          console.error(`Error adding column ${col.name}:`, err);
+        }
+      }
+    }
+
+    // Migration for tests table: result settings
+    const testCols = [
+      { name: "show_results_after_submission", type: "INTEGER DEFAULT 0" },
+      { name: "allow_report_download", type: "INTEGER DEFAULT 0" },
+      { name: "result_status", type: "TEXT DEFAULT 'draft'" }
+    ];
+    for (const col of testCols) {
+      try {
+        await db.execute(`ALTER TABLE tests ADD COLUMN ${col.name} ${col.type}`);
+        console.log(`Added column ${col.name} to tests table.`);
+      } catch (err: any) {
+        if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+          console.error(`Error adding column ${col.name} to tests:`, err);
+        }
+      }
+    }
+
+    // Migration for attempts table: attempt_token
+    try {
+      await db.execute(`ALTER TABLE attempts ADD COLUMN attempt_token TEXT`);
+      console.log(`Added column attempt_token to attempts table.`);
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error(`Error adding column attempt_token to attempts:`, err);
+      }
+    }
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS question_import_logs (
+        id TEXT PRIMARY KEY,
+        uploaded_by TEXT NOT NULL,
+        uploaded_at TEXT NOT NULL,
+        import_batch_id TEXT NOT NULL,
+        total_questions INTEGER NOT NULL,
+        imported_count INTEGER NOT NULL,
+        duplicate_count INTEGER NOT NULL,
+        failed_count INTEGER NOT NULL
+      );
+    `);
+    console.log("Database migrations ran successfully.");
+  } catch (err) {
+    console.error("Database migrations failed:", err);
+  }
+}
+
 export function getDb() {
   if (!client) {
     const url = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL || process.env.VITE_TURSO_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_TOKEN || process.env.VITE_TURSO_TOKEN;
     if (!url || !authToken) throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN env vars");
     client = createClient({ url, authToken });
+    
     // Enable SQLite foreign key constraint enforcement
     client.execute("PRAGMA foreign_keys = ON;").catch((err) => {
       console.error("Failed to enable SQLite foreign key support:", err);
     });
+
+    // Run columns and table migrations asynchronously
+    runMigrations(client);
   }
   return client;
 }

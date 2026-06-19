@@ -1,17 +1,21 @@
-# Architecture & Database Schema
+# System Architecture & Database Schema - NS Exam Portal
+
+This document outlines the system architecture and database design of the NS Exam Portal. The current production implementation is a decoupled single-tenant/multi-tenant capable web application designed for high concurrency and performance.
+
+---
 
 ## Tech Stack
 
-| Layer          | Technology                                     |
-| -------------- | ---------------------------------------------- |
-| Frontend       | React 18, TypeScript, Vite                     |
-| Routing        | React Router v6                                |
-| UI Components  | shadcn/ui (Radix UI primitives + Tailwind CSS) |
-| State / Data   | React Context (Auth), TanStack Query (future)  |
-| Backend        | Supabase (PostgreSQL 15, Auth, Edge Functions) |
-| Edge Functions | Deno (TypeScript)                              |
-| Hosting        | Vercel (frontend), Supabase (backend)          |
-| CI/CD          | GitHub Actions (keep-alive workflow)           |
+| Layer | Technology | Details / Purpose |
+| :--- | :--- | :--- |
+| **Frontend** | React 18, TypeScript, Vite | Single Page Application (SPA) providing dashboards and assessment interface. |
+| **Routing** | React Router v6 | Role-based layout structures and client-side page routing. |
+| **Styling** | shadcn/ui + Tailwind CSS | Component library using Radix UI primitives and utility-first styling. |
+| **Authentication** | Firebase Authentication | Anonymous authentication for guest users; credentials-based logins for students and admins. |
+| **Backend** | Node.js, Express, TypeScript | REST API service containing business logic, middleware, and route handlers. |
+| **Database** | Turso (libSQL) | Serverless relational database based on SQLite, designed for edge/regional distribution. |
+| **Hosting (Backend)** | GCP Cloud Run | Containerized, scalable backend API deployed on Google Cloud Platform. |
+| **Hosting (Frontend)** | Cloudflare Pages | Edge-hosted frontend distribution with custom domains. |
 
 ---
 
@@ -19,457 +23,451 @@
 
 ```
 exam-portal-ns/
-├── src/
-│   ├── App.css
-│   ├── App.tsx                        # Root router, providers, lazy pages
-│   ├── main.tsx                       # React entry point
-│   ├── index.css                      # Tailwind + design tokens
-│   ├── components/
-│   │   ├── Auth/
-│   │   │   └── Protected.tsx          # Role-based route guard
-│   │   ├── Brand/
-│   │   │   └── Footer.tsx             # Footer with NS branding
-│   │   ├── ClientAdmin/
-│   │   │   ├── Questions/             # Category folder and dialog components
-│   │   │   └── Tests/                 # Test table and folder components
-│   │   ├── Common/
-│   │   │   ├── ErrorBoundary.tsx      # Global error boundary component
-│   │   │   └── NavLink.tsx            # Active link component
-│   │   ├── QuestionImport/
-│   │   │   └── CSV.tsx                # CSV question import UI
-│   │   ├── SuperAdmin/
-│   │   │   └── Clients/               # Client and admin management components
-│   │   ├── Test/
-│   │   │   └── Sharing.tsx            # Share code + QR dialog
-│   │   ├── TestBuilder/               # Sidebar and question editor components
-│   │   ├── TestEngine/                # Header, sidebar, and question navigation
-│   │   ├── Theme/
-│   │   │   ├── Provider.tsx           # Light/dark/system theme provider
-│   │   │   └── Toggle.tsx             # Theme switcher dropdown
-│   │   └── ui/                        # shadcn/ui primitives
-│   ├── contexts/
-│   │   └── AuthContext.tsx            # Auth state, role, clientId
-│   ├── hooks/
-│   │   ├── use-mobile.tsx             # Mobile detection hook
-│   │   └── use-toast.ts               # Toast notification hook
-│   ├── integrations/
-│   │   └── supabase/
-│   │       ├── client.ts              # Supabase client init
-│   │       └── types.ts               # Auto-generated DB types
-│   ├── pages/
-│   │   ├── Auth/
-│   │   │   ├── Forgot.tsx             # Password reset request
-│   │   │   ├── Page.tsx               # Sign in / Sign up page
-│   │   │   └── Reset.tsx              # Password reset form
-│   │   ├── ClientAdmin/
-│   │   │   ├── Builder.tsx            # Test builder (create/edit) page
-│   │   │   ├── Dashboard.tsx          # Org stats & analytics dashboard
-│   │   │   ├── Questions.tsx          # Question bank management page
-│   │   │   ├── Results.tsx            # Test attempts and results viewer
-│   │   │   ├── Settings.tsx           # Org settings management page
-│   │   │   ├── Students.tsx           # Student user accounts page
-│   │   │   └── Tests.tsx              # Folder-based tests management page
-│   │   ├── Home/
-│   │   │   └── Page.tsx               # Public landing page
-│   │   ├── Student/
-│   │   │   ├── Dashboard.tsx          # Available tests listing page
-│   │   │   ├── Engine.tsx             # Secure test taking screen
-│   │   │   └── History.tsx            # Previous attempts history page
-│   │   ├── SuperAdmin/
-│   │   │   ├── Clients.tsx            # Client organization control page
-│   │   │   └── Dashboard.tsx          # Platform-wide stats dashboard
-│   │   ├── Index.tsx
-│   │   └── NotFound.tsx               # 404 error page
-│   ├── types/
-│   │   └── test.ts                    # Test builder types
-│   └── utils/
-│       ├── csvParser.ts               # CSV parsing utility
-│       └── questionValidator.ts       # Question validation
-├── supabase/
-│   ├── functions/
-│   │   └── create-user/index.ts       # Edge Function: user creation
-│   └── migrations/                    # SQL migration files
-├── docs/                              # Documentation
-│   ├── architecture-db-schema.md      # This file
-│   └── features-flow.md               # User flows
-├── public/
-│   ├── 404.html                       # SPA fallback
-│   ├── favicon.ico
-│   └── robots.txt
-├── complete-setup.sql                 # Full DB bootstrap
-├── .github/workflows/keep-alive.yml   # Supabase ping cron
-└── .env                               # Local env vars (gitignored)
+├── backend/
+│   ├── src/
+│   │   ├── auth/
+│   │   │   └── auth.ts                # Firebase ID token verification
+│   │   ├── db/
+│   │   │   └── db.ts                  # Turso db client initialization
+│   │   ├── middleware/
+│   │   │   ├── auth.ts                # Global Authentication context extractor
+│   │   │   └── authz.ts               # Role-based route protectors
+│   │   ├── routes/
+│   │   │   ├── rpc/
+│   │   │   │   ├── clone-test.ts      # Custom duplicate test handler
+│   │   │   │   └── submit-attempt.ts  # Exam submission & grading logic
+│   │   │   ├── attempts.ts            # Attempts management routes
+│   │   │   ├── attempt-answers.ts     # Save answers routes
+│   │   │   ├── clients.ts             # Tenant clients management routes
+│   │   │   ├── create-user.ts         # User registration route (Firebase + Turso)
+│   │   │   ├── profiles.ts            # User profile data routes
+│   │   │   ├── question-folders.ts    # Category folders management
+│   │   │   ├── questions.ts           # Question bank management routes
+│   │   │   ├── stats.ts               # Admin reporting/analytics statistics
+│   │   │   ├── test-folders.ts        # Test folder routes
+│   │   │   ├── test-questions.ts      # Test question association route (GET with auth check)
+│   │   │   └── tests.ts               # Test configurations management
+│   │   ├── services/
+│   │   │   └── roles.ts               # Role checks and tenant resolution helper
+│   │   ├── validation/
+│   │   │   └── schemas.ts             # Zod validation schemas
+│   │   └── server.ts                  # Server entry point with CORS and rate limiters
+│   ├── Dockerfile                     # Multi-stage production container build
+│   └── loadtest.js                    # k6 performance evaluation script
+├── frontend/
+│   ├── src/
+│   │   ├── components/                # Modular UI components (Auth, Theme, Common)
+│   │   ├── contexts/
+│   │   │   └── AuthContext.tsx        # Auth state (using Firebase SDK)
+│   │   ├── integrations/
+│   │   │   └── firebase.ts            # Client-side Firebase client initialization
+│   │   ├── pages/                     # Routed pages (SuperAdmin, ClientAdmin, Student, Test)
+│   │   ├── services/                  # API client handlers
+│   │   ├── types/                     # Shared type interfaces
+│   │   └── utils/                     # CSV parses & client side helpers
+│   └── wrangler.toml                  # Cloudflare Pages deployment configuration
+├── docs/                              # Project Documentation
+└── cloudbuild.yaml                    # Google Cloud Build build pipeline script
 ```
 
 ---
 
-## Architecture Diagram
+## System Architecture Diagram
 
+### Visual Diagram (Mermaid)
+```mermaid
+graph TD
+    User["Candidate / Admin Browser"] -->|HTTPS / JSON| FE["Frontend (Cloudflare Pages)"]
+    User -->|API Requests + Auth Token| BE["Express Backend (GCP Cloud Run)"]
+    BE -->|Token Validation| FB["Firebase Auth (ID Tokens)"]
+    BE -->|SQL Queries / LibSQL| DB["Turso Database (libSQL)"]
+
+    subgraph "Express Backend Routes & Services"
+        BE_MD["Middleware (Auth & Authz)"] --> BE_R["Routes (attempts, questions, tests)"]
+        BE_R --> BE_RPC["RPC Endpoints (submit-attempt, clone-test)"]
+        BE_R --> BE_DB["Turso DB Helper (db.ts)"]
+    end
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Browser (React)                   │
-│                                                      │
-│  ThemeProvider → AuthProvider → Router               │
-│                         │                            │
-│              BrowserRouter (React Router v6)         │
-│                         │                            │
-│   ┌──────────┬──────────┼──────────┬──────────┐     │
-│   │SuperAdmin│ClientAdmin│  Student │  Public  │     │
-│   │ Dashboard│ Dashboard │Dashboard │ Landing  │     │
-│   │  Clients │  Tests    │ History  │ JoinTest │     │
-│   └──────────┴──────────┴──────────┴──────────┘     │
-└─────────────────────┬───────────────────────────────┘
-                      │ HTTPS (REST / Realtime)
-┌─────────────────────▼───────────────────────────────┐
-│                    Supabase                          │
-│                                                      │
-│  ┌──────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │   Auth   │  │  PostgreSQL  │  │ Edge Functions│  │
-│  │  (JWT)   │  │  + RLS       │  │  (Deno)       │  │
-│  └──────────┘  └──────────────┘  └───────────────┘  │
-└─────────────────────────────────────────────────────┘
+
+### Text Diagram (Fallback)
+```
+┌────────────────────────────────────────────────────────┐
+│                     Browser (React)                    │
+│                                                        │
+│   ThemeProvider  ──►  AuthProvider  ──►  Router        │
+│                                            │           │
+│                    React Router v6 ◄───────┘           │
+│                           │                            │
+│    ┌────────────┬─────────┴──┬───────────┬─────────┐   │
+│    │ SuperAdmin │ ClientAdmin│  Student  │  Guest  │   │
+│    │ Dashboard  │ Dashboard  │ Dashboard │ Join    │   │
+│    └────────────┴────────────┴───────────┴─────────┘   │
+└───────────────────────────┬────────────────────────────┘
+                            │ HTTPS (JSON + Auth Token)
+┌───────────────────────────▼────────────────────────────┐
+│                    GCP Cloud Run Backend               │
+│                                                        │
+│    ┌──────────────────┐            ┌──────────────┐    │
+│    │  Express Server  │───────────►│  Firebase    │    │
+│    │  (server.ts)     │            │  Auth (SDK)  │    │
+│    └────────┬─────────┘            └──────────────┘    │
+│             │                                          │
+│             ▼                                          │
+│    ┌──────────────────┐                                │
+│    │  Turso DB Client │                                │
+│    │  (@libsql)       │                                │
+│    └────────┬─────────┘                                │
+└─────────────┼──────────────────────────────────────────┘
+              │ SQL queries
+┌─────────────▼──────────────────────────────────────────┐
+│                    Turso Database (libSQL)             │
+│                                                        │
+│    clients  ──►  profiles  ──►  attempts               │
+│       │             │              │                   │
+│       ▼             ▼              ▼                   │
+│    tests ◄── test_questions ──► attempt_answers        │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Database Schema
 
-### Enum
-
-```sql
-CREATE TYPE public.app_role AS ENUM ('superadmin', 'clientadmin', 'student');
-```
-
----
+The Turso database schema matches the relational schema converted from the original PostgreSQL definition, modified to support SQLite-compatible datatypes and indexing.
 
 ### Tables
 
 #### `clients`
-
-Represents an organization (tenant).
-
-| Column          | Type          | Notes               |
-| --------------- | ------------- | ------------------- |
-| `id`            | `uuid` PK     | `gen_random_uuid()` |
-| `name`          | `text`        | Required            |
-| `address`       | `text`        | Optional            |
-| `logo_url`      | `text`        | Optional            |
-| `active_status` | `boolean`     | Default `true`      |
-| `created_at`    | `timestamptz` | Auto                |
-| `updated_at`    | `timestamptz` | Auto (trigger)      |
-
----
+Represents client organizations (tenants).
+* `id` (TEXT, PK): Unique client UUID.
+* `name` (TEXT): Client organization name.
+* `address` (TEXT, Nullable): Office address.
+* `logo_url` (TEXT, Nullable): URL path to organization logo.
+* `active_status` (INTEGER): `1` for active, `0` for inactive (Default `1`).
+* `created_at` (TEXT): Timestamp string (Default `datetime('now')`).
+* `updated_at` (TEXT): Timestamp string (Default `datetime('now')`).
 
 #### `profiles`
-
-One row per auth user. Extends `auth.users`.
-
-| Column       | Type          | Notes                                                      |
-| ------------ | ------------- | ---------------------------------------------------------- |
-| `id`         | `uuid` PK     | FK → `auth.users(id)` CASCADE                              |
-| `name`       | `text`        | Required                                                   |
-| `email`      | `text`        | Required                                                   |
-| `client_id`  | `uuid`        | FK → `clients(id)` CASCADE, nullable (superadmin has null) |
-| `created_at` | `timestamptz` | Auto                                                       |
-| `updated_at` | `timestamptz` | Auto (trigger)                                             |
-
----
+One row per registered user. Linked directly to Firebase Auth UID.
+* `id` (TEXT, PK): Unique Firebase Auth UID.
+* `name` (TEXT): Display name.
+* `email` (TEXT): User email address.
+* `client_id` (TEXT, Nullable): FK → `clients(id)` ON DELETE CASCADE. Null for `superadmin` users.
+* `created_at` (TEXT): Timestamp string.
+* `updated_at` (TEXT): Timestamp string.
 
 #### `user_roles`
-
-Stores role assignments. A user can have multiple roles (e.g., both `clientadmin` and `student`), but the app picks the highest-priority one.
-
-| Column      | Type       | Notes                                  |
-| ----------- | ---------- | -------------------------------------- |
-| `id`        | `uuid` PK  |                                        |
-| `user_id`   | `uuid`     | FK → `auth.users(id)` CASCADE          |
-| `role`      | `app_role` | `superadmin \| clientadmin \| student` |
-| `client_id` | `uuid`     | FK → `clients(id)` CASCADE, nullable   |
-| —           | UNIQUE     | `(user_id, role)`                      |
-
----
-
-#### `test_folders`
-
-Stores folders created by client admins to organize tests.
-
-| Column       | Type          | Notes                      |
-| ------------ | ------------- | -------------------------- |
-| `id`         | `uuid` PK     |                            |
-| `client_id`  | `uuid`        | FK → `clients(id)` CASCADE |
-| `name`       | `text`        | Required                   |
-| `created_at` | `timestamptz` | Auto                       |
-| `updated_at` | `timestamptz` | Auto (trigger)             |
-
----
+Holds roles assignments. Users can have multiple roles, but the system selects the highest priority: `superadmin > clientadmin > student`.
+* `id` (TEXT, PK): Primary key.
+* `user_id` (TEXT): Linked user UID.
+* `role` (TEXT): CHECK constraint `role IN ('superadmin', 'clientadmin', 'student')`.
+* `client_id` (TEXT, Nullable): FK → `clients(id)` ON DELETE CASCADE.
+* **Constraints**: `UNIQUE(user_id, role)`.
 
 #### `question_folders`
-
-Stores categories/folders created by client admins to organize questions in their question bank.
-
-| Column       | Type          | Notes                                     |
-| ------------ | ------------- | ----------------------------------------- |
-| `id`         | `uuid` PK     |                                           |
-| `client_id`  | `uuid`        | FK → `clients(id)` CASCADE                |
-| `name`       | `text`        | Required                                  |
-| `parent_id`  | `uuid`        | FK → `question_folders(id)` CASCADE, null |
-| `created_at` | `timestamptz` | Auto                                      |
-| `updated_at` | `timestamptz` | Auto (trigger)                            |
-
----
-
-#### `test_sections`
-
-Stores sections within a test to group questions (e.g. Section A, Section B).
-
-| Column       | Type          | Notes                    |
-| ------------ | ------------- | ------------------------ |
-| `id`         | `uuid` PK     |                          |
-| `test_id`    | `uuid`        | FK → `tests(id)` CASCADE |
-| `name`       | `text`        | Required                 |
-| `position`   | `integer`     | Section order index      |
-| `created_at` | `timestamptz` | Auto                     |
-
----
+Organizes questions within the client's question bank.
+* `id` (TEXT, PK): Folder UID.
+* `client_id` (TEXT): FK → `clients(id)` ON DELETE CASCADE.
+* `name` (TEXT): Folder name.
+* `parent_id` (TEXT, Nullable): FK → `question_folders(id)` ON DELETE CASCADE (Supports nesting).
+* `created_at` (TEXT): Timestamp.
+* `updated_at` (TEXT): Timestamp.
 
 #### `questions`
+Multiple-choice questions belonging to a client tenant.
+* `id` (TEXT, PK): Question UID.
+* `client_id` (TEXT): FK → `clients(id)` ON DELETE CASCADE.
+* `folder_id` (TEXT, Nullable): FK → `question_folders(id)` ON DELETE SET NULL.
+* `question_text` (TEXT): Question body text.
+* `option_a` (TEXT): Option A content.
+* `option_b` (TEXT): Option B content.
+* `option_c` (TEXT): Option C content.
+* `option_d` (TEXT): Option D content.
+* `correct_answer` (TEXT): CHECK constraint `correct_answer IN ('A','B','C','D')`.
+* `difficulty` (TEXT, Nullable): Difficulty metadata string.
+* `marks` (INTEGER): Points allocated (Default `1`).
+* `created_at` (TEXT): Timestamp.
+* `updated_at` (TEXT): Timestamp.
 
-MCQ questions belonging to a client.
-
-| Column           | Type          | Notes                                      |
-| ---------------- | ------------- | ------------------------------------------ |
-| `id`             | `uuid` PK     |                                            |
-| `client_id`      | `uuid`        | FK → `clients(id)` CASCADE                 |
-| `folder_id`      | `uuid`        | FK → `question_folders(id)` SET NULL, null |
-| `question_text`  | `text`        |                                            |
-| `option_a`       | `text`        |                                            |
-| `option_b`       | `text`        |                                            |
-| `option_c`       | `text`        |                                            |
-| `option_d`       | `text`        |                                            |
-| `correct_answer` | `text`        | CHECK `IN ('A','B','C','D')`               |
-| `difficulty`     | `text`        | Nullable (Constraint dropped for builder)  |
-| `marks`          | `integer`     | Default `1`                                |
-| `created_at`     | `timestamptz` | Auto                                       |
-| `updated_at`     | `timestamptz` | Auto (trigger)                             |
-
----
+#### `test_folders`
+Organizes exams within the client's test dashboard.
+* `id` (TEXT, PK): Folder UID.
+* `client_id` (TEXT): FK → `clients(id)` ON DELETE CASCADE.
+* `name` (TEXT): Folder display name.
+* `created_at` (TEXT): Timestamp.
+* `updated_at` (TEXT): Timestamp.
 
 #### `tests`
+Exam configurations created by client administrators.
+* `id` (TEXT, PK): Test UID.
+* `client_id` (TEXT): FK → `clients(id)` ON DELETE CASCADE.
+* `folder_id` (TEXT, Nullable): FK → `test_folders(id)` ON DELETE SET NULL.
+* `test_name` (TEXT): Name of the exam.
+* `timer` (INTEGER): Duration limit in minutes.
+* `shuffle` (INTEGER): Randomize question sequence (`1` = true, `0` = false).
+* `allow_review` (INTEGER): Review allowed after test submission (`1` = true, `0` = false).
+* `negative_marking` (INTEGER): Deduction penalty active (`1` = true, `0` = false).
+* `negative_marks` (REAL): Penalty deduction score per incorrect answer (Default `0`).
+* `restrict_navigation` (INTEGER): Prevent backing up to previous questions (`1` = true, `0` = false).
+* `attempts_allowed` (INTEGER): Allowed attempt limit per student (Default `1`).
+* `status` (TEXT): CHECK constraint `status IN ('draft', 'published')`.
+* `active` (INTEGER): Active status flag (Default `1`).
+* `allow_guests` (INTEGER): Guest login allowed (`1` = true, `0` = false).
+* `scheduled_start` (TEXT, Nullable): Start date-time string.
+* `scheduled_end` (TEXT, Nullable): End date-time string.
+* `share_code` (TEXT): Unique invite join code.
+* `public_link_enabled` (INTEGER): Direct access link active (`1` = true, `0` = false).
+* `created_at` (TEXT): Timestamp.
+* `updated_at` (TEXT): Timestamp.
 
-A test created by a client admin. Supports folders, scheduling, and flexible attempt limits.
-
-| Column                | Type          | Notes                                     |
-| --------------------- | ------------- | ----------------------------------------- |
-| `id`                  | `uuid` PK     |                                           |
-| `client_id`           | `uuid`        | FK → `clients(id)` CASCADE                |
-| `folder_id`           | `uuid`        | FK → `test_folders(id)` SET NULL          |
-| `test_name`           | `text`        |                                           |
-| `timer`               | `integer`     | Duration in minutes                       |
-| `shuffle`             | `boolean`     | Randomize question order                  |
-| `allow_review`        | `boolean`     | Allow post-test review                    |
-| `negative_marking`    | `boolean`     | Enable score deduction                    |
-| `negative_marks`      | `decimal`     | Marks deducted per wrong answer           |
-| `restrict_navigation` | `boolean`     | Prevent going back                        |
-| `attempts_allowed`    | `integer`     | NULL = unlimited, else 1-100              |
-| `status`              | `text`        | `draft` or `published`                    |
-| `active`              | `boolean`     | Default `true`                            |
-| `allow_guests`        | `boolean`     | Default `false`                           |
-| `scheduled_start`     | `timestamptz` | Optional scheduled start                  |
-| `scheduled_end`       | `timestamptz` | Optional scheduled end                    |
-| `share_code`          | `text`        | UNIQUE, 8-char, auto-generated by trigger |
-| `public_link_enabled` | `boolean`     | Enables public join URL                   |
-| `created_at`          | `timestamptz` | Auto                                      |
-| `updated_at`          | `timestamptz` | Auto (trigger)                            |
-
----
+#### `test_sections`
+Sections within a test to group questions (e.g. Section A, Section B).
+* `id` (TEXT, PK): Section UID.
+* `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
+* `name` (TEXT): Section header.
+* `position` (INTEGER): Ordering sequence index.
+* `created_at` (TEXT): Timestamp.
 
 #### `test_questions`
-
-Junction table linking tests to questions (many-to-many), organized by sections and positions.
-
-| Column        | Type      | Notes                                    |
-| ------------- | --------- | ---------------------------------------- |
-| `id`          | `uuid` PK |                                          |
-| `test_id`     | `uuid`    | FK → `tests(id)` CASCADE                 |
-| `question_id` | `uuid`    | FK → `questions(id)` CASCADE             |
-| `section_id`  | `uuid`    | FK → `test_sections(id)` SET NULL        |
-| `position`    | `integer` | Order index of question within section   |
-| —             | UNIQUE    | `(test_id, question_id)`                 |
-
----
+Junction table linking tests to questions, ordering them within specific sections.
+* `id` (TEXT, PK): Primary key UID.
+* `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
+* `question_id` (TEXT): FK → `questions(id)` ON DELETE CASCADE.
+* `section_id` (TEXT, Nullable): FK → `test_sections(id)` ON DELETE SET NULL.
+* `position` (INTEGER): Question position order index.
+* **Constraints**: `UNIQUE(test_id, question_id)`.
 
 #### `attempts`
-
-A student's attempt at a test.
-
-| Column         | Type          | Notes                         |
-| -------------- | ------------- | ----------------------------- |
-| `id`           | `uuid` PK     |                               |
-| `student_id`   | `uuid`        | FK → `auth.users(id)` CASCADE |
-| `test_id`      | `uuid`        | FK → `tests(id)` CASCADE      |
-| `score`        | `decimal`     | Calculated on submit          |
-| `total_marks`  | `decimal`     | Sum of all question marks     |
-| `submitted_at` | `timestamptz` | Auto                          |
-| `time_taken`   | `integer`     | Seconds elapsed               |
-| `status`       | `text`        | `in_progress \| submitted`    |
-
----
+Tracks candidate test executions.
+* `id` (TEXT, PK): Attempt UID.
+* `student_id` (TEXT): User ID (linked to profile ID / anonymous student profile ID).
+* `test_id` (TEXT): FK → `tests(id)` ON DELETE CASCADE.
+* `score` (REAL, Nullable): Total score computed upon submission.
+* `total_marks` (REAL, Nullable): Sum of all correct question marks.
+* `submitted_at` (TEXT, Nullable): Submission timestamp string.
+* `time_taken` (INTEGER, Nullable): Elasped time in seconds.
+* `status` (TEXT): CHECK constraint `status IN ('in_progress', 'submitted')` (Default `'in_progress'`).
+* `ip_address` (TEXT, Nullable): Candidate IP address.
 
 #### `attempt_answers`
-
-Per-question answer record for an attempt.
-
-| Column              | Type      | Notes                                        |
-| ------------------- | --------- | -------------------------------------------- |
-| `id`                | `uuid` PK |                                              |
-| `attempt_id`        | `uuid`    | FK → `attempts(id)` CASCADE                  |
-| `question_id`       | `uuid`    | FK → `questions(id)` CASCADE                 |
-| `selected_option`   | `text`    | `A \| B \| C \| D \| null`                   |
-| `marked_for_review` | `boolean` | Default `false`                              |
-| —                   | UNIQUE    | `(attempt_id, question_id)` — enables upsert |
+Saves candidate selected options for active or completed test attempts.
+* `id` (TEXT, PK): Answer UID.
+* `attempt_id` (TEXT): FK → `attempts(id)` ON DELETE CASCADE.
+* `question_id` (TEXT): FK → `questions(id)` ON DELETE CASCADE.
+* `selected_option` (TEXT, Nullable): CHECK constraint `selected_option IN ('A','B','C','D')`.
+* `marked_for_review` (INTEGER): Flag to mark question for review (`1` = true, `0` = false).
+* **Constraints**: `UNIQUE(attempt_id, question_id)` (Allows clean option updates).
 
 ---
 
-### Entity Relationship Diagram
+## Entity Relationship Diagram
 
+### Visual Diagram (Mermaid)
+```mermaid
+erDiagram
+    clients {
+        TEXT id PK
+        TEXT name
+        TEXT address
+        TEXT logo_url
+        INTEGER active_status
+        TEXT created_at
+        TEXT updated_at
+    }
+    profiles {
+        TEXT id PK
+        TEXT name
+        TEXT email
+        TEXT client_id FK
+        TEXT created_at
+        TEXT updated_at
+    }
+    user_roles {
+        TEXT id PK
+        TEXT user_id
+        TEXT role
+        TEXT client_id FK
+    }
+    question_folders {
+        TEXT id PK
+        TEXT client_id FK
+        TEXT name
+        TEXT parent_id FK
+        TEXT created_at
+        TEXT updated_at
+    }
+    questions {
+        TEXT id PK
+        TEXT client_id FK
+        TEXT folder_id FK
+        TEXT question_text
+        TEXT option_a
+        TEXT option_b
+        TEXT option_c
+        TEXT option_d
+        TEXT correct_answer
+        TEXT difficulty
+        INTEGER marks
+        TEXT created_at
+        TEXT updated_at
+    }
+    test_folders {
+        TEXT id PK
+        TEXT client_id FK
+        TEXT name
+        TEXT created_at
+        TEXT updated_at
+    }
+    tests {
+        TEXT id PK
+        TEXT client_id FK
+        TEXT folder_id FK
+        TEXT test_name
+        INTEGER timer
+        INTEGER shuffle
+        INTEGER allow_review
+        INTEGER negative_marking
+        REAL negative_marks
+        INTEGER restrict_navigation
+        INTEGER attempts_allowed
+        TEXT status
+        INTEGER active
+        INTEGER allow_guests
+        TEXT scheduled_start
+        TEXT scheduled_end
+        TEXT share_code
+        INTEGER public_link_enabled
+        TEXT created_at
+        TEXT updated_at
+    }
+    test_sections {
+        TEXT id PK
+        TEXT test_id FK
+        TEXT name
+        INTEGER position
+        TEXT created_at
+    }
+    test_questions {
+        TEXT id PK
+        TEXT test_id FK
+        TEXT question_id FK
+        TEXT section_id FK
+        INTEGER position
+    }
+    attempts {
+        TEXT id PK
+        TEXT student_id FK
+        TEXT test_id FK
+        REAL score
+        REAL total_marks
+        TEXT submitted_at
+        INTEGER time_taken
+        TEXT status
+        TEXT ip_address
+    }
+    attempt_answers {
+        TEXT id PK
+        TEXT attempt_id FK
+        TEXT question_id FK
+        TEXT selected_option
+        INTEGER marked_for_review
+    }
+
+    clients ||--o{ profiles : "has"
+    clients ||--o{ user_roles : "has"
+    clients ||--o{ question_folders : "owns"
+    clients ||--o{ questions : "owns"
+    clients ||--o{ test_folders : "owns"
+    clients ||--o{ tests : "owns"
+
+    profiles ||--o{ user_roles : "has"
+    profiles ||--o{ attempts : "makes"
+
+    test_folders ||--o{ tests : "groups"
+    question_folders ||--o{ question_folders : "nested under"
+    question_folders ||--o{ questions : "groups"
+
+    tests ||--o{ test_sections : "contains"
+    tests ||--o{ test_questions : "contains"
+    tests ||--o{ attempts : "has"
+
+    questions ||--o{ test_questions : "linked"
+    questions ||--o{ attempt_answers : "answered"
+
+    test_sections ||--o{ test_questions : "houses"
+
+    attempts ||--o{ attempt_answers : "contains"
 ```
-auth.users
-    │
-    ├──── profiles (1:1)
-    │         └── client_id ──────────────────┐
-    │                                          │
-    ├──── user_roles (1:N)                     │
-    │         └── client_id ──────────────────►│
-    │                                          │
-    └──── attempts (1:N)                    clients (1 per tenant)
-              │                                │
-              │                    ┌───────────┤
-              │                    │           │
-              │                questions     tests
-              │                    │           │
-              │                    └───────────┤
-              │                    test_questions
-              │
-              └──── attempt_answers (1:N)
-                        └── question_id ──► questions
+
+### Text Diagram (Fallback)
 ```
-
----
-
-## Database Functions
-
-### `has_role(_user_id, _role)` → boolean
-
-`SECURITY DEFINER` — checks `user_roles` without triggering RLS. Used in all RLS policies to avoid circular dependency.
-
-### `get_user_client_id(_user_id)` → uuid
-
-`SECURITY DEFINER` — reads `profiles.client_id`. Used in RLS policies to scope data to the caller's organization.
-
-### `get_test_questions_for_student(_test_id uuid, _student_id text)` → table
-
-`SECURITY DEFINER` — returns question rows **without** `correct_answer`, including section details, sorted by section position and question position. Supports guest student credentials as text IDs (`guest_...`).
-
-### `submit_test_attempt(_attempt_id uuid, _time_taken integer)` → json
-
-`SECURITY DEFINER` — handles server-side assessment evaluation: matches candidate answers to correct keys, applies negative markings if enabled, computes final score/marks, and updates attempt status to `submitted`. Returns evaluation metrics.
-
-### `delete_student(_student_id)` → void
-
-`SECURITY DEFINER` — verifies caller is a `clientadmin` and the student belongs to their org, then deletes from `auth.users` (cascades to `profiles`, `user_roles`, `attempts`, `attempt_answers`).
-
-### `generate_share_code()` → trigger function
-
-Fires `BEFORE INSERT` on `tests`. Sets `share_code` to an 8-character uppercase hex string if not already provided.
-
-### `update_updated_at_column()` → trigger function
-
-Fires `BEFORE UPDATE` on `clients`, `profiles`, `questions`, `tests`. Sets `updated_at = now()`.
-
----
-
-## Edge Function: `create-user`
-
-**Endpoint:** `POST /functions/v1/create-user`
-
-**Auth:** Requires a valid JWT (`Authorization: Bearer <token>`) from a `superadmin` or `clientadmin`.
-
-**Purpose:** Creates a new user (admin or student) with email pre-confirmed (no confirmation email sent). Uses the Supabase service role key to bypass RLS.
-
-**Request body:**
-
-```json
-{
-  "email": "user@example.com",
-  "password": "secret123",
-  "name": "John Doe",
-  "client_id": "<uuid>",
-  "role": "clientadmin | student"
-}
+                       clients (1 per tenant)
+                          │
+         ┌────────────────┼────────────────┐
+         │                │                │
+      profiles        questions          tests
+         │                │                │
+         │                └───────┬────────┘
+     attempts                     │
+         │                  test_questions
+         │
+  attempt_answers ──► questions
 ```
-
-**Permission rules:**
-
-- `superadmin` can create `clientadmin` or `student` for any client
-- `clientadmin` can only create `student` for their own client
-
-**On success:** Returns `{ id: "<new_user_uuid>" }`
-
-**Rollback:** If profile or role insert fails, the auth user is deleted to avoid orphaned records.
-
----
-
-## Row Level Security (RLS)
-
-All tables have RLS enabled. Policies use `has_role()` and `get_user_client_id()` (both `SECURITY DEFINER`) to avoid circular dependency.
-
-| Table             | superadmin | clientadmin                 | student                     | anon                         |
-| ----------------- | ---------- | --------------------------- | --------------------------- | ---------------------------- |
-| `clients`         | ALL        | SELECT (own) + UPDATE (own) | SELECT (own)                | SELECT (active only)         |
-| `user_roles`      | ALL        | —                           | SELECT (own)                | —                            |
-| `profiles`        | ALL        | ALL (own client)            | SELECT + UPDATE (own)       | —                            |
-| `questions`       | ALL        | ALL (own client)            | SELECT (own client)         | SELECT (public tests only)   |
-| `question_folders`| ALL        | ALL (own client)            | —                           | —                            |
-| `test_folders`    | ALL        | ALL (own client)            | —                           | —                            |
-| `tests`           | ALL        | ALL (own client)            | SELECT (active, own client) | SELECT (public_link_enabled) |
-| `test_sections`   | ALL        | ALL (own client tests)      | SELECT (own client tests)   | SELECT (public tests only)   |
-| `test_questions`  | ALL        | ALL (own client tests)      | SELECT (own client tests)   | —                            |
-| `attempts`        | SELECT     | SELECT (own client tests)   | ALL (own)                   | —                            |
-| `attempt_answers` | SELECT     | SELECT (own client)         | ALL (own attempts)          | —                            |
 
 ---
 
 ## Performance Indexes
 
+To support high concurrency lookups (such as k6 load tests and dashboard loads), the database schema utilizes the following SQLite indexes:
+
 ```sql
-idx_user_roles_user_id          -- has_role() lookups
-idx_user_roles_client_id        -- client-scoped role queries
-idx_profiles_client_id          -- get_user_client_id() + student lists
-idx_questions_client_id         -- question bank queries
-idx_tests_client_id             -- test list queries
-idx_tests_share_code            -- join-by-code lookups
-idx_attempts_student_id         -- student history queries
-idx_attempts_test_id            -- admin attempt reporting
-idx_attempt_answers_attempt_id   -- answer restore on resume
-idx_test_questions_test_id      -- question fetch per test
-idx_test_folders_client_id      -- folder listings by client
-idx_tests_folder_id             -- test lookup inside folder
-idx_tests_status                -- filters for published tests
-idx_tests_scheduled_start       -- scheduling status lookups
-idx_test_sections_test_id       -- sections lookup inside test
-idx_test_questions_section_id   -- questions lookup inside section
-idx_test_questions_position     -- ordered questions inside test section
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id         ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_client_id       ON user_roles(client_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_client_id         ON profiles(client_id);
+CREATE INDEX IF NOT EXISTS idx_questions_client_id        ON questions(client_id);
+CREATE INDEX IF NOT EXISTS idx_questions_folder_id        ON questions(folder_id);
+CREATE INDEX IF NOT EXISTS idx_tests_client_id            ON tests(client_id);
+CREATE INDEX IF NOT EXISTS idx_tests_share_code           ON tests(share_code);
+CREATE INDEX IF NOT EXISTS idx_tests_folder_id            ON tests(folder_id);
+CREATE INDEX IF NOT EXISTS idx_tests_status               ON tests(status);
+CREATE INDEX IF NOT EXISTS idx_tests_scheduled_start      ON tests(scheduled_start);
+CREATE INDEX IF NOT EXISTS idx_attempts_student_id        ON attempts(student_id);
+CREATE INDEX IF NOT EXISTS idx_attempts_test_id           ON attempts(test_id);
+CREATE INDEX IF NOT EXISTS idx_attempt_answers_attempt_id ON attempt_answers(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_test_questions_test_id     ON test_questions(test_id);
+CREATE INDEX IF NOT EXISTS idx_test_questions_section_id  ON test_questions(section_id);
+CREATE INDEX IF NOT EXISTS idx_test_questions_position    ON test_questions(position);
+CREATE INDEX IF NOT EXISTS idx_test_sections_test_id      ON test_sections(test_id);
+CREATE INDEX IF NOT EXISTS idx_test_folders_client_id     ON test_folders(client_id);
+CREATE INDEX IF NOT EXISTS idx_question_folders_client_id ON question_folders(client_id);
 ```
 
 ---
 
 ## Environment Variables
 
-| Variable                        | Used in                          | Description                                 |
-| ------------------------------- | -------------------------------- | ------------------------------------------- |
-| `VITE_SUPABASE_URL`             | Frontend + Edge Function         | Supabase project URL                        |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Frontend                         | Supabase anon/public key                    |
-| `VITE_SUPABASE_PROJECT_ID`      | Reference only                   | Project ID                                  |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Edge Function (server-side only) | Service role key — never exposed to browser |
+### Backend Configuration
+The Express backend relies on these environment variables:
 
-> `.env` is gitignored. For GitHub Actions (keep-alive workflow), set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as repository secrets.
+| Variable | Source | Description |
+| :--- | :--- | :--- |
+| `PORT` | System / GCP | Port bound to the server process (Default `8080`). |
+| `TURSO_DATABASE_URL` | Secrets / `.env` | Turso database connection URL (`libsql://...`). |
+| `TURSO_AUTH_TOKEN` | Secrets / `.env` | Authentication token for Turso cloud db. |
+| `DISABLE_RATE_LIMITER` | Env Variable | Set to `true` to disable API rate limiting (used during stress tests). |
+| `FIREBASE_PROJECT_ID` | Env Variable | Firebase project identifier for JWT verification. |
+| `FIREBASE_CLIENT_EMAIL` | Env Variable | Client email for the Firebase service account. |
+| `FIREBASE_PRIVATE_KEY` | Env Variable | Private key for the Firebase service account (handles user creations). |
+| `NODE_ENV` | System | Environment flag (`production` or `development`). |
+| `FRONTEND_URL` | Env Variable | Optional CORS origin parameter. |
+
+### Frontend Configuration
+The React Vite frontend relies on these environment variables:
+
+| Variable | Source | Description |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | Env Variable | Deployed Express server API endpoint url. |
+| `VITE_FIREBASE_API_KEY` | Env Variable | Public Firebase SDK API key. |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Env Variable | Firebase Authentication domain config. |
+| `VITE_FIREBASE_PROJECT_ID` | Env Variable | Firebase project ID config. |
+| `VITE_FIREBASE_APP_ID` | Env Variable | Firebase App instance ID. |

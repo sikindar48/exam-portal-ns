@@ -26,7 +26,8 @@ export default async function handler(req: Request, res: Response) {
 
   // 1. Load the attempt + test config
   const { rows: attemptRows } = await db.execute({
-    sql: `SELECT a.*, t.negative_marking, t.negative_marks
+    sql: `SELECT a.*, t.negative_marking, t.negative_marks,
+                 t.show_results_after_submission, t.allow_report_download, t.result_status
           FROM attempts a JOIN tests t ON t.id = a.test_id
           WHERE a.id = ?`,
     args: [attempt_id],
@@ -54,7 +55,7 @@ export default async function handler(req: Request, res: Response) {
 
   // 3. Load correct answers + marks for all questions in the test
   const { rows: questionRows } = await db.execute({
-    sql: `SELECT q.id, q.correct_answer, q.marks
+    sql: `SELECT q.id, q.correct_answers, q.correct_answer, q.marks
           FROM questions q
           JOIN test_questions tq ON tq.question_id = q.id
           WHERE tq.test_id = ?`,
@@ -68,14 +69,41 @@ export default async function handler(req: Request, res: Response) {
 
   let score = 0;
   let totalMarks = 0;
+  let correct = 0;
+  let wrong = 0;
+  let unanswered = 0;
 
   for (const q of questionRows as any[]) {
-    totalMarks += q.marks ?? 1;
+    const marks = q.marks ?? 1;
+    totalMarks += marks;
     const selected = answerMap.get(q.id);
-    if (selected && selected === q.correct_answer) {
-      score += q.marks ?? 1;
-    } else if (selected && negativeMarkingEnabled) {
-      score -= negativeMarksPerWrong;
+
+    if (selected === undefined || selected === null || selected === "") {
+      unanswered++;
+    } else {
+      // Map legacy correct_answer if correct_answers is missing or empty
+      let corrects: string[] = [];
+      if (q.correct_answers) {
+        try {
+          corrects = typeof q.correct_answers === "string" ? JSON.parse(q.correct_answers) : q.correct_answers;
+        } catch (e) {
+          corrects = [];
+        }
+      }
+      if (corrects.length === 0 && q.correct_answer) {
+        corrects = [q.correct_answer];
+      }
+
+      // Check if chosen answer is correct
+      if (corrects.includes(selected)) {
+        correct++;
+        score += marks;
+      } else {
+        wrong++;
+        if (negativeMarkingEnabled) {
+          score -= negativeMarksPerWrong;
+        }
+      }
     }
   }
 
@@ -90,5 +118,30 @@ export default async function handler(req: Request, res: Response) {
     args: [score, totalMarks, time_taken ?? 0, attempt_id],
   });
 
-  return res.status(200).json({ score, total_marks: totalMarks, time_taken });
+  const resultsVisible = attempt.show_results_after_submission === 1 && attempt.result_status === "published";
+  const reportDownloadEnabled = attempt.allow_report_download === 1;
+
+  if (!resultsVisible) {
+    return res.status(200).json({
+      success: true,
+      results_visible: false,
+      report_download_enabled: false,
+      result_status: attempt.result_status || "draft",
+    });
+  }
+
+  const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : 0;
+
+  return res.status(200).json({
+    success: true,
+    results_visible: true,
+    report_download_enabled: reportDownloadEnabled,
+    result_status: "published",
+    score,
+    total_marks: totalMarks,
+    percentage,
+    correct,
+    wrong,
+    skipped: unanswered,
+  });
 }

@@ -96,6 +96,33 @@ export function TestDialog({
                 <Label htmlFor="public_link_enabled" className="text-xs font-bold uppercase tracking-tight">Public Access Link</Label>
                 <Switch id="public_link_enabled" checked={formData.public_link_enabled} onCheckedChange={(checked) => setFormData({ ...formData, public_link_enabled: checked })} />
               </div>
+              
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-2">Result Publishing</h3>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="show_results_after_submission" className="text-xs font-bold uppercase tracking-tight">Show Results After Submission</Label>
+                  <Switch id="show_results_after_submission" checked={formData.show_results_after_submission} onCheckedChange={(checked) => setFormData({ ...formData, show_results_after_submission: checked })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="allow_report_download" className="text-xs font-bold uppercase tracking-tight">Allow Report Download</Label>
+                  <Switch id="allow_report_download" checked={formData.allow_report_download} onCheckedChange={(checked) => setFormData({ ...formData, allow_report_download: checked })} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Result Status</Label>
+                  <Select
+                    value={formData.result_status}
+                    onValueChange={(val) => setFormData({ ...formData, result_status: val })}
+                  >
+                    <SelectTrigger className="h-9 rounded-none border-slate-200 dark:border-slate-800 font-bold text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none">
+                      <SelectItem value="draft" className="text-xs font-bold">DRAFT (HIDDEN)</SelectItem>
+                      <SelectItem value="published" className="text-xs font-bold text-green-600">PUBLISHED (VISIBLE)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4">

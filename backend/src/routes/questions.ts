@@ -5,6 +5,44 @@ import { hasRole, getUserClientId } from "../services/roles.js";
 import { randomUUID } from "crypto";
 import { questionCreateSchema, questionUpdateSchema } from "../validation/schemas.js";
 
+// Helper to map database rows (with legacy fallback support)
+export function mapQuestionRow(row: any) {
+  if (!row) return row;
+  const mapped = { ...row };
+
+  if (typeof mapped.options === "string") {
+    try {
+      mapped.options = JSON.parse(mapped.options || "[]");
+    } catch (e) {
+      mapped.options = [];
+    }
+  }
+  if (typeof mapped.correct_answers === "string") {
+    try {
+      mapped.correct_answers = JSON.parse(mapped.correct_answers || "[]");
+    } catch (e) {
+      mapped.correct_answers = [];
+    }
+  }
+
+  // Dynamic mapping of legacy options if new array is empty
+  if ((!mapped.options || mapped.options.length === 0) && mapped.option_a) {
+    mapped.options = [
+      mapped.option_a,
+      mapped.option_b,
+      mapped.option_c,
+      mapped.option_d
+    ].filter((opt) => opt !== null && opt !== undefined && opt !== "");
+  }
+
+  // Dynamic mapping of legacy correct answer if new array is empty
+  if ((!mapped.correct_answers || mapped.correct_answers.length === 0) && mapped.correct_answer) {
+    mapped.correct_answers = [mapped.correct_answer];
+  }
+
+  return mapped;
+}
+
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
 
@@ -18,7 +56,7 @@ export default async function handler(req: Request, res: Response) {
     const callerClientId = await getUserClientId(user.id);
     const isSuper = await hasRole(user.id, "superadmin");
 
-    // ids= comma-separated list (Builder loads questions by id)
+    // ids = comma-separated list
     if (ids) {
       const idList = (ids as string).split(",").map((s) => s.trim()).filter(Boolean);
       if (!idList.length) return res.status(200).json([]);
@@ -37,7 +75,7 @@ export default async function handler(req: Request, res: Response) {
         }
       }
 
-      return res.status(200).json(rows);
+      return res.status(200).json(rows.map(mapQuestionRow));
     }
 
     // Tenant isolation check for collection list
@@ -87,10 +125,11 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { rows } = await db.execute({ sql: dataSql, args });
+    const formatted = rows.map(mapQuestionRow);
 
     if (isPaginationRequested) {
       return res.status(200).json({
-        data: rows,
+        data: formatted,
         pagination: {
           page: Math.max(1, parseInt(page as string, 10)),
           limit: Math.max(1, parseInt(limit as string, 10)),
@@ -99,7 +138,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    return res.status(200).json(rows);
+    return res.status(200).json(formatted);
   }
 
   // ── POST /api/questions ─────────────────────────────────────────────────────
@@ -125,27 +164,81 @@ export default async function handler(req: Request, res: Response) {
     if (!clientId) return res.status(403).json({ error: "No client" });
 
     const inserted: any[] = [];
+    let importedCount = 0;
+    let duplicateCount = 0;
+    let failedCount = 0;
 
     for (const q of body) {
-      // Ensure clientadmin cannot insert questions for other clients
       const targetClientId: string = q.client_id || clientId;
       if (isClientAdmin && !isSuper && targetClientId !== clientId) {
         return res.status(403).json({ error: "Cannot create questions for another organization" });
       }
 
       const id = q.id && !q.id.startsWith("temp_") ? q.id : randomUUID();
+
+      // Backward compatibility mapping for options and answers
+      const question_type = q.question_type || "mcq";
+      let options = q.options || [];
+      if (options.length === 0 && q.option_a) {
+        options = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
+      }
+      let correct_answers = q.correct_answers || [];
+      if (correct_answers.length === 0 && q.correct_answer) {
+        correct_answers = [q.correct_answer];
+      }
+
+      try {
+        const result = await db.execute({
+          sql: `INSERT OR IGNORE INTO questions
+                (id, client_id, folder_id, question_text, option_a, option_b, option_c, option_d,
+                 correct_answer, difficulty, marks, question_type, options, correct_answers,
+                 negative_marks, explanation, is_case_sensitive, import_batch_id, version, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))`,
+          args: [
+            id, targetClientId, q.folder_id ?? null,
+            q.question_text,
+            q.option_a ?? null, q.option_b ?? null, q.option_c ?? null, q.option_d ?? null,
+            q.correct_answer ?? null, q.difficulty ?? "medium", q.marks ?? 1,
+            question_type,
+            JSON.stringify(options),
+            JSON.stringify(correct_answers),
+            q.negative_marks ?? 0,
+            q.explanation ?? "",
+            q.is_case_sensitive ?? 0,
+            q.import_batch_id ?? null,
+            q.version ?? 1,
+          ],
+        });
+
+        if (result.rowsAffected > 0) {
+          importedCount++;
+          inserted.push(mapQuestionRow({ ...q, id, client_id: targetClientId, question_type, options, correct_answers }));
+        } else {
+          duplicateCount++;
+        }
+      } catch (err) {
+        console.error("Failed to insert question:", err);
+        failedCount++;
+      }
+    }
+
+    // Audit Log creation if it belongs to an import batch
+    const firstQ = body[0];
+    if (firstQ && firstQ.import_batch_id) {
       await db.execute({
-        sql: `INSERT OR IGNORE INTO questions
-              (id, client_id, folder_id, question_text, option_a, option_b, option_c, option_d,
-               correct_answer, difficulty, marks)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        sql: `INSERT INTO question_import_logs
+              (id, uploaded_by, uploaded_at, import_batch_id, total_questions, imported_count, duplicate_count, failed_count)
+              VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?)`,
         args: [
-          id, targetClientId, q.folder_id ?? null,
-          q.question_text, q.option_a, q.option_b, q.option_c, q.option_d,
-          q.correct_answer, q.difficulty ?? null, q.marks ?? 1,
+          randomUUID(),
+          user.email || "unknown_user",
+          firstQ.import_batch_id,
+          body.length,
+          importedCount,
+          duplicateCount,
+          failedCount,
         ],
       });
-      inserted.push({ ...q, id, client_id: targetClientId });
     }
 
     return res.status(201).json(inserted.length === 1 ? inserted[0] : inserted);
@@ -172,7 +265,7 @@ export default async function handler(req: Request, res: Response) {
 
     const callerClientId = await getUserClientId(user.id);
 
-    // Support bulk update: ids= comma-separated
+    // Support bulk folder movement
     const { ids, folder_id } = req.body;
     if (ids && Array.isArray(ids)) {
       if (isClientAdmin && !isSuper) {
@@ -205,18 +298,55 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    const fields: string[] = [];
-    const args: any[] = [];
-    const allowed = ["question_text","option_a","option_b","option_c","option_d","correct_answer","difficulty","marks","folder_id"];
-    for (const key of allowed) {
-      if (key in req.body) { fields.push(`${key} = ?`); args.push(req.body[key]); }
-    }
-    if (!fields.length) return res.status(400).json({ error: "Nothing to update" });
-    fields.push("updated_at = datetime('now')");
-    args.push(String(id));
-    await db.execute({ sql: `UPDATE questions SET ${fields.join(", ")} WHERE id = ?`, args });
-    const { rows } = await db.execute({ sql: "SELECT * FROM questions WHERE id = ?", args: [String(id)] });
-    return res.status(200).json(rows[0]);
+    // Option A (Versioning): Create a new question record instead of updating the current record in place.
+    const { rows: currentRows } = await db.execute({
+      sql: "SELECT * FROM questions WHERE id = ?",
+      args: [String(id)],
+    });
+    if (!currentRows.length) return res.status(404).json({ error: "Question not found" });
+    const current = mapQuestionRow(currentRows[0]);
+
+    const newId = randomUUID();
+    const newVersion = (current.version || 1) + 1;
+
+    // Merge old and new values
+    const mergedOptions = req.body.options || current.options || [];
+    const mergedCorrectAnswers = req.body.correct_answers || current.correct_answers || [];
+
+    await db.execute({
+      sql: `INSERT INTO questions
+            (id, client_id, folder_id, question_text, option_a, option_b, option_c, option_d,
+             correct_answer, difficulty, marks, question_type, options, correct_answers,
+             negative_marks, explanation, is_case_sensitive, import_batch_id, version, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))`,
+      args: [
+        newId,
+        current.client_id,
+        req.body.folder_id !== undefined ? req.body.folder_id : current.folder_id,
+        req.body.question_text || current.question_text,
+        req.body.option_a !== undefined ? req.body.option_a : current.option_a,
+        req.body.option_b !== undefined ? req.body.option_b : current.option_b,
+        req.body.option_c !== undefined ? req.body.option_c : current.option_c,
+        req.body.option_d !== undefined ? req.body.option_d : current.option_d,
+        req.body.correct_answer !== undefined ? req.body.correct_answer : current.correct_answer,
+        req.body.difficulty || current.difficulty,
+        req.body.marks !== undefined ? req.body.marks : current.marks,
+        req.body.question_type || current.question_type,
+        JSON.stringify(mergedOptions),
+        JSON.stringify(mergedCorrectAnswers),
+        req.body.negative_marks !== undefined ? req.body.negative_marks : current.negative_marks,
+        req.body.explanation !== undefined ? req.body.explanation : current.explanation,
+        req.body.is_case_sensitive !== undefined ? req.body.is_case_sensitive : current.is_case_sensitive,
+        current.import_batch_id,
+        newVersion,
+      ],
+    });
+
+    const { rows: responseRows } = await db.execute({
+      sql: "SELECT * FROM questions WHERE id = ?",
+      args: [newId],
+    });
+    return res.status(200).json(mapQuestionRow(responseRows[0]));
   }
 
   // ── DELETE /api/questions ───────────────────────────────────────────────────
@@ -230,8 +360,22 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: "Permission denied" });
     }
 
-    const { id, ids } = req.query;
+    const { id, ids, import_batch_id } = req.query;
     const callerClientId = await getUserClientId(user.id);
+
+    // Import batch rollback support
+    if (import_batch_id) {
+      let sql = "DELETE FROM questions WHERE import_batch_id = ?";
+      const args: any[] = [import_batch_id as string];
+
+      if (isClientAdmin && !isSuper) {
+        sql += " AND client_id = ?";
+        args.push(callerClientId as string);
+      }
+
+      const result = await db.execute({ sql, args });
+      return res.status(200).json({ success: true, message: `Rollback completed. Removed ${result.rowsAffected} questions.` });
+    }
 
     if (ids) {
       const idList = (ids as string).split(",").filter(Boolean);
@@ -267,7 +411,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(200).json({ success: true });
     }
 
-    return res.status(400).json({ error: "id or ids required" });
+    return res.status(400).json({ error: "id, ids, or import_batch_id required" });
   }
 
   return res.status(405).json({ error: "Method not allowed" });

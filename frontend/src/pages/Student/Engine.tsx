@@ -74,6 +74,7 @@ export default function Engine() {
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [visitedQuestions, setVisitedQuestions] = useState<Record<string, boolean>>({});
   const [attemptId, setAttemptId] = useState<string>("");
+  const [attemptToken, setAttemptToken] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [attemptNumber, setAttemptNumber] = useState<number>(1);
@@ -209,7 +210,7 @@ export default function Engine() {
       await flushDirtyAnswers();
 
       console.log("Calling submission RPC...");
-      const { error } = await rpc.submitAttempt(attemptId, (test?.timer * 60) - timeLeftRef.current);
+      const { data: submitData, error } = await rpc.submitAttempt(attemptId, (test?.timer * 60) - timeLeftRef.current);
       
       if (error) {
         console.error("Submission RPC error:", error);
@@ -218,9 +219,35 @@ export default function Engine() {
       
       toast({ title: "Success", description: "Assessment submitted successfully." });
       const candidateName = isGuest ? guestName : user?.user_metadata?.full_name || user?.email || "Student";
-      navigate(
-        `/student/submit-success?name=${encodeURIComponent(candidateName)}&org=${encodeURIComponent(test?.clients?.name || "")}&logo=${encodeURIComponent(test?.clients?.logo_url || "")}&isGuest=${isGuest}`
-      );
+      
+      const params = new URLSearchParams();
+      params.set("name", candidateName);
+      params.set("org", test?.clients?.name || "");
+      params.set("logo", test?.clients?.logo_url || "");
+      params.set("isGuest", isGuest ? "true" : "false");
+      params.set("attemptId", attemptId);
+
+      if (submitData) {
+        params.set("results_visible", submitData.results_visible ? "true" : "false");
+        params.set("report_download_enabled", submitData.report_download_enabled ? "true" : "false");
+        if (submitData.results_visible) {
+          params.set("score", String(submitData.score ?? 0));
+          params.set("total_marks", String(submitData.total_marks ?? 0));
+          params.set("percentage", String(submitData.percentage ?? 0));
+          params.set("correct", String(submitData.correct ?? 0));
+          params.set("wrong", String(submitData.wrong ?? 0));
+          params.set("skipped", String(submitData.skipped ?? 0));
+        }
+      }
+
+      // Pass attempt_token if it exists (for guest user report downloads)
+      if (attemptToken) {
+        params.set("token", attemptToken);
+      } else if (submitData && (submitData as any).attempt_token) {
+        params.set("token", (submitData as any).attempt_token);
+      }
+
+      navigate(`/student/submit-success?${params.toString()}`);
     } catch (err: any) {
       console.error("Detailed submission error:", err);
       toast({ 
@@ -309,6 +336,7 @@ export default function Engine() {
       }
 
       let activeAttemptId = existingList && existingList.length > 0 ? existingList[0].id : null;
+      let activeAttemptToken = existingList && existingList.length > 0 ? existingList[0].attempt_token : null;
 
       if (!activeAttemptId) {
         const { data: newAttempt, error: attemptError } = await attemptsApi.create({ 
@@ -320,10 +348,13 @@ export default function Engine() {
         if (attemptError) throw attemptError;
         if (newAttempt) {
           activeAttemptId = newAttempt.id;
+          activeAttemptToken = newAttempt.attempt_token;
           setAttemptId(newAttempt.id);
+          setAttemptToken(newAttempt.attempt_token || "");
         }
       } else {
         setAttemptId(activeAttemptId);
+        setAttemptToken(activeAttemptToken || "");
       }
 
       setTest(testData);
@@ -428,6 +459,25 @@ export default function Engine() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [handleSubmit, triggerAlert, showInstructions, loading]);
+
+  // Disable right click, copy, cut, and paste during active test
+  useEffect(() => {
+    if (!loading && !showInstructions) {
+      const preventDefault = (e: Event) => e.preventDefault();
+      
+      document.addEventListener("contextmenu", preventDefault);
+      document.addEventListener("copy", preventDefault);
+      document.addEventListener("cut", preventDefault);
+      document.addEventListener("paste", preventDefault);
+      
+      return () => {
+        document.removeEventListener("contextmenu", preventDefault);
+        document.removeEventListener("copy", preventDefault);
+        document.removeEventListener("cut", preventDefault);
+        document.removeEventListener("paste", preventDefault);
+      };
+    }
+  }, [loading, showInstructions]);
 
   const handleAnswer = (qId: string, val: string | null) => {
     setAnswers(prev => {

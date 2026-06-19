@@ -3,6 +3,7 @@ import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { randomUUID } from "crypto";
 import { hasRole, getUserClientId } from "../services/roles.js";
+import { mapQuestionRow } from "./questions.js";
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -17,10 +18,29 @@ export default async function handler(req: Request, res: Response) {
 
     let withAnswers = req.query.with_answers === "true";
     
+    const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
+
+    if (!isSuper && !isClientAdmin) {
+      // Verify the student/guest has either an active (in_progress) or completed (submitted) attempt for this test
+      const { rows: attemptRows } = await db.execute({
+        sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'in_progress'",
+        args: [user.id, test_id as string],
+      });
+
+      if (attemptRows.length === 0) {
+        // Fallback: check if they have a submitted attempt to allow review/history pages to load questions
+        const { rows: submittedRows } = await db.execute({
+          sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'submitted'",
+          args: [user.id, test_id as string],
+        });
+        if (submittedRows.length === 0) {
+          return res.status(403).json({ error: "Access denied. Active attempt required." });
+        }
+      }
+    }
+
     if (withAnswers) {
-      const isSuper = await hasRole(user.id, "superadmin");
-      const isClientAdmin = await hasRole(user.id, "clientadmin");
-      
       if (!isSuper && !isClientAdmin) {
         // Student requested correct answers. Verify if they submitted the test and review is enabled.
         const { rows: testRows } = await db.execute({
@@ -46,8 +66,8 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const selectCols = withAnswers
-      ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
-      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
+      ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
+      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
 
     const { rows } = await db.execute({
       sql: `SELECT ${selectCols}
@@ -66,18 +86,40 @@ export default async function handler(req: Request, res: Response) {
     const sectionMap = new Map(sections.map((s: any) => [s.id, s.name]));
 
     const result = rows.map((r: any) => {
-      const questionObj: any = {
+      const mappedQ = mapQuestionRow({
         id: r.id,
         question_text: r.question_text,
         option_a: r.option_a,
         option_b: r.option_b,
         option_c: r.option_c,
         option_d: r.option_d,
+        correct_answer: r.correct_answer,
         marks: r.marks,
         difficulty: r.difficulty,
+        question_type: r.question_type,
+        options: r.options,
+        correct_answers: r.correct_answers,
+        negative_marks: r.negative_marks,
+        explanation: r.explanation,
+      });
+
+      const questionObj: any = {
+        id: mappedQ.id,
+        question_text: mappedQ.question_text,
+        option_a: mappedQ.option_a,
+        option_b: mappedQ.option_b,
+        option_c: mappedQ.option_c,
+        option_d: mappedQ.option_d,
+        marks: mappedQ.marks,
+        difficulty: mappedQ.difficulty,
+        question_type: mappedQ.question_type,
+        options: mappedQ.options,
+        correct_answers: mappedQ.correct_answers,
+        negative_marks: mappedQ.negative_marks,
+        explanation: mappedQ.explanation,
       };
       if (withAnswers) {
-        questionObj.correct_answer = r.correct_answer;
+        questionObj.correct_answer = mappedQ.correct_answer;
       }
       return {
         ...r,

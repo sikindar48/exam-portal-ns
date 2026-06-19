@@ -1,261 +1,172 @@
-# NS Exam Portal - GCP Deployment Guide
+# Deployment Guide - NS Exam Portal
 
-## Prerequisites
+This document outlines the step-by-step procedure to deploy the NS Exam Portal application to Google Cloud Platform (GCP) for the backend and Cloudflare Pages for the frontend.
 
-1. **Google Cloud Account** with billing enabled
-2. **Project**: `ns-exam-portal`
-3. **gcloud CLI** installed and authenticated:
-   ```bash
-   gcloud auth login
-   gcloud config set project ns-exam-portal
-   ```
+---
 
-4. **Required APIs enabled**:
-   ```bash
-   gcloud services enable cloudbuild.googleapis.com \
-     run.googleapis.com \
-     artifactregistry.googleapis.com \
-     secretmanager.googleapis.com
-   ```
+## Local Development Setup
 
-## Quick Deployment (One Command)
+To run the application locally:
 
-Navigate to your backend directory and run:
-
+### 1. Backend Setup
+Navigate to the `backend/` directory:
 ```bash
-cd /Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend
-
-gcloud run deploy exam-portal-api \
-  --source . \
-  --region asia-south1 \
-  --allow-unauthenticated
-```
-
-## Complete Step-by-Step Guide
-
-### Step 1: Setup Environment Variables as Secrets
-
-Create secrets in GCP Secret Manager:
-
-```bash
-# Create Turso database URL secret
-gcloud secrets create turso-database-url --replication-policy="automatic"
-grep TURSO_DATABASE_URL .env | cut -d= -f2 | gcloud secrets versions add turso-database-url --data-file=-
-
-# Create Turso auth token secret
-gcloud secrets create turso-auth-token --replication-policy="automatic"
-grep TURSO_AUTH_TOKEN .env | cut -d= -f2 | gcloud secrets versions add turso-auth-token --data-file=-
-```
-
-### Step 2: Grant Cloud Build Access
-
-```bash
-PROJECT_NUMBER=$(gcloud projects describe ns-exam-portal --format="value(projectNumber)")
-
-gcloud secrets add-iam-policy-binding turso-database-url \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding turso-auth-token \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-```
-
-### Step 3: Manual Deployment (Direct Source)
-
-```bash
-cd /Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend
-
-# Option A: With secrets from local .env file
-gcloud run deploy exam-portal-api \
-  --source . \
-  --region asia-south1 \
-  --allow-unauthenticated \
-  --set-env-vars="PORT=8080" \
-  --set-env-vars="TURSO_DATABASE_URL=$(grep TURSO_DATABASE_URL .env | cut -d= -f2-)" \
-  --set-env-vars="TURSO_AUTH_TOKEN=$(grep TURSO_AUTH_TOKEN .env | cut -d= -f2-)" \
-  --memory=512Mi \
-  --cpu=1
-
-# Option B: With secrets from GCP Secret Manager
-gcloud run deploy exam-portal-api \
-  --source . \
-  --region asia-south1 \
-  --allow-unauthenticated \
-  --set-env-vars="PORT=8080" \
-  --set-secrets="TURSO_DATABASE_URL=turso-database-url:latest" \
-  --set-secrets="TURSO_AUTH_TOKEN=turso-auth-token:latest" \
-  --memory=512Mi \
-  --cpu=1
-```
-
-### Step 4: CI/CD Deployment (GitHub Integration)
-
-1. **Push your code to GitHub** (if not already)
-2. **Go to Cloud Console → Cloud Run**
-3. **Click "CREATE SERVICE"**
-4. **Select: "Continuously deploy new revisions from a source repository"**
-5. **Connect GitHub repository** and select your repo
-6. **Configure:**
-   - **Dockerfile location**: `backend/Dockerfile`
-   - **Source directory**: `backend`
-   - **Region**: `asia-south1`
-   - **Service name**: `exam-portal-api`
-   - **Authentication**: Allow unauthenticated
-
-### Step 5: Test Your Deployment
-
-```bash
-# Get the deployed URL
-SERVICE_URL=$(gcloud run services describe exam-portal-api \
-  --region asia-south1 \
-  --format="value(status.url)")
-
-echo "Your service is live at: $SERVICE_URL"
-
-# Test endpoints
-curl "$SERVICE_URL/health"
-curl "$SERVICE_URL/"
-curl "$SERVICE_URL/api/tests"
-```
-
-### Step 6: Update Frontend Configuration
-
-Update your frontend `.env` file to use the deployed backend:
-
-```bash
-# In frontend/.env or frontend/.env.production
-VITE_API_URL=https://exam-portal-api-xxxxxx-xx.asia-south1.run.app
-```
-
-## Common Deployment Commands
-
-### Check Deployment Status
-```bash
-gcloud run services describe exam-portal-api --region asia-south1
-```
-
-### View Logs
-```bash
-# Real-time logs
-gcloud run logs tail exam-portal-api --region asia-south1
-
-# Recent logs
-gcloud run logs read exam-portal-api --region asia-south1 --limit=20
-```
-
-### Update Environment Variables
-```bash
-gcloud run services update exam-portal-api \
-  --region asia-south1 \
-  --update-env-vars="NEW_VARIABLE=value"
-```
-
-### Scale the Service
-```bash
-# Set minimum instances
-gcloud run services update exam-portal-api \
-  --region asia-south1 \
-  --min-instances=1
-
-# Set maximum instances
-gcloud run services update exam-portal-api \
-  --region asia-south1 \
-  --max-instances=10
-```
-
-### Delete the Service
-```bash
-gcloud run services delete exam-portal-api --region asia-south1
-```
-
-## Troubleshooting
-
-### Build Fails with "Dockerfile not found"
-Make sure you're in the correct directory or specify the Dockerfile path:
-```bash
-gcloud run deploy exam-portal-api \
-  --source backend \
-  --region asia-south1
-```
-
-### Permission Errors
-```bash
-# Grant Cloud Build service account access to secrets
-PROJECT_NUMBER=$(gcloud projects describe ns-exam-portal --format="value(projectNumber)")
-gcloud projects add-iam-policy-binding ns-exam-portal \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
-  --role="roles/run.admin"
-```
-
-### Service Won't Start
-Check logs for startup errors:
-```bash
-gcloud run logs read exam-portal-api --region asia-south1 | grep -A 5 -B 5 "error\|failed\|exception"
-```
-
-### Database Connection Issues
-Verify Turso credentials are correct and accessible:
-```bash
-# Test database connection locally first
 cd backend
+```
+
+Create a `.env` file containing:
+```ini
+PORT=8080
+TURSO_DATABASE_URL=libsql://your-database.turso.io
+TURSO_AUTH_TOKEN=your-turso-auth-token
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CLIENT_EMAIL=your-firebase-service-account-email
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
+DISABLE_RATE_LIMITER=false
+NODE_ENV=development
+```
+
+Start the Express development server:
+```bash
+npm install
 npm run dev
 ```
 
-## Cost Optimization
+The API will be available at `http://localhost:8080`.
 
-1. **Set min instances to 0** (default) for cost savings
-2. **Configure concurrency** to handle traffic efficiently:
-   ```bash
-   gcloud run services update exam-portal-api \
-     --region asia-south1 \
-     --concurrency=80
-   ```
-3. **Use Cloud CDN** for static content caching
-4. **Set up budget alerts** in GCP Billing
-
-## Security Best Practices
-
-1. **Use IAM conditions** for fine-grained access control
-2. **Rotate secrets** regularly
-3. **Enable VPC Service Controls** if handling sensitive data
-4. **Use Cloud Run's built-in HTTPS** with auto-managed certificates
-5. **Implement CORS properly** in your server configuration
-
-## Maintenance
-
-### Update Deployment
+### 2. Frontend Setup
+Navigate to the `frontend/` directory:
 ```bash
-# Re-deploy with new changes
+cd ../frontend
+```
+
+Create a `.env` file containing:
+```ini
+VITE_API_URL=http://localhost:8080
+VITE_FIREBASE_API_KEY=your-firebase-client-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_APP_ID=your-firebase-app-id
+```
+
+Start the Vite development server:
+```bash
+npm install
+npm run dev
+```
+
+The frontend will be available at `http://localhost:8081` or `http://localhost:3000`.
+
+---
+
+## Build Process
+
+### Frontend Build
+Vite compiles the frontend assets into the `dist/` directory:
+```bash
+cd frontend
+npm run build
+```
+
+### Backend Build
+TypeScript compiles the Express code into the `dist/` folder:
+```bash
 cd backend
-git pull origin main
-gcloud run deploy exam-portal-api --source . --region asia-south1
+npm run build
 ```
 
-### Monitor Performance
+### Docker Build
+A multi-stage Docker build is used to keep the final container small. The configuration is defined in the [Dockerfile](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/Dockerfile):
 ```bash
-# Check metrics in Cloud Console
-open https://console.cloud.google.com/run/detail/asia-south1/exam-portal-api/metrics
-```
-
-### Backup Configuration
-```bash
-# Export service configuration
-gcloud run services describe exam-portal-api \
-  --region asia-south1 \
-  --format=yaml > exam-portal-api-config.yaml
+docker build -t exam-portal-api ./backend
 ```
 
 ---
 
-## Quick Reference
+## GCP Cloud Run Deployment
 
-| Command | Purpose |
-|---------|---------|
-| `gcloud run deploy` | Deploy from source |
-| `gcloud run services list` | List deployed services |
-| `gcloud run logs tail` | View real-time logs |
-| `gcloud run services update` | Update configuration |
-| `gcloud run services delete` | Remove service |
+The production backend runs on Google Cloud Run in the `asia-south1` region.
 
-For more details, visit: [Cloud Run Documentation](https://cloud.google.com/run/docs)
+### Production Environment Settings
+
+The following specifications are applied to the Cloud Run service:
+
+* **Region**: `asia-south1`
+* **CPU Allocation**: `1` (Dedicated CPU)
+* **Memory Limit**: `1Gi` (Configured to prevent out-of-memory errors during high concurrent candidate submits)
+* **Concurrency**: `80` (Up to 80 concurrent connections per container instance)
+* **Minimum Instances**: `1` (Keeps one container active to prevent cold starts during peak exam schedules)
+* **Maximum Instances**: `3` (Limits cost and manages database connection pool size)
+* **Request Timeout**: `300s`
+
+### Deployment Commands
+
+#### Step 1: Push Secrets to GCP Secret Manager
+```bash
+# Push Turso Connection Details
+gcloud secrets create turso-database-url --replication-policy="automatic"
+echo -n "libsql://exam-portal-ns-software-solutions.aws-ap-south-1.turso.io" | gcloud secrets versions add turso-database-url --data-file=-
+
+gcloud secrets create turso-auth-token --replication-policy="automatic"
+echo -n "YOUR_TOKEN" | gcloud secrets versions add turso-auth-token --data-file=-
+```
+
+#### Step 2: Deploy to Cloud Run
+Deploying directly from the backend directory using GCP Cloud Build:
+```bash
+cd backend
+gcloud run deploy exam-portal-api \
+  --source . \
+  --region asia-south1 \
+  --allow-unauthenticated \
+  --set-env-vars="PORT=8080,DISABLE_RATE_LIMITER=true" \
+  --set-secrets="TURSO_DATABASE_URL=turso-database-url:latest,TURSO_AUTH_TOKEN=turso-auth-token:latest" \
+  --memory=1Gi \
+  --cpu=1 \
+  --min-instances=1 \
+  --max-instances=3 \
+  --concurrency=80
+```
+
+---
+
+## Rollback Process
+
+In the event of a critical failure or bug, rollback to a previous stable revision:
+
+1. **List Revisions**:
+   ```bash
+   gcloud run revisions list --service=exam-portal-api --region=asia-south1
+   ```
+2. **Route Traffic**:
+   Redirect 100% of the traffic to the known stable revision:
+   ```bash
+   gcloud run services update-traffic exam-portal-api \
+     --region=asia-south1 \
+     --to-revisions=exam-portal-api-00014-abc=100
+   ```
+
+---
+
+## Troubleshooting Guide
+
+### Common Cloud Run Issues
+* **HTTP 503 Service Unavailable / Container Crashing**:
+  Usually indicates an out-of-memory (OOM) error or uncaught exception. Ensure the memory is set to at least `1Gi`. Check logs using:
+  ```bash
+  gcloud run logs read exam-portal-api --region=asia-south1 --limit=100
+  ```
+* **Cold Starts / High Join Latency**:
+  Verify that `--min-instances=1` is configured. If min-instances is 0, initial candidate joins will experience 5-10s delays while the container boots.
+
+### Firebase Auth Issues
+* **IP_REFERER_BLOCKED (HTTP 400)**:
+  During load tests or headless candidate sign-ins, Firebase auth checks may fail due to HTTP Referer headers. Ensure client requests include the correct header matching the Firebase allowed domains list.
+* **Unauthorized Access**:
+  Ensure the backend environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`) are correctly formatted. Private keys containing `\n` characters must be correctly evaluated by the backend auth loader.
+
+### Turso Database Issues
+* **Turso Connection Pool Exhaustion**:
+  Because SQLite handles writes sequentially, high concurrent submissions will queue transactions. Set max instances on Cloud Run to `3` to limit connections, and ensure that the client-side debounces answers (`2000ms`) to reduce write-frequency.
+* **Case-Sensitive Code Lookups**:
+  Ensure search queries on join-codes use case-insensitive constraints. The database column `tests.share_code` is indexed with `COLLATE NOCASE` for this reason.

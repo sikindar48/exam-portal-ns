@@ -116,7 +116,7 @@ describe("Attempts Endpoint /api/attempts", () => {
     expect(res.body.error).toBe("Permission denied");
   });
 
-  it("should allow a guest user to create and resume an attempt, and resolve by IP address when rejoining", async () => {
+  it("should ensure guest users on the same IP receive unique attempts and do not share them", async () => {
     // 1. Create a guest attempt
     const resCreate = await request(app)
       .post("/api/attempts")
@@ -130,8 +130,7 @@ describe("Attempts Endpoint /api/attempts", () => {
     expect(resCreate.body.student_id).toBe("guest-1");
     const attemptId = resCreate.body.id;
 
-    // 2. Resume attempt with a new guest profile (simulating browser reload / loss of sessionStorage)
-    // but the same IP address (supertest uses loopback/127.0.0.1 by default)
+    // 2. Try to resume/create with a different guest profile (e.g. guest-2) on the same IP
     const resResume = await request(app)
       .post("/api/attempts")
       .set("x-test-user-id", "anon-user-2")
@@ -140,9 +139,21 @@ describe("Attempts Endpoint /api/attempts", () => {
         test_id: "test-1",
         status: "in_progress",
       });
-    expect(resResume.status).toBe(200);
-    expect(resResume.body.id).toBe(attemptId);
+    expect(resResume.status).toBe(201); // should create a new one!
+    expect(resResume.body.id).not.toBe(attemptId);
     expect(resResume.body.student_id).toBe("guest-2");
+
+    // 3. Resuming with the same guest profile should return 200
+    const resResumeSame = await request(app)
+      .post("/api/attempts")
+      .set("x-test-user-id", "anon-user-2")
+      .send({
+        student_id: "guest-2",
+        test_id: "test-1",
+        status: "in_progress",
+      });
+    expect(resResumeSame.status).toBe(200);
+    expect(resResumeSame.body.id).toBe(resResume.body.id);
   });
 });
 

@@ -129,6 +129,7 @@ export const questionsApi = {
   delete: (id: string) => apiFetch(`/questions?id=${id}`, { method: "DELETE" }),
   bulkDelete: (ids: string[]) => apiFetch(`/questions?ids=${ids.join(",")}`, { method: "DELETE" }),
   checkDuplicates: (client_id: string) => apiFetch(`/questions?client_id=${client_id}`),
+  rollback: (import_batch_id: string) => apiFetch(`/questions?import_batch_id=${import_batch_id}`, { method: "DELETE" }),
 };
 
 // ── Question Folders ──────────────────────────────────────────────────────────

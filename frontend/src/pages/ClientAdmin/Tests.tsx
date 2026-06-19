@@ -79,6 +79,9 @@ export default function TestsManagement() {
     scheduled_start: "",
     scheduled_end: "",
     public_link_enabled: true,
+    show_results_after_submission: false,
+    allow_report_download: false,
+    result_status: "draft",
   });
 
   const { toast } = useToast();
@@ -128,6 +131,8 @@ export default function TestsManagement() {
 
     const payload = {
       ...formData,
+      show_results_after_submission: formData.show_results_after_submission ? 1 : 0,
+      allow_report_download: formData.allow_report_download ? 1 : 0,
       scheduled_start: toUTCISOString(formData.scheduled_start),
       scheduled_end: toUTCISOString(formData.scheduled_end),
       client_id: clientId,
@@ -243,6 +248,9 @@ export default function TestsManagement() {
       scheduled_start: toLocalDateTimeLocal(test.scheduled_start),
       scheduled_end: toLocalDateTimeLocal(test.scheduled_end),
       public_link_enabled: test.public_link_enabled ?? true,
+      show_results_after_submission: (test as any).show_results_after_submission === 1,
+      allow_report_download: (test as any).allow_report_download === 1,
+      result_status: (test as any).result_status || "draft",
     });
     setIsDialogOpen(true);
   };
@@ -261,6 +269,9 @@ export default function TestsManagement() {
       scheduled_start: "",
       scheduled_end: "",
       public_link_enabled: true,
+      show_results_after_submission: false,
+      allow_report_download: false,
+      result_status: "draft",
     });
     setEditingTest(null);
   };

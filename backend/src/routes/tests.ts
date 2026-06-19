@@ -24,7 +24,7 @@ export default async function handler(req: Request, res: Response) {
       const { rows } = await db.execute({
         sql: `SELECT t.*, c.name as client_name, c.logo_url as client_logo_url
               FROM tests t LEFT JOIN clients c ON c.id = t.client_id
-              WHERE t.share_code = ?`,
+              WHERE t.share_code = ? AND t.active = 1 AND t.status = 'published'`,
         args: [normalizedCode],
       });
       if (!rows.length) return res.status(404).json({ error: "Not found" });

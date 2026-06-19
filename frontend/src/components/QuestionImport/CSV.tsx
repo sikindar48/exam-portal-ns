@@ -56,12 +56,29 @@ export default function CSV({
   const [importing, setImporting] = useState(false);
   const [duplicateRows, setDuplicateRows] = useState<Set<number>>(new Set());
   const [importProgress, setImportProgress] = useState(0);
+  const [importBatchId, setImportBatchId] = useState<string>("");
   const [importResult, setImportResult] = useState<{
     success: number;
     failed: number;
+    skipped: number;
+    total: number;
+    durationMs: number;
+    batchId: string;
   } | null>(null);
+  const [isRolledBack, setIsRolledBack] = useState(false);
   const { clientId } = useAuth();
   const { toast } = useToast();
+
+  const generateUUID = () => {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -81,28 +98,48 @@ export default function CSV({
     setParseErrors([]);
     setValidationErrors([]);
     setImportResult(null);
+    setIsRolledBack(false);
 
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target?.result as string;
-      const { questions: parsedQuestions, errors } = parseCSV(text);
+      const batchId = generateUUID();
+      setImportBatchId(batchId);
+
+      const { questions: parsedQuestions, errors } = parseCSV(text, batchId);
       setParseErrors(errors);
-      
+
       if (parsedQuestions.length > 0) {
         setQuestions(parsedQuestions);
         setValidationErrors(validateQuestions(parsedQuestions));
-        
+
         // Check for duplicates immediately
         const { data } = await questionsApi.list({ client_id: clientId });
-        
-        const existingTexts = new Set((data || []).map(q => q.question_text.trim()));
+
+        const normalize = (text: string) => text.trim().toLowerCase().replace(/\s+/g, " ");
+        const existingKeys = new Set(
+          (data || []).map(
+            (q) =>
+              `${normalize(q.question_text)}|${
+                q.question_type || "mcq"
+              }|${q.client_id || clientId}`
+          )
+        );
+
         const duplicates = parsedQuestions
-          .filter(q => existingTexts.has(q.question_text.trim()))
-          .map(q => ({ row: q.rowNumber, message: "This question already exists in your repository." }));
-        
-        // We can add these to validation errors or a separate state
+          .filter((q) =>
+            existingKeys.has(
+              `${normalize(q.question_text)}|${
+                q.question_type
+              }|${clientId}`
+            )
+          )
+          .map((q) => q.rowNumber);
+
         if (duplicates.length > 0) {
-          setDuplicateRows(new Set(duplicates.map(d => d.row)));
+          setDuplicateRows(new Set(duplicates));
+        } else {
+          setDuplicateRows(new Set());
         }
       }
     };
@@ -110,10 +147,10 @@ export default function CSV({
   };
 
   const handleImport = async () => {
-    if (validationErrors.length > 0) {
+    if (validationErrors.length > 0 || parseErrors.length > 0) {
       toast({
         title: "Validation Errors",
-        description: "Please fix all validation errors before importing",
+        description: "Please fix all errors before importing",
         variant: "destructive",
       });
       return;
@@ -121,9 +158,12 @@ export default function CSV({
 
     setImporting(true);
     setImportProgress(0);
+    const startTime = performance.now();
 
     // Fetch existing question texts to prevent duplicates
-    const { data: existingData, error: fetchError } = await questionsApi.list({ client_id: clientId });
+    const { data: existingData, error: fetchError } = await questionsApi.list({
+      client_id: clientId,
+    });
 
     if (fetchError) {
       toast({
@@ -135,16 +175,30 @@ export default function CSV({
       return;
     }
 
-    const existingTexts = new Set((existingData || []).map(q => q.question_text.trim()));
-    
+    const normalize = (text: string) => text.trim().toLowerCase().replace(/\s+/g, " ");
+    const existingKeys = new Set(
+      (existingData || []).map(
+        (q) =>
+          `${normalize(q.question_text)}|${
+            q.question_type || "mcq"
+          }|${q.client_id || clientId}`
+      )
+    );
+
     // Strip rowNumber and filter duplicates
     const allQuestions = questions.map(({ rowNumber, ...q }) => ({
       ...q,
       difficulty: q.difficulty || "medium",
       client_id: clientId,
+      import_batch_id: importBatchId,
     }));
 
-    const questionsToInsert = allQuestions.filter(q => !existingTexts.has(q.question_text.trim()));
+    const questionsToInsert = allQuestions.filter(
+      (q) =>
+        !existingKeys.has(
+          `${normalize(q.question_text)}|${q.question_type}|${clientId}`
+        )
+    );
     const skippedCount = allQuestions.length - questionsToInsert.length;
 
     let successCount = 0;
@@ -152,7 +206,7 @@ export default function CSV({
     const insertedIds: string[] = [];
 
     if (questionsToInsert.length > 0) {
-      const batchSize = 50;
+      const batchSize = 100;
       for (let i = 0; i < questionsToInsert.length; i += batchSize) {
         const batch = questionsToInsert.slice(i, i + batchSize);
 
@@ -163,7 +217,10 @@ export default function CSV({
           console.error("Import error:", error);
         } else {
           successCount += batch.length;
-          if (data) insertedIds.push(...data.map((r: { id: string }) => r.id));
+          if (data) {
+            const list = Array.isArray(data) ? data : [data];
+            insertedIds.push(...list.map((r: { id: string }) => r.id));
+          }
         }
 
         setImportProgress(
@@ -171,7 +228,6 @@ export default function CSV({
         );
       }
     }
-
 
     // If linked to a test, create test_questions rows
     if (testId && insertedIds.length > 0) {
@@ -183,24 +239,57 @@ export default function CSV({
       await testQuestionsApi.add(testId, linkRows);
     }
 
-    setImportResult({ success: successCount, failed: failedCount });
+    const endTime = performance.now();
+    const durationMs = Math.round(endTime - startTime);
+
+    setImportResult({
+      success: successCount,
+      failed: failedCount,
+      skipped: skippedCount,
+      total: questions.length,
+      durationMs,
+      batchId: importBatchId,
+    });
     setImporting(false);
 
     if (successCount > 0 || skippedCount > 0) {
       toast({
         title: "Import Complete",
-        description: `${successCount} imported, ${skippedCount} skipped (already exist)${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
+        description: `${successCount} imported, ${skippedCount} skipped (already exist)${
+          failedCount > 0 ? `, ${failedCount} failed` : ""
+        }`,
       });
       onImportSuccess(insertedIds);
     }
 
-    if (failedCount === questionsToInsert.length) {
+    if (failedCount === questionsToInsert.length && questionsToInsert.length > 0) {
       toast({
         title: "Import Failed",
         description:
           "All questions failed to import. Please check the format and try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleRollback = async () => {
+    if (!importResult) return;
+
+    const { data, error } = await questionsApi.rollback(importResult.batchId);
+
+    if (error) {
+      toast({
+        title: "Rollback Failed",
+        description: error.message || "Failed to rollback imported questions",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Rollback Successful",
+        description: `Rollback completed. Removed imported questions.`,
+      });
+      setIsRolledBack(true);
+      onImportSuccess([]);
     }
   };
 
@@ -213,6 +302,7 @@ export default function CSV({
     setDuplicateRows(new Set());
     setImportResult(null);
     setImportProgress(0);
+    setIsRolledBack(false);
   };
 
   const validQuestions = questions.filter(
@@ -247,7 +337,7 @@ export default function CSV({
               Download Template
             </Button>
             <span className="text-sm text-muted-foreground">
-              Columns: question_text, option_a–d, correct_answer, marks
+              Columns: question_text, question_type, option_a–d, correct_answer, marks, negative_marks, difficulty, explanation
             </span>
           </div>
 
@@ -300,7 +390,7 @@ export default function CSV({
             </Alert>
           )}
 
-          {questions.length > 0 && validationErrors.length === 0 && (
+          {questions.length > 0 && validationErrors.length === 0 && parseErrors.length === 0 && (
             <Alert>
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
@@ -321,11 +411,33 @@ export default function CSV({
           )}
 
           {importResult && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
-                Import completed: {importResult.success} successful
-                {importResult.failed > 0 && `, ${importResult.failed} failed`}
+            <Alert className={isRolledBack ? "border-destructive bg-destructive/5" : "border-green-200 bg-green-50/50"}>
+              {isRolledBack ? <AlertCircle className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+              <AlertDescription className="space-y-2">
+                <div className="font-semibold text-foreground">
+                  {isRolledBack ? "Import Rolled Back" : "Import Summary"}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground max-w-md">
+                  <div>Total Processed:</div>
+                  <div className="font-medium text-foreground">{importResult.total}</div>
+                  <div>Successfully Imported:</div>
+                  <div className="font-medium text-foreground">{isRolledBack ? 0 : importResult.success}</div>
+                  <div>Skipped (Duplicates):</div>
+                  <div className="font-medium text-foreground">{importResult.skipped}</div>
+                  <div>Failed:</div>
+                  <div className="font-medium text-foreground">{importResult.failed}</div>
+                  <div>Duration:</div>
+                  <div className="font-medium text-foreground">{importResult.durationMs} ms</div>
+                  <div>Batch ID:</div>
+                  <div className="font-mono text-xs text-foreground truncate select-all">{importResult.batchId}</div>
+                </div>
+                {!isRolledBack && importResult.success > 0 && (
+                  <div className="pt-2">
+                    <Button variant="destructive" size="sm" onClick={handleRollback}>
+                      Rollback Import
+                    </Button>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -338,8 +450,11 @@ export default function CSV({
                     <TableRow>
                       <TableHead className="w-12">Row</TableHead>
                       <TableHead>Question</TableHead>
-                      <TableHead>Answer</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Correct Answer(s)</TableHead>
                       <TableHead>Marks</TableHead>
+                      <TableHead>Negative Marks</TableHead>
+                      <TableHead>Difficulty</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -357,8 +472,11 @@ export default function CSV({
                           <TableCell className="max-w-xs truncate">
                             {q.question_text}
                           </TableCell>
-                          <TableCell>{q.correct_answer}</TableCell>
-                          <TableCell>{q.marks}</TableCell>
+                          <TableCell className="capitalize text-xs font-mono">{q.question_type}</TableCell>
+                          <TableCell className="text-xs">{q.correct_answers.join(", ")}</TableCell>
+                          <TableCell className="text-xs">{q.marks}</TableCell>
+                          <TableCell className="text-xs">{q.negative_marks}</TableCell>
+                          <TableCell className="capitalize text-xs">{q.difficulty}</TableCell>
                           <TableCell>
                             {hasError ? (
                               <span className="text-destructive text-xs font-bold uppercase tracking-tight">
@@ -380,7 +498,7 @@ export default function CSV({
                     {questions.length > 50 && (
                       <TableRow>
                         <TableCell
-                          colSpan={5}
+                          colSpan={8}
                           className="text-center text-muted-foreground"
                         >
                           … and {questions.length - 50} more questions
@@ -402,6 +520,7 @@ export default function CSV({
               disabled={
                 questions.length === 0 ||
                 validationErrors.length > 0 ||
+                parseErrors.length > 0 ||
                 importing ||
                 importResult !== null
               }

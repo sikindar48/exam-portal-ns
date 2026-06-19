@@ -12,6 +12,7 @@ export default async function handler(req: Request, res: Response) {
 
   const isSuper = await hasRole(user.id, "superadmin");
   const isClientAdmin = await hasRole(user.id, "clientadmin");
+  const isAdmin = isSuper || isClientAdmin;
 
   // ── GET /api/attempts ───────────────────────────────────────────────────────
   if (req.method === "GET") {
@@ -20,13 +21,18 @@ export default async function handler(req: Request, res: Response) {
     // Fetch single attempt by id
     if (id) {
       const { rows } = await db.execute({
-        sql: `SELECT a.*, t.test_name, t.timer, t.allow_review, t.negative_marking, t.negative_marks, t.client_id as test_client_id
+        sql: `SELECT a.*, t.test_name, t.timer, t.allow_review, t.negative_marking, t.negative_marks,
+                     t.show_results_after_submission, t.allow_report_download, t.result_status,
+                     t.client_id as test_client_id
               FROM attempts a JOIN tests t ON t.id = a.test_id
               WHERE a.id = ?`,
         args: [id as string],
       });
       if (!rows.length) return res.status(404).json({ error: "Not found" });
       const row = rows[0] as any;
+
+      const isClientAdmin = await hasRole(user.id, "clientadmin");
+      const isAdmin = isSuper || isClientAdmin;
 
       // Authorization Check
       if (!isSuper) {
@@ -44,6 +50,13 @@ export default async function handler(req: Request, res: Response) {
             }
           }
         }
+      }
+
+      // Hide results if not published
+      const resultsVisible = row.show_results_after_submission === 1 && row.result_status === "published";
+      if (!isAdmin && !resultsVisible) {
+        row.score = null;
+        row.total_marks = null;
       }
 
       return res.status(200).json({ ...row, tests: { test_name: row.test_name, timer: row.timer, allow_review: row.allow_review === 1, negative_marking: row.negative_marking === 1, negative_marks: row.negative_marks } });
@@ -149,6 +162,8 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
+
+
     const isPaginationRequested = page !== undefined && limit !== undefined;
     let countSql = `SELECT COUNT(*) as total FROM attempts a WHERE a.student_id = ?`;
     const countArgs: any[] = [resolvedStudentId];
@@ -158,7 +173,8 @@ export default async function handler(req: Request, res: Response) {
     const { rows: countRows } = await db.execute({ sql: countSql, args: countArgs });
     const total = (countRows[0] as any).total;
 
-    let sql = `SELECT a.*, t.test_name, t.timer, t.allow_review
+    let sql = `SELECT a.*, t.test_name, t.timer, t.allow_review,
+                      t.show_results_after_submission, t.allow_report_download, t.result_status
                FROM attempts a JOIN tests t ON t.id = a.test_id
                WHERE a.student_id = ?`;
     const args: any[] = [resolvedStudentId];
@@ -177,10 +193,15 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { rows } = await db.execute({ sql, args });
-    const formattedData = rows.map((r: any) => ({
-      ...r,
-      tests: { test_name: r.test_name, timer: r.timer, allow_review: r.allow_review === 1 },
-    }));
+    const formattedData = rows.map((r: any) => {
+      const resultsVisible = r.show_results_after_submission === 1 && r.result_status === "published";
+      return {
+        ...r,
+        score: (isAdmin || resultsVisible) ? r.score : null,
+        total_marks: (isAdmin || resultsVisible) ? r.total_marks : null,
+        tests: { test_name: r.test_name, timer: r.timer, allow_review: r.allow_review === 1 },
+      };
+    });
 
     if (isPaginationRequested) {
       return res.status(200).json({
@@ -212,32 +233,8 @@ export default async function handler(req: Request, res: Response) {
 
     const ipAddress = req.ip || "";
 
-    // For guests, check if an in_progress attempt already exists for this test by IP address
-    // AND the existing attempt's student must also be a guest (to avoid hijacking registered students' attempts)
-    if (isGuest && ipAddress) {
-      const { rows: existingAttempts } = await db.execute({
-        sql: `SELECT a.*, p.email
-              FROM attempts a
-              LEFT JOIN profiles p ON p.id = a.student_id
-              WHERE a.test_id = ? AND a.ip_address = ? AND a.status = 'in_progress'`,
-        args: [test_id, ipAddress],
-      });
-
-      const existingIpAttempt = existingAttempts.filter((row: any) =>
-        row.email && row.email.startsWith("guest_") && row.email.endsWith("@temp.exam")
-      );
-
-      if (existingIpAttempt.length > 0) {
-        const attempt = existingIpAttempt[0];
-        // Resume seamlessly: update the existing attempt's student_id to the new guest ID
-        await db.execute({
-          sql: "UPDATE attempts SET student_id = ? WHERE id = ?",
-          args: [resolvedStudentId, attempt.id],
-        });
-        attempt.student_id = resolvedStudentId;
-        return res.status(200).json(attempt);
-      }
-    }
+    // Guest resumption is managed securely via student_id checks.
+    // IP address matching is removed to prevent concurrent VUs/users on the same public network from sharing attempts.
 
     // Prevent duplicate in_progress attempts: check if one already exists
     const { rows: existing } = await db.execute({
@@ -251,10 +248,11 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const id = randomUUID();
+    const attempt_token = randomUUID();
     await db.execute({
-      sql: `INSERT INTO attempts (id, student_id, test_id, status, submitted_at, ip_address)
-            VALUES (?,?,?,?,datetime('now'),?)`,
-      args: [id, resolvedStudentId, test_id, status, ipAddress],
+      sql: `INSERT INTO attempts (id, student_id, test_id, status, submitted_at, ip_address, attempt_token)
+            VALUES (?,?,?,?,datetime('now'),?,?)`,
+      args: [id, resolvedStudentId, test_id, status, ipAddress, attempt_token],
     });
     const { rows } = await db.execute({ sql: "SELECT * FROM attempts WHERE id = ?", args: [id] });
     return res.status(201).json(rows[0]);

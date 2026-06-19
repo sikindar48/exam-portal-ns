@@ -1,325 +1,363 @@
-# Features & Flow
+# Features & System Flows - NS Exam Portal
 
-## Overview
-
-Exam Portal is a multi-tenant online examination platform. It supports three user roles — **Super Admin**, **Client Admin**, and **Student** — each with their own dashboard and capabilities. The frontend is built with React + Vite, the backend is Supabase (PostgreSQL + Auth + Edge Functions).
-
-Branding: powered by **[NS Software Solutions](https://www.nssoftwaresolutions.in)** — support: info.nssoftwaresolutions@gmail.com
+This document details the features, routing policies, and step-by-step API flows implemented in the NS Exam Portal application.
 
 ---
 
-## Roles
+## Roles & Permissions
 
-| Role          | Description                                                                  |
-| ------------- | ---------------------------------------------------------------------------- |
-| `superadmin`  | Platform owner. Manages all client organizations and their admins.           |
-| `clientadmin` | Organization admin. Manages students, questions, and tests within their org. |
-| `student`     | End user. Takes tests assigned to their organization.                        |
+The platform supports a hierarchy of three primary user roles:
+
+| Role | Hierarchy Priority | Description |
+| :--- | :--- | :--- |
+| `superadmin` | 1 | Platform owner. Manages all client organizations (tenants) and tenant administrators. |
+| `clientadmin` | 2 | Client/Organization tenant admin. Manages organizational folders, student rosters, question banks, exams, and views performance analytics. |
+| `student` | 3 | End user candidate. Takes exams assigned to their tenant and reviews completed test history. |
 
 ---
 
-## Authentication Flow
+## Route Protection & Guard Policies
 
+Frontend routing is managed via React Router v6. Protected pages are wrapped in a `<ProtectedRoute allowedRoles={[...]}>` layout component:
+* If the user is unauthenticated, they are redirected to `/auth`.
+* If the user has a primary role that is not in the allowed list, they are redirected to their default dashboard:
+  * `superadmin` → `/superadmin`
+  * `clientadmin` → `/client-admin`
+  * `student` → `/student`
+
+---
+
+## Assessment Management & Test Builder
+
+### Test Lifecycle
 ```
-User visits / (Landing Page)
-  ├─► Guest/Student: clicks "Join Test" → goes to /join
-  └─► Admins/Students: clicks "Get Started" → goes to /auth
-
-/auth page
-  ├─► Sign In tab
-  │     └─► supabase.auth.signInWithPassword()
-  │           └─► AuthContext fetches role from user_roles table (with retry)
-  │                 └─► Redirects to role dashboard:
-  │                       superadmin  → /superadmin
-  │                       clientadmin → /client-admin
-  │                       student     → /student
-  │
-  └─► Sign Up tab (students only)
-        └─► supabase.auth.signUp()
-              └─► Inserts profile + user_roles (role: student)
-                    └─► User signs in manually after signup
-
-Forgot Password → /forgot-password
-  └─► supabase.auth.resetPasswordForEmail()
-        └─► Email link → /reset-password
-              └─► supabase.auth.updateUser({ password })
+[Create Test] ──► Saved as [Draft] ──► (Optional) Move to Folder ──► [Publish] ──► [Active Test Engine]
 ```
 
-**Session persistence:** Sessions are stored in `localStorage` and auto-refreshed via Supabase client config.
-
-**Role priority:** If a user has multiple roles, the highest-priority role wins: `superadmin > clientadmin > student`.
-
----
-
-## Route Protection
-
-All role-specific routes are wrapped in `<ProtectedRoute allowedRoles={[...]}>`:
-
-- Not logged in → redirect to `/auth`
-- Wrong role → redirect to their own dashboard
-- Loading state → spinner shown while auth initializes
+Client administrators manage examinations with these features:
+* **Interactive Test Builder**: A single-page visual canvas to configure test name, duration limit, and grading parameters (e.g. negative marking, shuffle order, and navigation locks).
+* **Question Folders / Categorization**: Admins organize questions inside folder hierarchies. Questions can be imported into exams via folders or search query lookups.
+* **Bulk Import via CSV**: Question lists can be imported client-side in bulk using CSV files.
+* **Access Control settings**: Toggle guest student access (`allow_guests`) and schedule-active intervals (`scheduled_start` and `scheduled_end`).
+* **Share Invite Links**: Generate an 8-character uppercase invite `share_code` and toggle direct URLs with automatically rendered QR codes.
 
 ---
 
-## Super Admin Flow
+## Step-by-Step Guest Candidate Exam Flow
 
-### Dashboard (`/superadmin`)
+Guest candidates join exams using a published invite share code without requiring a permanent registered account.
 
-- Views platform-wide stats: total clients, students, questions, tests, attempts
-- Charts: students per organization (bar), tests per organization (pie)
-- Quick link to Manage Clients
+### Visual Flow (Mermaid)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate as Guest Candidate
+    participant FE as React Frontend
+    participant FB as Firebase Auth
+    participant BE as Express API Backend
+    participant DB as Turso Database
 
-### Manage Clients (`/superadmin/clients`)
+    Candidate->>FE: Enter Share Code (e.g., 04E53B49)
+    FE->>BE: GET /api/tests?share_code=04E53B49
+    BE->>DB: Query test status & info
+    DB-->>BE: Active, published test details
+    BE-->>FE: Return test metadata
+    Note over FE, Candidate: Prompt for Candidate Name
 
-- **Add client** — name, address, logo URL, active status
-- **Edit client** — update any field
-- **Delete client** — cascades to all associated data
-- **Manage admins** per client:
-  - View existing client admins
-  - **Create admin** — calls `POST /functions/v1/create-user` Edge Function with role `clientadmin`
-  - Credentials (email + password) shown once in a copy dialog after creation
-  - **Remove admin** — deletes from `user_roles`
+    Candidate->>FE: Click "Start Exam"
+    FE->>FB: POST signUp?key=API_KEY (Anonymous auth)
+    FB-->>FE: Return ID Token & Guest UID (localId)
 
----
+    FE->>BE: POST /api/profiles (Sync Profile)
+    Note right of FE: Headers: Bearer Token
+    BE->>DB: INSERT OR REPLACE profiles
+    DB-->>BE: Success
+    BE-->>FE: 200 OK
 
-## Client Admin Flow
+    FE->>BE: POST /api/attempts (Create Attempt)
+    BE->>DB: INSERT attempts (status = in_progress)
+    DB-->>BE: Success with attempt_id
+    BE-->>FE: 201 Created
 
-### Dashboard (`/client-admin`)
+    FE->>BE: GET /api/test-questions?test_id=TEST_ID
+    Note over BE: Checks active attempt in DB
+    BE->>DB: Fetch questions (without correct keys)
+    DB-->>BE: Return questions list
+    BE-->>FE: 200 OK (Loads in TestEngine)
 
-- Stats: students, questions, tests, attempts, avg score, pass rate
-- Charts: avg score by test (bar), top 5 performers (leaderboard)
-- Quick action buttons to all management pages
+    loop Every Answer Change (Debounced at 2s)
+        FE->>BE: POST /api/attempt-answers
+        Note right of FE: Body: [ { attempt_id, question_id, selected_option } ]
+        BE->>DB: INSERT OR REPLACE attempt_answers
+        DB-->>BE: Success
+        BE-->>FE: 200 OK
+    end
 
-### Manage Students (`/client-admin/students`)
-
-- Lists all students in the organization
-- **Add student** — calls Edge Function with role `student`; credentials shown once in copy dialog
-- **Delete student** — calls `delete_student()` RPC which cascades deletion through `auth.users`
-
-### Manage Questions (`/client-admin/questions`)
-
-- Lists all questions for the organization, organized in nested categories.
-- **Add question** — question text, 4 options (A–D), correct answer, difficulty (easy/medium/hard - optional), marks
-- **Edit question** — update any field
-- **Delete question**
-- **CSV Import** — bulk import questions via CSV file (parsed client-side, validated, then batch inserted)
-
-#### Category / Folder System
-
-- **Root view** shows category cards and an "uncategorized" questions card.
-- **Create Category** — name only; categories can be nested under a parent category.
-- **Relocate/Move Question** — move an individual question or bulk-selected questions to a specific category or "No category (independent)".
-- **Delete Category** — dissolves the category; questions inside become independent (uncategorized).
-- **Bulk operations** — support deleting or moving multiple questions at once.
-
-### Manage Tests (`/client-admin/tests`)
-
-Tests are organized with a flexible folder system. Tests are independent by default and can be moved into folders at any time.
-
-#### Folder System
-
-- **Root view** shows a folder grid and an "Independent Tests" table
-- **Create Folder** — name only; folders are purely organizational
-- **Open Folder** — click a folder card to drill in; breadcrumb navigation shown in header
-- **Delete Folder** — folder is removed; tests inside become independent (not deleted)
-- Tests display their count per folder card
-
-#### Test Lifecycle
-
-```
-Create Test (folder_id = NULL by default)
-  └─► Build test (name, duration, questions, settings)
-        └─► Saved as Draft
-              └─► (Optional) Move to Folder
-                    └─► Publish when ready
-                          └─► Students can see and take the test
+    Candidate->>FE: Click "Submit Exam"
+    FE->>BE: POST /api/rpc/submit-attempt
+    Note right of FE: Body: { attempt_id, time_taken }
+    Note over BE: Computes score, applying negative marks
+    BE->>DB: UPDATE attempts (status = submitted)
+    DB-->>BE: Success
+    BE-->>FE: 200 OK (Returns final score)
+    FE-->>Candidate: Show completion page
 ```
 
-#### Create Test
-
-Admins design tests using an interactive, single-page **Assessment Builder** visual canvas.
-
-- **Test Name** and **Duration (minutes)** — required
-- **Attempts Allowed** — numeric input (1–100) with an **Unlimited toggle** (stored as `NULL` in the database, displayed as ∞ in tables)
-- **Schedule (optional)** — Scheduled Start and Scheduled End date-times; leave blank to make available immediately after publishing
-- **Settings panel:**
-  - Shuffle Questions
-  - Allow Review After Test
-  - Enable Negative Marking (reveals a deduction-per-wrong-answer input when on)
-  - Restrict Navigation
-  - **Allow Guest Access** (enables taking the test without a registered user account)
-- **Inline Question Palette**:
-  - Add new blank MCQ questions inline directly on the builder canvas.
-  - Edit question text, choices, correct answer key, and points/marks inline.
-  - Duplicate or delete questions.
-  - **From Repository Picker**: opens a dialog to search, navigate category folders, and import existing questions from the client's question bank.
-  - **CSV Question Import**: upload questions from a CSV file directly into the test.
-- Saved as **Draft** on creation — not visible to students until published
-
-#### Edit Test
-
-- Opens pre-populated form with all current values
-- Existing question selections loaded from `test_questions`
-- Same paginated question list as create
-- Replaces all question associations on save (delete + re-insert)
-
-#### Publish / Unpublish
-
-- **Publish** button in the test row → sets `status = 'published'`; students can now see the test
-- **Draft** button (shown when published) → sets `status = 'draft'`; hides from students
-- Status badge shown in table: `Published` (green) / `Draft` (yellow)
-
-#### Move Test to Folder
-
-- **Move** button (→ icon) on any test row opens a dialog
-- Select any folder or "No folder (independent)"
-- Updates `folder_id` on the test — no data is lost
-
-#### Delete Test
-
-- Confirmation dialog before deletion
-- Cascades to `test_questions` and all `attempts` / `attempt_answers`
-
-#### Share Test
-
-- Via `TestSharing` component (share icon in action row)
-- View/copy the 8-character invite code (`share_code`)
-- Toggle public link on/off (`public_link_enabled`)
-- Copy shareable URL
-- QR code generated from the public link
-
-#### View Test Results (`/client-admin/tests/:testId/results`)
-
-Performance and analytics console for admins to track student attempts.
-- Lists all submitted attempts for a test with student name, score, time taken, accuracy, and submission date.
-- Displays key stats: Total Submissions count, Average Score percentage, and High Score.
-- **Export Data** — downloads all submission results into a CSV file.
-
-### Organization Settings (`/client-admin/settings`)
-
-- Update organization name, address, logo URL
-- Logo URL previewed inline
-
----
-
-## Student Flow
-
-### Join Test (public, `/join` or `/join/:code`)
-
-- Student (or anyone) can enter an invite code to look up a test.
-- If logged in as student → goes directly to test engine.
-- If not logged in:
-  - If test has **Allow Guest Access** enabled → prompts for student's name and allows taking the test as a guest.
-  - If guest access is disabled → redirects to `/auth?redirect=/join/:code` to sign in.
-
-### Dashboard (`/student`)
-
-- Lists all active tests for the student's organization
-- Shows attempts used vs allowed per test (∞ shown for unlimited)
-- Disables "Start Test" button when attempts are exhausted
-- Shows 5 most recent submitted attempts with scores
-- Link to full test history
-
-### Test Engine (`/student/test/:testId`)
-
-**Initialization:**
-
-1. Loads test config from `tests` table
-2. Checks submitted attempt count against `attempts_allowed` — blocks if exhausted; `NULL` = unlimited (never blocked)
-3. Identity Verification:
-   - For registered student → gets their `user.id`.
-   - For guest student → generates a guest UUID, registers/upserts a guest profile record into the `profiles` table to maintain DB integrity.
-4. Resumes existing `in_progress` attempt if one exists (restores saved answers)
-5. Otherwise creates a new attempt record
-6. Fetches questions via `get_test_questions_for_student()` RPC — **correct answers are never sent to the client**
-7. Shuffles questions if `shuffle = true`
-8. Requests fullscreen
-
-**During test:**
-
-- Timer counts down from `timer * 60` seconds
-- Answers auto-saved to `attempt_answers` on every selection (upsert)
-- Mark for review flag toggled per question
-- Question palette shows answered (green), marked for review (orange border), unanswered (empty)
-- Navigation: Previous / Next buttons + palette click
-
-**Security measures:**
-
-| Measure                    | Behaviour                                            |
-| -------------------------- | ---------------------------------------------------- |
-| Fullscreen enforcement     | Exits trigger warning overlay; 3 exits = auto-submit |
-| Tab switch detection       | 3 tab switches = auto-submit                         |
-| Copy/paste blocked         | `copy`, `cut`, `paste` events prevented              |
-| Right-click disabled       | `contextmenu` event prevented                        |
-| Keyboard shortcuts blocked | Ctrl+C/V/X/A/P/U, F12, Ctrl+Shift+I, Ctrl+F5         |
-| Print screen blocked       | Clipboard cleared on PrintScreen key                 |
-| `user-select: none`        | CSS prevents text selection                          |
-
-**Submission:**
-
-1. Force-syncs any pending answers to the `attempt_answers` table.
-2. Calls the server-side `submit_test_attempt` RPC function in Supabase, passing the `_attempt_id` and `_time_taken`.
-3. The RPC calculates the final score (matching answers, applying negative marking deductions if enabled) and completes the attempt entirely server-side.
-4. Exits fullscreen.
-5. Redirects:
-   - Registered student → `/student` dashboard.
-   - Guest student → `/join` page.
-
-**Auto-submit triggers:** timer reaches 0, 3 tab switches, 3 fullscreen exits.
-
-### Test History (`/student/history`)
-
-- All submitted attempts ordered by date
-- Shows: score, time taken, percentage, pass/fail badge (pass threshold: 40%)
-
----
-
-## CSV Question Import
-
-File: `src/utils/csvParser.ts` + `src/components/QuestionImport/CSVImport.tsx`
-
-Expected CSV columns:
-
+### Text Flow (Fallback)
 ```
-question_text, option_a, option_b, option_c, option_d, correct_answer, difficulty, marks
+Guest Candidate              React Frontend             Firebase / Express / Turso
+      │                            │                                 │
+      ├─────── 1. Share Code ─────►│                                 │
+      │                            ├────────── 2. GET /tests ───────►│ (Verify test)
+      │                            ◄───────── 3. Test Config ────────┤
+      │                            │                                 │
+      ├───── 4. Start Exam ───────►│                                 │
+      │                            ├───────── 5. signup (Anon) ─────►│ (Get ID Token)
+      │                            ├───────── 6. POST /profiles ────►│ (Sync Candidate)
+      │                            ├───────── 7. POST /attempts ────►│ (Create Attempt)
+      │                            ├─────── 8. GET /test-questions ─►│ (Fetch Questions)
+      │                            ◄─────── 9. Questions List ───────┤
+      │                            │                                 │
+      ├──── 10. Select Answer ────►│                                 │
+      │                            ├───── 11. POST /attempt-answers ─►│ (Autosave answers)
+      │                            │                                 │
+      ├────── 12. Submit ─────────►│                                 │
+      │                            ├───── 13. POST /submit-attempt ──►│ (Server-side grading)
+      │                            ◄─────── 14. Final Score ─────────┤
+      ◄────── 15. Done ────────────┤                                 │
 ```
 
-- Parsed and validated client-side
-- Invalid rows reported with row numbers
-- Valid rows batch-inserted into `questions` table with the client's `client_id`
+---
+
+## Detailed Guest Flow API Contracts
+
+### 1. Share Code Verification
+* **Endpoint**: `GET /api/tests?share_code=<CODE>`
+* **Authentication**: None (Public)
+* **Response (200 OK)**:
+  ```json
+  {
+    "id": "ddb607e2-7fd0-41f5-b2f0-303853e09d6e",
+    "client_id": "8ebacddb-d703-4c17-b368-a85c52827943",
+    "test_name": "General Science Exam",
+    "timer": 45,
+    "shuffle": true,
+    "allow_review": true,
+    "negative_marking": false,
+    "negative_marks": 0,
+    "restrict_navigation": false,
+    "attempts_allowed": 1,
+    "status": "published",
+    "active": true,
+    "allow_guests": true,
+    "share_code": "04E53B49",
+    "public_link_enabled": true,
+    "clients": {
+      "name": "NS Software Solutions",
+      "logo_url": "https://example.com/logo.png"
+    }
+  }
+  ```
+
+### 2. Firebase Anonymous Authentication
+* **Endpoint**: `POST https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=<FIREBASE_API_KEY>`
+* **Headers**: `Referer: https://test.nssoftwaresolutions.in` (required to satisfy Firebase client configuration constraints)
+* **Request Body**:
+  ```json
+  {
+    "returnSecureToken": true
+  }
+  ```
+* **Response (200 OK)**:
+  ```json
+  {
+    "idToken": "eyJhbGciOi...",
+    "email": "",
+    "refreshToken": "...",
+    "expiresIn": "3600",
+    "localId": "firebase_anon_uid_12345"
+  }
+  ```
+
+### 3. Sync Guest Profile
+* **Endpoint**: `POST /api/profiles`
+* **Headers**: `Authorization: Bearer <idToken>`
+* **Request Body**:
+  ```json
+  {
+    "id": "firebase_anon_uid_12345",
+    "name": "GUEST: Candidate_15",
+    "email": "guest_firebase_a_15@temp.exam",
+    "client_id": "8ebacddb-d703-4c17-b368-a85c52827943"
+  }
+  ```
+* **Response (200 OK)**:
+  ```json
+  {
+    "success": true
+  }
+  ```
+
+### 4. Create Active Attempt
+* **Endpoint**: `POST /api/attempts`
+* **Headers**: `Authorization: Bearer <idToken>`
+* **Request Body**:
+  ```json
+  {
+    "student_id": "firebase_anon_uid_12345",
+    "test_id": "ddb607e2-7fd0-41f5-b2f0-303853e09d6e",
+    "status": "in_progress"
+  }
+  ```
+* **Response (201 Created)**:
+  ```json
+  {
+    "id": "attempt_uuid_9999",
+    "student_id": "firebase_anon_uid_12345",
+    "test_id": "ddb607e2-7fd0-41f5-b2f0-303853e09d6e",
+    "status": "in_progress",
+    "ip_address": "127.0.0.1"
+  }
+  ```
+
+### 5. Fetch Test Questions
+* **Endpoint**: `GET /api/test-questions?test_id=ddb607e2-7fd0-41f5-b2f0-303853e09d6e`
+* **Headers**: `Authorization: Bearer <idToken>`
+* **Response (200 OK)**:
+  *(Note: `correct_answer` is strictly omitted from the payload for security protection)*
+  ```json
+  [
+    {
+      "id": "tq_link_1",
+      "test_id": "ddb607e2-7fd0-41f5-b2f0-303853e09d6e",
+      "question_id": "27636f13-d57d-46e7-9095-bcd2c277c6af",
+      "section_id": null,
+      "position": 0,
+      "section_name": "General Section",
+      "questions": {
+        "id": "27636f13-d57d-46e7-9095-bcd2c277c6af",
+        "question_text": "What is the atomic number of Oxygen?",
+        "option_a": "6",
+        "option_b": "7",
+        "option_c": "8",
+        "option_d": "9",
+        "marks": 1,
+        "difficulty": "easy"
+      }
+    }
+  ]
+  ```
+
+### 6. Save Candidate Answers (Debounced)
+* **Endpoint**: `POST /api/attempt-answers`
+* **Headers**: `Authorization: Bearer <idToken>`
+* **Request Body**:
+  ```json
+  [
+    {
+      "attempt_id": "attempt_uuid_9999",
+      "question_id": "27636f13-d57d-46e7-9095-bcd2c277c6af",
+      "selected_option": "C",
+      "marked_for_review": false
+    }
+  ]
+  ```
+* **Response (200 OK)**:
+  ```json
+  {
+    "success": true
+  }
+  ```
+
+### 7. Grade and Submit Attempt
+* **Endpoint**: `POST /api/rpc/submit-attempt`
+* **Headers**: `Authorization: Bearer <idToken>`
+* **Request Body**:
+  ```json
+  {
+    "attempt_id": "attempt_uuid_9999",
+    "time_taken": 600
+  }
+  ```
+* **Response (200 OK)**:
+  ```json
+  {
+    "score": 1.0,
+    "total_marks": 1.0,
+    "time_taken": 600
+  }
+  ```
 
 ---
 
-## Test Sharing
-
-Each test gets an auto-generated 8-character uppercase `share_code` (DB trigger on insert).
-
-Two sharing modes:
-
-1. **Invite code** — student enters code at `/join`
-2. **Public link** — `public_link_enabled = true` enables a direct URL `/join/:code` and a QR code
+## Student Exam Flow
+For registered student accounts, the exam flow follows an identical pattern to the guest flow, with the following modifications:
+* **Lookup**: Active tests appear directly on the Student Dashboard (`GET /api/tests?client_id=CLIENT_ID`).
+* **Attempt Limits**: Checked on initial load (`attempts_allowed`). The "Start Exam" UI action is locked if previous attempts exceed this limit.
+* **Resume**: If a query to `GET /api/attempts` returns an `in_progress` attempt, the TestEngine loads that attempt ID instead of creating a new one, fetching previously saved answers to restore candidate state.
 
 ---
 
-## Branding & Footer
+## Upgraded CSV Question Import System
 
-A `BrandFooter` component (`src/components/BrandFooter.tsx`) is rendered at the bottom of every page:
+The portal features a robust, validation-driven bulk import engine to upload questions directly into the bank or sections of a test.
 
-- Links to **https://www.nssoftwaresolutions.in**
-- Support email: **info.nssoftwaresolutions@gmail.com**
-
-Present on: Auth, JoinTest, SuperAdmin Dashboard & Clients, ClientAdmin Dashboard / Tests / Questions / Students / Settings, Student Dashboard & History.
+### Features & Extensibility
+* **Multiple Question Types Supported**: Parsed and validated dynamically:
+  * `mcq`: Single correct option (A, B, C, or D), requiring exactly 4 options.
+  * `true_false`: Exactly 2 options ("True" and "False"), correct answer is A or B.
+  * `multi_select`: Minimum 2 options, correct answers split by pipe (e.g. `A|B|D`).
+  * `fill_blank`, `subjective`, `coding`: Extensible fields.
+* **High Performance Parsing**: Chunked inserts in batches of 100 to optimize write throughput on Turso.
+* **Pre-Import Two-Stage Validation**:
+  * **Stage 1 (Syntax Parsing)**: Catches malformed lines, missing required headers (`question_text`, `correct_answer`, `marks`), or column mismatch.
+  * **Stage 2 (Business Logic)**: Runs validation constraints (marks limits, option bounds) and detects duplicate rows inside the CSV.
+* **Transactional Batch Rollback**:
+  * Every import session generates a UUID `import_batch_id`.
+  * Users can undo/delete an entire import session in one click.
+  * **Endpoint**: `DELETE /api/questions?import_batch_id=<BATCH_ID>`
+* **Question Versioning (Option A)**:
+  * Editing an imported question inserts a new question record with an incremented `version` number. Existing exam links remain bound to old version IDs to preserve audit trails of historical candidate submissions.
 
 ---
 
-## Theme
+## Result Visibility & XLSX Performance Reports
 
-- Light / Dark / System modes via custom `ThemeProvider`
-- Preference stored in `localStorage` under key `exam-portal-theme`
-- `ThemeToggle` dropdown available on most pages
+Administrators have granular publishing control over when and how assessment metrics are released to candidates.
+
+### Publishing Workflow
+1. **Configurable settings per Test**:
+   * `show_results_after_submission` (0 / 1): Controls whether score analytics are displayed on the frontend success screen.
+   * `allow_report_download` (0 / 1): Toggles whether candidates can download performance spreadsheets.
+   * `result_status` (`draft` / `published`): Master toggle for score visibility.
+2. **Access Gates & Score Masking**:
+   * Results are only visible to students/guests if `show_results_after_submission = 1` AND `result_status = 'published'`.
+   * If unpublished, all GET responses and RPC submission responses strip `score` and `total_marks` to prevent score leakage.
+   * Administrators and Super Admins retain full view access.
+
+### Detailed Performance Reports
+* **Endpoint**: `GET /api/attempts/:attemptId/report`
+* **Authorization**:
+  * Admins/Superadmins: Full download access.
+  * Registered Owners: Authenticated request matching student user ID.
+  * Guest Owners: Secure request using query parameter `?token=<ATTEMPT_TOKEN>` matching the attempt's generated token.
+* **Spreadsheet Sheets (XLSX)**:
+  1. **Summary Sheet**: Candidate Details, Marks, Time Taken, Accuracy %, and Date.
+  2. **Detailed Questions**: Grid showing Q No, Question, options A-D, Chosen Answer, Correct Answer, Status (Correct / Wrong / Skipped), marks awarded, and Explanations.
+  3. **Analytics**: Calculated performance graphs, average time spent per question, and correct answer ratio.
 
 ---
 
-## Keep-Alive (CI)
+## Proctoring & Security Safeguards
 
-GitHub Actions workflow (`.github/workflows/keep-alive.yml`) pings Supabase every 3 days to prevent the free-tier project from pausing after 7 days of inactivity.
+To maintain assessment integrity and prevent cheating, the Test Engine implements the following client-side and server-side safeguards during active testing:
+
+* **Fullscreen Enforcement**: Candidates must remain in fullscreen mode. Exiting fullscreen triggers a warning.
+* **Tab-Switch & Navigation Monitoring**: The system monitors page focus changes (via `visibilitychange` events).
+* **Violation and Auto-Submit System**: Exiting fullscreen or switching/hiding tabs increments a security violation counter. If a candidate registers **3 violations**, the exam auto-submits.
+* **Auto-Submit & Auto-Save Timer**: When the duration timer reaches `0`:
+  * The timer interval is cleared.
+  * The system calls `handleSubmit(true)` to skip confirmation dialogs.
+  * Debounced unsaved answers are automatically flushed and synced to the Turso database via `flushDirtyAnswers()` before the submit RPC is executed.
+* **Copy-Paste Block**: Right-clicks (`contextmenu` events) and keyboard/mouse shortcuts for copying, cutting, and pasting (`copy`, `cut`, `paste`) are entirely blocked while taking an exam.
+* **Visual Selection Lock**: CSS selection rules (`select-none`) block text highlight operations on exam contents.

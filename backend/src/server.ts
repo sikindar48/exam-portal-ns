@@ -19,6 +19,7 @@ import statsHandler from "./routes/stats.js";
 import createUserHandler from "./routes/create-user.js";
 import cloneTestHandler from "./routes/rpc/clone-test.js";
 import submitAttemptHandler from "./routes/rpc/submit-attempt.js";
+import reportHandler from "./routes/report.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -27,7 +28,7 @@ const PORT = process.env.PORT || 8080;
 // Rate limiters
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100,
+  limit: 10000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
@@ -35,7 +36,7 @@ const globalLimiter = rateLimit({
 
 const strictLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  limit: 20,
+  limit: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
@@ -64,13 +65,13 @@ const corsOptions = {
   origin: (origin: any, callback: any) => {
     // Allow requests with no origin (like mobile apps, curl, postman)
     if (!origin) return callback(null, true);
-    
+
     const isAllowed =
       allowedOrigins.includes(origin) ||
       origin.endsWith(".firebaseapp.com") ||
       origin.endsWith(".pages.dev") || // Support Cloudflare Pages preview/prod deploys
       origin.endsWith(".googleapis.com");
-      
+
     if (isAllowed) {
       callback(null, true);
     } else {
@@ -91,11 +92,9 @@ app.use(express.json());
 app.use(authMiddleware);
 
 // Rate limiting application
-app.use("/api", globalLimiter);
-app.post("/api/profiles", strictLimiter);
-app.post("/api/attempts", strictLimiter);
-app.post("/api/attempt-answers", strictLimiter);
-app.post("/api/rpc/submit-attempt", strictLimiter);
+if (process.env.DISABLE_RATE_LIMITER !== "true") {
+  app.use("/api", globalLimiter);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API Routes
@@ -117,6 +116,7 @@ app.all("/api/create-user", createUserHandler);
 // RPC / Custom endpoints
 app.all("/api/rpc/clone-test", cloneTestHandler);
 app.all("/api/rpc/submit-attempt", submitAttemptHandler);
+app.all("/api/attempts/:attemptId/report", reportHandler);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Health Check
