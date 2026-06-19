@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi, attemptsApi, attemptAnswersApi, testQuestionsApi, rpc, profilesApi } from "@/services/api/client";
+import { testsApi, attemptsApi, attemptAnswersApi, testQuestionsApi, rpc, profilesApi, testSectionsApi } from "@/services/api/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,8 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Maximize, AlertTriangle } from "lucide-react";
-
+import { Maximize, AlertTriangle, Layers, Clock } from "lucide-react";
 
 // Modular Components
 import { Header } from "@/components/TestEngine/Header";
@@ -35,6 +34,7 @@ interface Question {
   difficulty: string;
   section_id: string;
   section_name: string;
+  option_mapping?: Record<string, string>; // Maps Shuffled Options key to Original key (e.g. A -> C)
 }
 
 export default function Engine() {
@@ -47,8 +47,6 @@ export default function Engine() {
   // Guest session
   const isGuest = searchParams.get("guest") === "true";
   const guestName = searchParams.get("name") || sessionStorage.getItem("guestStudentName") || "Guest Student";
-  
-
 
   // URL-based instructions state — reflects in browser URL
   const showInstructions = searchParams.get("view") !== "test";
@@ -86,11 +84,25 @@ export default function Engine() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const alertTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Section States
+  const [sectionsDataList, setSectionsDataList] = useState<any[]>([]);
+  const [lockedSectionIds, setLockedSectionIds] = useState<string[]>([]);
+  const [sectionTimeLeft, setSectionTimeLeft] = useState<number | null>(null);
+  const [showSectionIntro, setShowSectionIntro] = useState<boolean>(false);
+  const [showSectionTransitionConfirm, setShowSectionTransitionConfirm] = useState(false);
+  const [pendingNextIndex, setPendingNextIndex] = useState<number | null>(null);
+
   const timeLeftRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSubmitTriggered = useRef(false);
   const dirtyAnswersRef = useRef<Record<string, { selected_option: string | null; marked_for_review: boolean }>>({});
   const globalDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const currentQ = questions[currentQuestionIndex];
+  const currentSection = useMemo(() => {
+    if (!currentQ || !sectionsDataList.length) return null;
+    return sectionsDataList.find(s => s.id === currentQ.section_id);
+  }, [currentQ, sectionsDataList]);
 
   const flushDirtyAnswers = useCallback(async () => {
     if (!attemptId) return;
@@ -268,10 +280,8 @@ export default function Engine() {
         || el.mozRequestFullScreen
         || el.msRequestFullscreen;
       if (req) await req.call(el);
-      // setShowFullscreenWarning is handled by the fullscreenchange event listener
     } catch (err) {
       console.warn("Fullscreen error:", err);
-      // If fullscreen fails (e.g., mobile/sandboxed iframe), just dismiss the warning
       setShowFullscreenWarning(false);
       setIsFullscreen(true);
     }
@@ -286,7 +296,6 @@ export default function Engine() {
       let finalStudentId = user?.uid;
 
       if (isGuest) {
-        // For guests, we need a profile in the database to store results
         const existingGuestId = sessionStorage.getItem(`guest_profile_id_${testId}`);
         const guestIdToUse = existingGuestId || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
           const r = Math.random() * 16 | 0;
@@ -304,7 +313,7 @@ export default function Engine() {
 
         if (profileError) {
           console.error("Critical: Guest profile sync failed:", profileError);
-          sessionStorage.removeItem(`guest_profile_id_${testId}`); // Clear dirty session
+          sessionStorage.removeItem(`guest_profile_id_${testId}`);
           throw new Error(`Database security blocked guest registration. (Error: ${profileError})`);
         } 
         
@@ -360,21 +369,95 @@ export default function Engine() {
       setTest(testData);
       setTimeLeft(testData.timer * 60);
 
-      // Fetch test questions with section info
+      // Fetch test sections
+      const { data: secsData } = await testSectionsApi.list(testId!);
+      const dbSections = (secsData || []) as any[];
+      const defaultSec = {
+        id: "default",
+        test_id: testId!,
+        name: "General Section",
+        position: 0,
+        duration_minutes: null,
+        negative_marks: testData.negative_marks || 0,
+        shuffle_questions: false,
+        shuffle_options: false,
+        navigation_locked: false
+      };
+      const finalSections = dbSections.length > 0 ? dbSections : [defaultSec];
+      setSectionsDataList(finalSections);
+
+      // Fetch test questions
       const { data: qData } = await testQuestionsApi.list(testId!);
-      
       if (!qData || qData.length === 0) throw new Error("No questions found");
-      
-      const finalQuestions = testData.shuffle ? [...qData].sort(() => Math.random() - 0.5) : qData;
-      setQuestions(finalQuestions);
+
+      const groupedQuestionsMap: Record<string, any[]> = {};
+      finalSections.forEach(s => {
+        groupedQuestionsMap[s.id] = [];
+      });
+
+      (qData || []).forEach((tq: any) => {
+        const sId = tq.section_id && groupedQuestionsMap[tq.section_id] ? tq.section_id : finalSections[0].id;
+        const questionObj = {
+          ...tq.questions,
+          section_id: sId,
+          section_name: finalSections.find(s => s.id === sId)?.name || "General Section",
+          position: tq.position ?? 0
+        };
+        groupedQuestionsMap[sId].push(questionObj);
+      });
+
+      let finalQuestionsList: Question[] = [];
+      finalSections.forEach((s) => {
+        let secQs = groupedQuestionsMap[s.id];
+        secQs.sort((a, b) => a.position - b.position);
+        
+        if (s.shuffle_questions === 1 || s.shuffle_questions === true) {
+          secQs = [...secQs].sort(() => Math.random() - 0.5);
+        }
+
+        if (s.shuffle_options === 1 || s.shuffle_options === true) {
+          secQs = secQs.map(q => {
+            const opts = [
+              { key: "A", val: q.option_a },
+              { key: "B", val: q.option_b },
+              { key: "C", val: q.option_c },
+              { key: "D", val: q.option_d },
+            ];
+            const shuffledOpts = [...opts].sort(() => Math.random() - 0.5);
+            const originalCorrect = q.correct_answer;
+            const originalCorrectVal = opts.find(o => o.key === originalCorrect)?.val;
+            
+            const newCorrectKey = ["A", "B", "C", "D"][shuffledOpts.findIndex(o => o.val === originalCorrectVal)] as any || "A";
+
+            const mapping: Record<string, string> = {
+              A: opts.find(o => o.val === shuffledOpts[0].val)?.key || "A",
+              B: opts.find(o => o.val === shuffledOpts[1].val)?.key || "B",
+              C: opts.find(o => o.val === shuffledOpts[2].val)?.key || "C",
+              D: opts.find(o => o.val === shuffledOpts[3].val)?.key || "D",
+            };
+
+            return {
+              ...q,
+              option_a: shuffledOpts[0].val,
+              option_b: shuffledOpts[1].val,
+              option_c: shuffledOpts[2].val,
+              option_d: shuffledOpts[3].val,
+              correct_answer: newCorrectKey,
+              option_mapping: mapping
+            };
+          });
+        }
+        finalQuestionsList = [...finalQuestionsList, ...secQs];
+      });
+
+      setQuestions(finalQuestionsList);
 
       const initialVisited: Record<string, boolean> = {};
-      if (finalQuestions.length > 0) {
-        initialVisited[finalQuestions[0].id] = true;
+      if (finalQuestionsList.length > 0) {
+        initialVisited[finalQuestionsList[0].id] = true;
       }
 
       if (activeAttemptId) {
-        // Fetch any existing answers for this attempt to resume seamlessly
         const { data: answersData } = await attemptAnswersApi.list(activeAttemptId);
 
         if (answersData && answersData.length > 0) {
@@ -382,8 +465,17 @@ export default function Engine() {
           const markedMap: Record<string, boolean> = {};
           
           (answersData || []).forEach((ans) => {
-            if (ans.selected_option) {
-              answerMap[ans.question_id] = ans.selected_option;
+            const question = finalQuestionsList.find(q => q.id === ans.question_id);
+            let clientVal = ans.selected_option;
+            if (question?.option_mapping && ans.selected_option) {
+              const shuffledKey = Object.keys(question.option_mapping).find(
+                k => question.option_mapping![k] === ans.selected_option
+              );
+              if (shuffledKey) clientVal = shuffledKey;
+            }
+
+            if (clientVal) {
+              answerMap[ans.question_id] = clientVal;
               initialVisited[ans.question_id] = true;
             }
             if (ans.marked_for_review) {
@@ -410,24 +502,80 @@ export default function Engine() {
     if ((user || isGuest) && testId) initializeTest();
   }, [initializeTest, user, isGuest, testId]);
 
+  // Sync Section remaining time
+  useEffect(() => {
+    if (currentSection) {
+      if (currentSection.duration_minutes !== null) {
+        const storageKey = `section_time_${attemptId}_${currentSection.id}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          setSectionTimeLeft(parseInt(saved));
+        } else {
+          setSectionTimeLeft(currentSection.duration_minutes * 60);
+        }
+      } else {
+        setSectionTimeLeft(null);
+      }
+    }
+  }, [currentSection, attemptId]);
+
+  const handleSectionTimeout = useCallback(() => {
+    if (!currentSection) return;
+    toast({ title: "Section Time Out", description: `Time has expired for section: ${currentSection.name}` });
+    
+    if (currentSection.navigation_locked && !lockedSectionIds.includes(currentSection.id)) {
+      setLockedSectionIds(prev => [...prev, currentSection.id]);
+    }
+
+    const currentSecIdx = sectionsDataList.findIndex(s => s.id === currentSection.id);
+    if (currentSecIdx < sectionsDataList.length - 1) {
+      const nextSec = sectionsDataList[currentSecIdx + 1];
+      const nextQIdx = questions.findIndex(q => q.section_id === nextSec.id);
+      if (nextQIdx !== -1) {
+        navigateToQuestion(nextQIdx);
+        setShowSectionIntro(true);
+      } else {
+        handleSubmit(true);
+      }
+    } else {
+      handleSubmit(true);
+    }
+  }, [currentSection, sectionsDataList, questions, lockedSectionIds, handleSubmit]);
+
+  // Main Timer Effect
   useEffect(() => {
     if (!loading && !showInstructions && timeLeft > 0) {
       timeLeftRef.current = timeLeft;
-      timerRef.current = setInterval(() => {
+      const interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            clearInterval(timerRef.current!);
+            clearInterval(interval);
             handleSubmit(true);
             return 0;
           }
           timeLeftRef.current = prev - 1;
           return prev - 1;
         });
-      }, 1000);
-      return () => clearInterval(timerRef.current!);
-    }
-  }, [loading, showInstructions, timeLeft, handleSubmit]);
 
+        setSectionTimeLeft((secPrev) => {
+          if (secPrev === null) return null;
+          if (secPrev <= 1) {
+            handleSectionTimeout();
+            return 0;
+          }
+          if (currentSection) {
+            const storageKey = `section_time_${attemptId}_${currentSection.id}`;
+            localStorage.setItem(storageKey, String(secPrev - 1));
+          }
+          return secPrev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [loading, showInstructions, timeLeft, currentSection, attemptId, handleSectionTimeout]);
+
+  // Visibility and Fullscreen Warning
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
@@ -444,7 +592,6 @@ export default function Engine() {
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [handleSubmit, triggerAlert]);
 
-  // Tab-switch detection
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && !showInstructions && !loading) {
@@ -460,7 +607,7 @@ export default function Engine() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [handleSubmit, triggerAlert, showInstructions, loading]);
 
-  // Disable right click, copy, cut, and paste during active test
+  // Secure Browsing
   useEffect(() => {
     if (!loading && !showInstructions) {
       const preventDefault = (e: Event) => e.preventDefault();
@@ -480,11 +627,17 @@ export default function Engine() {
   }, [loading, showInstructions]);
 
   const handleAnswer = (qId: string, val: string | null) => {
+    const question = questions.find(q => q.id === qId);
+    let dbValue = val;
+    if (question?.option_mapping && val) {
+      dbValue = question.option_mapping[val] || val;
+    }
+
     setAnswers(prev => {
       const nextAnswers = { ...prev, [qId]: val || "" };
       const isMarked = !!markedForReview[qId];
       dirtyAnswersRef.current[qId] = {
-        selected_option: val,
+        selected_option: dbValue,
         marked_for_review: isMarked
       };
       if (globalDebounceTimerRef.current) {
@@ -497,13 +650,59 @@ export default function Engine() {
     });
   };
 
-  const navigateToQuestion = (index: number) => {
-    // Force flush dirty answers on navigation
+  const navigateToQuestion = useCallback((index: number) => {
+    if (index < 0 || index >= questions.length) return;
+    
+    const currentQuestion = questions[currentQuestionIndex];
+    const targetQ = questions[index];
+    
+    if (currentQuestion && targetQ && currentQuestion.section_id !== targetQ.section_id) {
+      const currentSec = sectionsDataList.find(s => s.id === currentQuestion.section_id);
+      
+      if (currentSec?.navigation_locked) {
+        const currentSecIdx = sectionsDataList.findIndex(s => s.id === currentQuestion.section_id);
+        const targetSecIdx = sectionsDataList.findIndex(s => s.id === targetQ.section_id);
+        
+        if (targetSecIdx < currentSecIdx) {
+          toast({ title: "Navigation Locked", description: "You cannot return to a completed section.", variant: "destructive" });
+          return;
+        } else {
+          if (!lockedSectionIds.includes(currentQuestion.section_id)) {
+            setLockedSectionIds(prev => [...prev, currentQuestion.section_id]);
+          }
+        }
+      }
+    }
+    
+    if (targetQ && lockedSectionIds.includes(targetQ.section_id)) {
+      toast({ title: "Section Locked", description: "This section is locked and cannot be re-entered.", variant: "destructive" });
+      return;
+    }
+
     flushDirtyAnswers();
     setCurrentQuestionIndex(index);
     const qId = questions[index]?.id;
     if (qId) setVisitedQuestions(prev => ({ ...prev, [qId]: true }));
     setIsSidebarOpen(false);
+  }, [questions, currentQuestionIndex, sectionsDataList, lockedSectionIds, flushDirtyAnswers, toast]);
+
+  const handleNextClick = () => {
+    const nextIdx = currentQuestionIndex + 1;
+    if (nextIdx >= questions.length) return;
+    
+    const currentQuestion = questions[currentQuestionIndex];
+    const nextQ = questions[nextIdx];
+    
+    if (currentQuestion && nextQ && currentQuestion.section_id !== nextQ.section_id) {
+      const currentSec = sectionsDataList.find(s => s.id === currentQuestion.section_id);
+      if (currentSec?.navigation_locked) {
+        setPendingNextIndex(nextIdx);
+        setShowSectionTransitionConfirm(true);
+        return;
+      }
+    }
+    
+    navigateToQuestion(nextIdx);
   };
 
   const formatTime = (s: number) => {
@@ -514,7 +713,6 @@ export default function Engine() {
   if (loading) return (
     <div className="flex h-screen flex-col items-center justify-center bg-white dark:bg-slate-950 gap-6">
       <div className="flex flex-col items-center gap-4">
-        {/* Spinner */}
         <div className="relative h-12 w-12">
           <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
           <div className="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin" />
@@ -524,7 +722,6 @@ export default function Engine() {
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Please wait, loading your test...</p>
         </div>
       </div>
-      {/* Branding */}
       <div className="absolute bottom-6 text-center">
         <p className="text-[11px] text-slate-300 dark:text-slate-600 uppercase tracking-widest">NS Exam Portal &nbsp;·&nbsp; Secure Testing System</p>
       </div>
@@ -545,6 +742,53 @@ export default function Engine() {
         orgName={test?.clients?.name}
         orgLogoUrl={test?.clients?.logo_url}
       />
+    );
+  }
+
+  // Section Instruction/Transition Overlay Screen
+  if (showSectionIntro && currentSection) {
+    const secQuestions = questions.filter(q => q.section_id === currentSection.id);
+    const secMarks = secQuestions.reduce((tot, q) => tot + q.marks, 0);
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-6 select-none">
+        <div className="max-w-md w-full border border-slate-800 bg-slate-950 p-8 space-y-6">
+          <div className="space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-500">Section Transition</span>
+            <h2 className="text-3xl font-black uppercase tracking-tight">{currentSection.name}</h2>
+          </div>
+          <div className="space-y-4 text-sm text-slate-400">
+            <p>You are entering a new section of the exam. Please review the rules:</p>
+            <ul className="space-y-2 border-y border-slate-800 py-4 font-semibold text-xs uppercase tracking-wider">
+              <li className="flex justify-between">
+                <span>Total Questions</span>
+                <span className="text-white">{secQuestions.length}</span>
+              </li>
+              <li className="flex justify-between">
+                <span>Section Marks</span>
+                <span className="text-white">{secMarks}</span>
+              </li>
+              {currentSection.duration_minutes !== null && (
+                <li className="flex justify-between text-blue-400">
+                  <span>Section Duration</span>
+                  <span>{currentSection.duration_minutes} Minutes</span>
+                </li>
+              )}
+              {currentSection.navigation_locked ? (
+                <li className="flex justify-between text-red-400">
+                  <span>Navigation Lock</span>
+                  <span>ENABLED (Cannot return)</span>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+          <Button
+            onClick={() => setShowSectionIntro(false)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-xs h-11"
+          >
+            Start Section
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -572,6 +816,8 @@ export default function Engine() {
         orgLogoUrl={test?.clients?.logo_url}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
+        sectionTimeLeft={sectionTimeLeft}
+        sectionName={currentSection?.name}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -588,7 +834,7 @@ export default function Engine() {
           </div>
           <Footer
             onPrevious={() => navigateToQuestion(currentQuestionIndex - 1)}
-            onNext={() => navigateToQuestion(currentQuestionIndex + 1)}
+            onNext={handleNextClick}
             disablePrevious={currentQuestionIndex === 0}
             disableNext={currentQuestionIndex === questions.length - 1}
             isMarked={!!markedForReview[questions[currentQuestionIndex]?.id]}
@@ -633,20 +879,19 @@ export default function Engine() {
           disableSubmit={currentQuestionIndex !== questions.length - 1} 
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
+          lockedSectionIds={lockedSectionIds}
         />
       </div>
 
       {showFullscreenWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70">
           <div className="w-full max-w-sm mx-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-hidden">
-            {/* Red top indicator */}
             <div className="bg-red-600 px-5 py-3 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-white shrink-0" />
               <div>
                 <p className="text-white font-bold text-sm">Security Violation</p>
                 <p className="text-red-200 text-[11px]">Warning {fullscreenExitCount} of 3</p>
               </div>
-              {/* Violation progress dots */}
               <div className="ml-auto flex gap-1.5">
                 {[1,2,3].map(n => (
                   <div key={n} className={`h-2.5 w-2.5 rounded-full border border-white/40 ${n <= fullscreenExitCount ? 'bg-white' : 'bg-red-400/40'}`} />
@@ -654,7 +899,6 @@ export default function Engine() {
               </div>
             </div>
 
-            {/* Body */}
             <div className="px-5 py-5 space-y-4">
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                 You have exited fullscreen mode. This exam requires fullscreen at all times.
@@ -688,6 +932,38 @@ export default function Engine() {
           <AlertDialogFooter className="pb-4">
             <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Back to Test</AlertDialogCancel>
             <AlertDialogAction onClick={() => handleSubmit(true)} className="bg-green-600 hover:bg-green-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest">Submit Assessment</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Section Transition Confirm AlertDialog */}
+      <AlertDialog open={showSectionTransitionConfirm} onOpenChange={setShowSectionTransitionConfirm}>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-none rounded-none shadow-2xl">
+          <div className="h-1 bg-blue-600 w-full absolute top-0 left-0" />
+          <AlertDialogHeader className="pt-4">
+            <AlertDialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+              <Layers className="h-5 w-5 text-blue-600" />
+              Lock Section & Proceed?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500">
+              You are moving to the next section. This section has <strong>Navigation Lock</strong> enabled. Once you proceed, you will not be able to return or edit your answers in <strong>{currentSection?.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pb-4">
+            <AlertDialogCancel onClick={() => setPendingNextIndex(null)} className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowSectionTransitionConfirm(false);
+                if (pendingNextIndex !== null) {
+                  navigateToQuestion(pendingNextIndex);
+                  setPendingNextIndex(null);
+                  setShowSectionIntro(true); // Show intro screen for new section
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest"
+            >
+              Lock & Proceed
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

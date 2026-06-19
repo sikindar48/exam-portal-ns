@@ -7,7 +7,21 @@ export interface Question {
   option_d: string;
   correct_answer: "A" | "B" | "C" | "D";
   marks: number;
+  section_id?: string | null;
+  position?: number;
   temp_id?: number;
+}
+
+export interface TestSection {
+  id: string;
+  test_id: string;
+  name: string;
+  position: number;
+  duration_minutes: number | null;
+  negative_marks: number;
+  shuffle_questions: boolean;
+  shuffle_options: boolean;
+  navigation_locked: boolean;
 }
 
 export interface TestData {
@@ -24,4 +38,5 @@ export interface TestData {
   allow_guests: boolean;
   share_code?: string;
   questions: Question[];
+  sections?: TestSection[];
 }

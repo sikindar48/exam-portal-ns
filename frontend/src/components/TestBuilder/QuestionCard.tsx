@@ -5,17 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Copy, BookOpen } from "lucide-react";
-import { Question } from "@/types/test";
+import { Question, TestSection } from "@/types/test";
 
 interface QuestionCardProps {
   question: Question;
   index: number;
+  sections?: TestSection[];
   onUpdate: (id: string, field: keyof Question, value: any) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
 }
 
-export function QuestionCard({ question, index, onUpdate, onDelete, onDuplicate }: QuestionCardProps) {
+export function QuestionCard({ question, index, sections, onUpdate, onDelete, onDuplicate }: QuestionCardProps) {
   return (
     <Card className="border bg-white dark:bg-slate-900 rounded-none overflow-hidden">
       <div className="h-1 bg-slate-900 dark:bg-slate-700" />
@@ -105,6 +106,25 @@ export function QuestionCard({ question, index, onUpdate, onDelete, onDuplicate 
                 onChange={(e) => onUpdate(question.id, "marks", parseInt(e.target.value))}
                 className="rounded-none border-slate-200"
               />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Section</Label>
+              <Select
+                value={question.section_id || "general"}
+                onValueChange={(value) => onUpdate(question.id, "section_id", value === "general" ? null : value)}
+              >
+                <SelectTrigger className="rounded-none border-slate-200">
+                  <SelectValue placeholder="General Section" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General Section (No Section)</SelectItem>
+                  {sections?.map((sec) => (
+                    <SelectItem key={sec.id} value={sec.id}>
+                      {sec.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

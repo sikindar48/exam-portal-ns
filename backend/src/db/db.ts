@@ -59,6 +59,59 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       }
     }
 
+    // Migration for test_sections table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS test_sections (
+        id TEXT PRIMARY KEY,
+        test_id TEXT NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        position INTEGER DEFAULT 0,
+        duration_minutes INTEGER DEFAULT NULL,
+        negative_marks REAL DEFAULT 0,
+        shuffle_questions INTEGER DEFAULT 0,
+        shuffle_options INTEGER DEFAULT 0,
+        navigation_locked INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Ensure columns in test_sections
+    const sectionCols = [
+      { name: "duration_minutes", type: "INTEGER DEFAULT NULL" },
+      { name: "negative_marks", type: "REAL DEFAULT 0" },
+      { name: "shuffle_questions", type: "INTEGER DEFAULT 0" },
+      { name: "shuffle_options", type: "INTEGER DEFAULT 0" },
+      { name: "navigation_locked", type: "INTEGER DEFAULT 0" }
+    ];
+    for (const col of sectionCols) {
+      try {
+        await db.execute(`ALTER TABLE test_sections ADD COLUMN ${col.name} ${col.type}`);
+        console.log(`Added column ${col.name} to test_sections table.`);
+      } catch (err: any) {
+        if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+          console.error(`Error adding column ${col.name} to test_sections:`, err);
+        }
+      }
+    }
+
+    // Ensure test_questions has section_id and position
+    try {
+      await db.execute(`ALTER TABLE test_questions ADD COLUMN section_id TEXT REFERENCES test_sections(id) ON DELETE SET NULL`);
+      console.log("Added column section_id to test_questions table.");
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding column section_id to test_questions:", err);
+      }
+    }
+    try {
+      await db.execute(`ALTER TABLE test_questions ADD COLUMN position INTEGER DEFAULT 0`);
+      console.log("Added column position to test_questions table.");
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding column position to test_questions:", err);
+      }
+    }
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS question_import_logs (
         id TEXT PRIMARY KEY,

@@ -174,6 +174,19 @@ export const testQuestionsApi = {
     apiFetch(`/test-questions?test_id=${test_id}&question_id=${question_id}`, { method: "DELETE" }),
 };
 
+// ── Test Sections ─────────────────────────────────────────────────────────────
+
+export const testSectionsApi = {
+  list: (test_id: string) =>
+    apiFetch(`/test-sections?test_id=${test_id}`),
+  create: (body: any) =>
+    apiFetch("/test-sections", { method: "POST", body: JSON.stringify(body) }),
+  update: (id: string, body: any) =>
+    apiFetch(`/test-sections?id=${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  delete: (id: string) =>
+    apiFetch(`/test-sections?id=${id}`, { method: "DELETE" }),
+};
+
 // ── Attempts ──────────────────────────────────────────────────────────────────
 
 export const attemptsApi = {

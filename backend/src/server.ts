@@ -20,6 +20,7 @@ import createUserHandler from "./routes/create-user.js";
 import cloneTestHandler from "./routes/rpc/clone-test.js";
 import submitAttemptHandler from "./routes/rpc/submit-attempt.js";
 import reportHandler from "./routes/report.js";
+import testSectionsHandler from "./routes/test-sections.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -106,6 +107,7 @@ app.all("/api/attempts", attemptsHandler);
 app.all("/api/attempt-answers", attemptAnswersHandler);
 app.all("/api/questions", questionsHandler);
 app.all("/api/test-questions", testQuestionsHandler);
+app.all("/api/test-sections", testSectionsHandler);
 app.all("/api/tests", testsHandler);
 app.all("/api/user-roles", userRolesHandler);
 app.all("/api/question-folders", questionFoldersHandler);

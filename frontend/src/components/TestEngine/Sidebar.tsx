@@ -13,6 +13,7 @@ interface SidebarProps {
   disableSubmit: boolean;
   isSidebarOpen?: boolean;
   setIsSidebarOpen?: (open: boolean) => void;
+  lockedSectionIds?: string[];
 }
 
 export function Sidebar({
@@ -27,6 +28,7 @@ export function Sidebar({
   disableSubmit,
   isSidebarOpen,
   setIsSidebarOpen,
+  lockedSectionIds = [],
 }: SidebarProps) {
   let globalIndex = 0;
   const totalAnswered = Object.keys(answers).length;
@@ -74,41 +76,47 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Question Palette</p>
 
-        {sections.map((section) => (
-          <div key={section.id} className="space-y-3">
-            {sections.length > 1 && (
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1">
-                {section.name}
-              </p>
-            )}
-            <div className="grid grid-cols-5 gap-2">
-              {section.questions.map((q: any) => {
-                const idx = globalIndex++;
-                const isCurrent = currentQuestionIndex === idx;
-                const isAnswered = !!answers[q.id];
-                const isMarked = !!markedForReview[q.id];
-                const isVisited = !!visitedQuestions[q.id];
+        {sections.map((section) => {
+          const isSectionLocked = lockedSectionIds.includes(section.id);
+          return (
+            <div key={section.id} className={`space-y-3 ${isSectionLocked ? "opacity-60" : ""}`}>
+              {sections.length > 1 && (
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 flex items-center justify-between">
+                  <span>{section.name}</span>
+                  {isSectionLocked && <span className="text-[9px] text-red-500 font-black">LOCKED</span>}
+                </p>
+              )}
+              <div className="grid grid-cols-5 gap-2">
+                {section.questions.map((q: any) => {
+                  const idx = globalIndex++;
+                  const isCurrent = currentQuestionIndex === idx;
+                  const isAnswered = !!answers[q.id];
+                  const isMarked = !!markedForReview[q.id];
+                  const isVisited = !!visitedQuestions[q.id];
 
-                let cls = "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400";
-                if (isCurrent)         cls = "border-2 border-blue-600 bg-blue-600 text-white font-bold";
-                else if (isMarked)     cls = "border border-purple-500 bg-purple-500 text-white";
-                else if (isAnswered)   cls = "border border-green-500 bg-green-500 text-white";
-                else if (isVisited)    cls = "border border-red-300 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400";
+                  let cls = "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400";
+                  if (isSectionLocked)   cls = "bg-slate-100 dark:bg-slate-850 text-slate-300 dark:text-slate-600 cursor-not-allowed";
+                  else if (isCurrent)    cls = "border-2 border-blue-600 bg-blue-600 text-white font-bold";
+                  else if (isMarked)     cls = "border border-purple-500 bg-purple-500 text-white";
+                  else if (isAnswered)   cls = "border border-green-500 bg-green-500 text-white";
+                  else if (isVisited)    cls = "border border-red-300 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400";
 
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => onNavigate(idx)}
-                    title={`Question ${idx + 1}`}
-                    className={`h-9 w-full text-xs font-semibold transition-colors hover:opacity-80 ${cls}`}
-                  >
-                    {idx + 1}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => !isSectionLocked && onNavigate(idx)}
+                      disabled={isSectionLocked}
+                      title={isSectionLocked ? "Section Locked" : `Question ${idx + 1}`}
+                      className={`h-9 w-full text-xs font-semibold transition-colors hover:opacity-80 ${cls}`}
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Legend */}

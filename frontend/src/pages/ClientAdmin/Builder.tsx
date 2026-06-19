@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { testsApi, testQuestionsApi, questionsApi } from "@/services/api/client";
+import { testsApi, testQuestionsApi, questionsApi, testSectionsApi } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,6 +25,7 @@ export default function Builder() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletedSectionIds, setDeletedSectionIds] = useState<string[]>([]);
   const [testData, setTestData] = useState<TestData>({
     test_name: "",
     timer: 60,
@@ -37,6 +38,7 @@ export default function Builder() {
     active: true,
     allow_guests: false,
     questions: [],
+    sections: [],
   });
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [repoDialogOpen, setRepoDialogOpen] = useState(false);
@@ -54,14 +56,35 @@ export default function Builder() {
       const { data: testQuestions, error: tqError } = await testQuestionsApi.list(testId!, true);
       if (tqError) throw tqError;
 
-      const questionIds = (testQuestions as any[])?.map((tq: any) => tq.question_id) || [];
-      let questions: Question[] = [];
+      // Extract sections
+      const { data: sectionsData, error: sectionsError } = await testSectionsApi.list(testId!);
+      if (sectionsError) throw sectionsError;
 
-      if (questionIds.length > 0) {
-        const { data: qData, error: qError } = await questionsApi.getByIds(questionIds);
-        if (qError) throw qError;
-        questions = (qData as any[]) as unknown as Question[];
-      }
+      const sections = (sectionsData as any[])?.map((s: any) => ({
+        id: s.id,
+        test_id: s.test_id,
+        name: s.name,
+        position: s.position,
+        duration_minutes: s.duration_minutes,
+        negative_marks: s.negative_marks,
+        shuffle_questions: s.shuffle_questions === 1 || s.shuffle_questions === true,
+        shuffle_options: s.shuffle_options === 1 || s.shuffle_options === true,
+        navigation_locked: s.navigation_locked === 1 || s.navigation_locked === true,
+      })) || [];
+
+      // Map questions keeping section_id and position
+      const questions: Question[] = (testQuestions as any[])?.map((tq: any) => ({
+        id: tq.question_id,
+        question_text: tq.question_text || tq.questions?.question_text || "",
+        option_a: tq.option_a || tq.questions?.option_a || "",
+        option_b: tq.option_b || tq.questions?.option_b || "",
+        option_c: tq.option_c || tq.questions?.option_c || "",
+        option_d: tq.option_d || tq.questions?.option_d || "",
+        correct_answer: tq.correct_answer || tq.questions?.correct_answer || "A",
+        marks: tq.marks ?? tq.questions?.marks ?? 1,
+        section_id: tq.section_id || null,
+        position: tq.position ?? 0
+      })) || [];
 
       const t = test as any;
       setTestData({
@@ -78,6 +101,7 @@ export default function Builder() {
         allow_guests: !!t.allow_guests,
         share_code: t.share_code,
         questions,
+        sections,
       });
     } catch (error) {
       console.error("Error loading test:", error);
@@ -97,6 +121,7 @@ export default function Builder() {
       option_d: "",
       correct_answer: "A",
       marks: 1,
+      section_id: null,
       temp_id: Date.now(),
     };
     setTestData((prev) => ({ ...prev, questions: [...prev.questions, newQuestion] }));
@@ -192,18 +217,57 @@ export default function Builder() {
         testRecord = data;
       }
 
-      const questionsPayload = testData.questions.map((q, index) => ({
-        id: q.id,
-        question_text: q.question_text,
-        option_a: q.option_a,
-        option_b: q.option_b,
-        option_c: q.option_c,
-        option_d: q.option_d,
-        correct_answer: q.correct_answer,
-        marks: q.marks,
-        section_id: (q as any).section_id || null,
-        position: index,
-      }));
+      // Delete sections that were removed
+      for (const delId of deletedSectionIds) {
+        if (!delId.startsWith("temp_")) {
+          await testSectionsApi.delete(delId);
+        }
+      }
+
+      // Save / Update sections
+      const sectionIdMapping: Record<string, string> = {};
+      if (testData.sections) {
+        for (const sec of testData.sections) {
+          const secPayload = {
+            test_id: testRecord.id,
+            name: sec.name,
+            position: sec.position,
+            duration_minutes: sec.duration_minutes,
+            negative_marks: sec.negative_marks,
+            shuffle_questions: sec.shuffle_questions ? 1 : 0,
+            shuffle_options: sec.shuffle_options ? 1 : 0,
+            navigation_locked: sec.navigation_locked ? 1 : 0,
+          };
+          if (sec.id.startsWith("temp_")) {
+            const { data: newSec, error: secErr } = await testSectionsApi.create(secPayload);
+            if (secErr) throw new Error(secErr.message);
+            sectionIdMapping[sec.id] = newSec.id;
+          } else {
+            const { error: secErr } = await testSectionsApi.update(sec.id, secPayload);
+            if (secErr) throw new Error(secErr.message);
+            sectionIdMapping[sec.id] = sec.id;
+          }
+        }
+      }
+
+      const questionsPayload = testData.questions.map((q, index) => {
+        let sectionId = q.section_id || null;
+        if (sectionId && sectionId.startsWith("temp_")) {
+          sectionId = sectionIdMapping[sectionId] || null;
+        }
+        return {
+          id: q.id,
+          question_text: q.question_text,
+          option_a: q.option_a,
+          option_b: q.option_b,
+          option_c: q.option_c,
+          option_d: q.option_d,
+          correct_answer: q.correct_answer,
+          marks: q.marks,
+          section_id: sectionId,
+          position: index,
+        };
+      });
 
       const { error: rpcError } = await testQuestionsApi.replace(testRecord.id, questionsPayload);
       if (rpcError) throw new Error(rpcError.message);
@@ -240,6 +304,8 @@ export default function Builder() {
               testData={testData} 
               setTestData={setTestData} 
               totalMarks={totalMarks} 
+              deletedSectionIds={deletedSectionIds}
+              setDeletedSectionIds={setDeletedSectionIds}
             />
           </div>
 
@@ -266,6 +332,7 @@ export default function Builder() {
                   key={question.id}
                   question={question}
                   index={index}
+                  sections={testData.sections}
                   onUpdate={updateQuestion}
                   onDelete={deleteQuestion}
                   onDuplicate={duplicateQuestion}

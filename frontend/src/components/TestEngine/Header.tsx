@@ -16,6 +16,8 @@ interface HeaderProps {
   orgLogoUrl?: string | null;
   isSidebarOpen?: boolean;
   setIsSidebarOpen?: (open: boolean) => void;
+  sectionTimeLeft?: number | null;
+  sectionName?: string;
 }
 
 export function Header({ 
@@ -31,7 +33,9 @@ export function Header({
   orgName,
   orgLogoUrl,
   isSidebarOpen,
-  setIsSidebarOpen
+  setIsSidebarOpen,
+  sectionTimeLeft,
+  sectionName
 }: HeaderProps) {
   const [showInfo, setShowInfo] = useState(false);
 
@@ -58,6 +62,21 @@ export function Header({
 
         {/* Right: timer + info */}
         <div className="flex items-center gap-3">
+          {sectionName && (
+            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-wider rounded">
+              Section: {sectionName}
+            </span>
+          )}
+
+          {sectionTimeLeft !== null && sectionTimeLeft !== undefined && (
+            <div className={`flex items-center gap-2 border px-3 py-1.5 ${sectionTimeLeft < 60 ? "border-orange-500/50 bg-orange-500/10" : "border-blue-500/30 bg-blue-500/10"}`}>
+              <Clock className={`h-4 w-4 ${sectionTimeLeft < 60 ? "text-orange-400 animate-pulse" : "text-blue-400"}`} />
+              <span className={`font-mono text-base font-bold tabular-nums ${sectionTimeLeft < 60 ? "text-orange-400 animate-pulse" : "text-blue-400"}`}>
+                {formatTime(sectionTimeLeft)}
+              </span>
+            </div>
+          )}
+
           {/* Timer */}
           <div className={`flex items-center gap-2 border px-4 py-1.5 ${timeLeft < 300 ? "border-red-500/50 bg-red-500/10" : "border-slate-700 bg-slate-800"}`}>
             <Clock className={`h-4 w-4 ${timeLeft < 300 ? "text-red-400 animate-pulse" : "text-slate-400"}`} />
