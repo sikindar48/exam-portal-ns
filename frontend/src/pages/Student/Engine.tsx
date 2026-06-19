@@ -306,12 +306,10 @@ export default function Engine() {
       let finalStudentId = user?.uid;
 
       if (isGuest) {
-        const existingGuestId = sessionStorage.getItem(`guest_profile_id_${testId}`);
-        const guestIdToUse = existingGuestId || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
+        if (!user?.uid) {
+          throw new Error("Guest authentication is not ready. Please wait or reload.");
+        }
+        const guestIdToUse = user.uid;
 
         console.log("Syncing guest profile:", guestIdToUse);
         const { error: profileError } = await profilesApi.upsert({
@@ -323,11 +321,9 @@ export default function Engine() {
 
         if (profileError) {
           console.error("Critical: Guest profile sync failed:", profileError);
-          sessionStorage.removeItem(`guest_profile_id_${testId}`);
           throw new Error(`Database security blocked guest registration. (Error: ${profileError})`);
         } 
         
-        sessionStorage.setItem(`guest_profile_id_${testId}`, guestIdToUse);
         finalStudentId = guestIdToUse;
       }
 
