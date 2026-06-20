@@ -101,7 +101,10 @@ export default async function handler(req: Request, res: Response) {
       }),
       // Test Performance
       db.execute({
-        sql: `SELECT t.test_name, AVG(CASE WHEN a.total_marks > 0 THEN (a.score / a.total_marks) * 100 ELSE 0 END) as avg_pct
+        sql: `SELECT t.test_name, 
+                     AVG(CASE WHEN a.total_marks > 0 THEN (a.score / a.total_marks) * 100 ELSE 0 END) as avg_pct,
+                     (SUM(CASE WHEN a.total_marks > 0 AND (a.score / a.total_marks) >= 0.4 THEN 1.0 ELSE 0.0 END) * 100.0) / COUNT(a.id) as pass_rate,
+                     COUNT(a.id) as submissions
               FROM attempts a
               JOIN tests t ON t.id = a.test_id
               WHERE t.client_id = ? AND a.status = 'submitted'
@@ -127,6 +130,8 @@ export default async function handler(req: Request, res: Response) {
     const testPerformance = testPerfRows.rows.map((t: any) => ({
       name: t.test_name.length > 15 ? t.test_name.slice(0, 15) + "…" : t.test_name,
       avgScore: Math.round(t.avg_pct),
+      passRate: Math.round(Number(t.pass_rate) || 0),
+      submissions: Number(t.submissions) || 0,
     }));
 
     return res.status(200).json({

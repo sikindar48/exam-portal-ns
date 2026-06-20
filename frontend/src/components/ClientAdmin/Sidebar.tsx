@@ -12,6 +12,9 @@ import {
   Settings,
   LogOut,
   Building,
+  Shield,
+  BarChart3,
+  CreditCard,
 } from "lucide-react";
 
 interface ClientAdminSidebarProps {
@@ -122,6 +125,24 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       id: "nav-btn-tests"
     },
     {
+      label: "Analytics",
+      path: "/client-admin/analytics",
+      icon: BarChart3,
+      id: "nav-btn-analytics"
+    },
+    {
+      label: "Proctoring Logs",
+      path: "/client-admin/proctoring",
+      icon: Shield,
+      id: "nav-btn-proctoring"
+    },
+    {
+      label: "Subscription",
+      path: "/client-admin/subscription",
+      icon: CreditCard,
+      id: "nav-btn-subscription"
+    },
+    {
       label: "System Settings",
       path: "/client-admin/settings",
       icon: Settings,
@@ -130,7 +151,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-slate-950 text-white flex flex-col h-screen shrink-0 border-r border-slate-900 font-sans select-none z-20">
+    <aside className="w-64 bg-slate-950 text-white flex flex-col h-screen sticky top-0 shrink-0 border-r border-slate-900 font-sans select-none z-20">
       {/* Brand Header */}
       <div className="h-16 px-6 border-b border-slate-900 flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
@@ -145,7 +166,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
             {orgName || "Admin Portal"}
           </h2>
           <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-none mt-1">
-            Secure Command Center
+            Admin
           </p>
         </div>
       </div>
@@ -154,7 +175,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       <div className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
         <div>
           <p className="px-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 mb-3">
-            Administrative Control Panel
+            Navigation
           </p>
           <nav className="space-y-1">
             {navItems.map((item) => {

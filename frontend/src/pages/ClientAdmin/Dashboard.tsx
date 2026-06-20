@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import {
-  LogOut,
   Users,
   FileQuestion,
   ClipboardList,
@@ -12,21 +10,22 @@ import {
   TrendingUp,
   Target,
   Award,
+  Shield,
+  Activity,
+  Calendar
 } from "lucide-react";
-import { Toggle } from "@/components/Theme/Toggle";
-import { statsApi } from "@/services/api/client";
+import { statsApi, attemptsApi } from "@/services/api/client";
 import { Footer } from "@/components/Brand/Footer";
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
+import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function ClientAdminDashboard() {
   const { signOut, clientId, loading: authLoading } = useAuth();
@@ -39,32 +38,55 @@ export default function ClientAdminDashboard() {
     avgScore: 0,
     passRate: 0,
   });
-  const [topPerformers, setTopPerformers] = useState<any[]>([]);
-  const [testPerformance, setTestPerformance] = useState<any[]>([]);
+  const [recentAttempts, setRecentAttempts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (clientId && !authLoading) fetchStats();
+    if (clientId && !authLoading) {
+      fetchDashboardData();
+    }
   }, [clientId, authLoading]);
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     if (!clientId) return;
+    setLoading(true);
     try {
-      const { data, error } = await statsApi.client();
-      if (error || !data) throw error;
-      const d = data as any;
-      setStats({
-        totalStudents: d.totalStudents,
-        totalQuestions: d.totalQuestions,
-        totalTests: d.totalTests,
-        totalAttempts: d.totalAttempts,
-        avgScore: d.avgScore,
-        passRate: d.passRate,
-      });
-      setTopPerformers(d.topPerformers || []);
-      setTestPerformance(d.testPerformance || []);
+      const [statsRes, attemptsRes] = await Promise.all([
+        statsApi.client(),
+        attemptsApi.list({ limit: "5", page: "1" } as any)
+      ]);
+
+      if (!statsRes.error && statsRes.data) {
+        const d = statsRes.data as any;
+        setStats({
+          totalStudents: d.totalStudents,
+          totalQuestions: d.totalQuestions,
+          totalTests: d.totalTests,
+          totalAttempts: d.totalAttempts,
+          avgScore: d.avgScore,
+          passRate: d.passRate,
+        });
+      }
+
+      if (!attemptsRes.error && attemptsRes.data) {
+        setRecentAttempts((attemptsRes.data as any).data || []);
+      }
     } catch (err: any) {
-      console.error("Error fetching stats:", err);
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
   };
 
   return (
@@ -72,118 +94,133 @@ export default function ClientAdminDashboard() {
       <ClientAdminSidebar activeTab="Dashboard" />
       
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* Premium Admin Header */}
-        <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-600 p-1.5 rounded-sm">
-              <ClipboardList className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-sm font-black uppercase tracking-[0.2em]">Admin Command Center</h1>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Institute Management Interface</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <Toggle />
-            </div>
-          </div>
-        </header>
+        <ClientAdminHeader
+          title="System Overview"
+          subtitle="Real-time examination & performance metrics"
+          showBackButton={false}
+          actions={
+            <Button 
+              onClick={fetchDashboardData}
+              variant="outline"
+              disabled={loading}
+              className="h-9 px-4 rounded-none border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest transition-all"
+            >
+              Refresh Data
+            </Button>
+          }
+        />
 
         <main className="flex-1 overflow-y-auto">
           <div className="container max-w-7xl mx-auto p-8 space-y-10">
-            
-            {/* Header Section */}
-            <div className="flex items-end justify-between border-b-2 border-slate-900 dark:border-slate-800 pb-6">
-              <div>
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">System Overview</h2>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Real-time examination & performance metrics</p>
-              </div>
-              <div className="text-right flex items-center gap-4">
-                <Button 
-                  onClick={fetchStats}
-                  variant="outline"
-                  className="h-10 rounded-none border-slate-200 uppercase text-[10px] font-black tracking-widest"
-                >
-                  Refresh Data
-                </Button>
-              </div>
-            </div>
 
             {/* Core Metrics */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {[
-                { label: "Total Students", value: stats.totalStudents, icon: Users, color: "text-blue-600" },
-                { label: "Question Bank", value: stats.totalQuestions, icon: FileQuestion, color: "text-slate-600" },
-                { label: "Active Tests", value: stats.totalTests, icon: ClipboardList, color: "text-indigo-600" },
-                { label: "Total Attempts", value: stats.totalAttempts, icon: TrendingUp, color: "text-emerald-600" },
-                { label: "Avg. Accuracy", value: `${stats.avgScore}%`, icon: Target, color: "text-amber-600" },
-                { label: "Success Rate", value: `${stats.passRate}%`, icon: Award, color: "text-purple-600" },
-              ].map(({ label, value, icon: Icon, color }) => (
+                { label: "Total Students", value: stats.totalStudents, icon: Users, color: "text-blue-600", desc: "Enrolled candidates" },
+                { label: "Question Bank", value: stats.totalQuestions, icon: FileQuestion, color: "text-slate-600", desc: "Total items in pool" },
+                { label: "Active Tests", value: stats.totalTests, icon: ClipboardList, color: "text-indigo-600", desc: "Available papers" },
+                { label: "Total Attempts", value: stats.totalAttempts, icon: TrendingUp, color: "text-emerald-600", desc: "Total submissions" },
+                { label: "Avg. Accuracy", value: `${stats.avgScore}%`, icon: Target, color: "text-amber-600", desc: "Average class mark" },
+                { label: "Success Rate", value: `${stats.passRate}%`, icon: Award, color: "text-purple-600", desc: "Passed attempts" },
+              ].map(({ label, value, icon: Icon, color, desc }) => (
                 <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-none shadow-sm hover:border-blue-500 transition-all group">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
                     <Icon className={`h-4 w-4 ${color} opacity-70 group-hover:opacity-100 transition-opacity`} />
                   </div>
                   <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
+                  <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{desc}</p>
                 </div>
               ))}
             </div>
 
-            {/* Analytical Charts & Tables */}
-            <div className="grid gap-8 lg:grid-cols-2">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-none">
-                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <BarChart className="h-4 w-4 text-slate-400" />
-                  <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Examination Performance Analytics</h3>
-                </div>
-                <div className="h-[300px]">
-                  {testPerformance.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={testPerformance} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '0px', color: '#fff' }}
-                          itemStyle={{ fontSize: '10px', fontWeight: 'bold', color: '#fff' }}
-                        />
-                        <Bar dataKey="avgScore" fill="#2563eb" radius={[0, 0, 0, 0]} barSize={40} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No analytical data available</p>
-                    </div>
-                  )}
+            {/* Grid Layout for Shortcuts and Recent Submissions */}
+            <div className="grid gap-8 lg:grid-cols-3">
+              
+              {/* Quick Actions Panel */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-none shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Quick Operations</h3>
+                  </div>
+                  <div className="space-y-4">
+                    {[
+                      { label: "Create Test Paper", desc: "Configure questions & settings", onClick: () => navigate("/client-admin/tests") },
+                      { label: "Manage Candidates", desc: "Upload CSV, reset passwords", onClick: () => navigate("/client-admin/students") },
+                      { label: "Audit Proctoring", desc: "Inspect real-time logs", onClick: () => navigate("/client-admin/proctoring") },
+                      { label: "View Analytics", desc: "Deeper performance insights", onClick: () => navigate("/client-admin/analytics") }
+                    ].map((shortcut, i) => (
+                      <button
+                        key={i}
+                        onClick={shortcut.onClick}
+                        className="w-full text-left p-3 border border-slate-100 dark:border-slate-850 hover:border-blue-500 transition-all flex flex-col justify-center"
+                      >
+                        <span className="text-xs font-black uppercase text-slate-850 dark:text-slate-200 tracking-tight">{shortcut.label}</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{shortcut.desc}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-none">
+              {/* Recent Activity Table */}
+              <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-none shadow-sm">
                 <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <Award className="h-4 w-4 text-slate-400" />
-                  <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Top Ranking Candidates</h3>
+                  <Activity className="h-4 w-4 text-slate-400" />
+                  <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Recent Examination Submissions</h3>
                 </div>
-                <div className="space-y-2">
-                  {topPerformers.length > 0 ? (
-                    topPerformers.map((student, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                        <div className="flex items-center gap-4">
-                          <span className={`flex h-6 w-6 items-center justify-center text-[10px] font-black ${i === 0 ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
-                            0{i + 1}
-                          </span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight">{student.name}</span>
-                        </div>
-                        <span className="text-xs font-black text-blue-600">{student.avg}%</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center justify-center h-32">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No candidates recorded</p>
-                    </div>
-                  )}
-                </div>
+
+                {loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <div key={n} className="h-10 bg-slate-50 dark:bg-slate-950 animate-pulse rounded-none" />
+                    ))}
+                  </div>
+                ) : recentAttempts.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-slate-200 dark:border-slate-800">
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest py-3">Candidate</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest py-3">Assessment Paper</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest py-3 text-center">Score</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase tracking-widest py-3 text-right">Submitted At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentAttempts.map((attempt) => (
+                          <TableRow key={attempt.id} className="border-b border-slate-100 dark:border-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-950">
+                            <TableCell className="py-3">
+                              <p className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">{attempt.profiles?.name || "Anonymous Guest"}</p>
+                              <p className="text-[9px] font-semibold text-slate-500">{attempt.profiles?.email || "Guest Participant"}</p>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <p className="text-xs font-bold text-slate-700 dark:text-slate-350">{attempt.tests?.test_name || "Assessment"}</p>
+                            </TableCell>
+                            <TableCell className="py-3 text-center">
+                              {attempt.status === "submitted" ? (
+                                <span className="text-xs font-black text-blue-600">{attempt.score} / {attempt.total_marks}</span>
+                              ) : (
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5">In Progress</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 text-right text-slate-500 font-mono text-[10px]">
+                              {formatDate(attempt.started_at)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 text-center">
+                    <Calendar className="h-8 w-8 text-slate-300 mb-2" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No recent attempts recorded</p>
+                    <p className="text-[9px] text-slate-500 uppercase mt-1">Attempts will appear here as candidates submit exams</p>
+                  </div>
+                )}
               </div>
+
             </div>
           </div>
         </main>

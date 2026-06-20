@@ -53,7 +53,7 @@ export default async function handler(req: Request, res: Response) {
       }
 
       // Hide results if not published
-      const resultsVisible = row.show_results_after_submission === 1 && row.result_status === "published";
+      const resultsVisible = row.show_results_after_submission === 1 || row.result_status === "published";
       if (!isAdmin && !resultsVisible) {
         row.score = null;
         row.total_marks = null;
@@ -146,6 +146,77 @@ export default async function handler(req: Request, res: Response) {
       return res.status(200).json(result);
     }
 
+    // Admin: list all recent attempts for their client organization
+    if (isAdmin && !test_id && !student_id) {
+      const callerClientId = await getUserClientId(user.id);
+      const isPaginationRequested = page !== undefined && limit !== undefined;
+      
+      let countSql = `SELECT COUNT(*) as total 
+                      FROM attempts a 
+                      JOIN tests t ON t.id = a.test_id 
+                      WHERE 1=1`;
+      const countArgs: any[] = [];
+      
+      if (!isSuper) {
+        countSql += " AND t.client_id = ?";
+        countArgs.push(callerClientId);
+      }
+      
+      const { rows: countRows } = await db.execute({ sql: countSql, args: countArgs });
+      const total = (countRows[0] as any).total;
+
+      let dataSql = `SELECT a.*, t.test_name, t.client_id as test_client_id
+                     FROM attempts a
+                     JOIN tests t ON t.id = a.test_id
+                     WHERE 1=1`;
+      const args: any[] = [];
+      
+      if (!isSuper) {
+        dataSql += " AND t.client_id = ?";
+        args.push(callerClientId);
+      }
+      
+      dataSql += " ORDER BY a.started_at DESC";
+      
+      if (isPaginationRequested) {
+        const pNum = Math.max(1, parseInt(page as string, 10));
+        const lNum = Math.max(1, parseInt(limit as string, 10));
+        const offset = (pNum - 1) * lNum;
+        dataSql += " LIMIT ? OFFSET ?";
+        args.push(lNum, offset);
+      }
+      
+      const { rows } = await db.execute({ sql: dataSql, args });
+      
+      let result: any[] = [];
+      if (rows.length > 0) {
+        const studentIds = [...new Set(rows.map((r: any) => r.student_id))];
+        const placeholders = studentIds.map(() => "?").join(",");
+        const { rows: profiles } = await db.execute({
+          sql: `SELECT id, name, email FROM profiles WHERE id IN (${placeholders})`,
+          args: studentIds,
+        });
+        const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+        result = rows.map((r: any) => ({
+          ...r,
+          tests: { test_name: r.test_name },
+          profiles: profileMap.get(r.student_id) ?? null,
+        }));
+      }
+
+      if (isPaginationRequested) {
+        return res.status(200).json({
+          data: result,
+          pagination: {
+            page: Math.max(1, parseInt(page as string, 10)),
+            limit: Math.max(1, parseInt(limit as string, 10)),
+            total,
+          },
+        });
+      }
+      return res.status(200).json(result);
+    }
+
     // Student: own history
     const resolvedStudentId = (student_id as string) || user.id;
     if (!isSuper && !isClientAdmin && resolvedStudentId !== user.id) {
@@ -194,7 +265,7 @@ export default async function handler(req: Request, res: Response) {
 
     const { rows } = await db.execute({ sql, args });
     const formattedData = rows.map((r: any) => {
-      const resultsVisible = r.show_results_after_submission === 1 && r.result_status === "published";
+      const resultsVisible = r.show_results_after_submission === 1 || r.result_status === "published";
       return {
         ...r,
         score: (isAdmin || resultsVisible) ? r.score : null,

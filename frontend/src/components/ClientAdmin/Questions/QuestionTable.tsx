@@ -39,9 +39,18 @@ export function QuestionTable({
   onBulkMove,
   onBulkDelete,
 }: QuestionTableProps) {
-  const filteredQuestions = questions.filter(
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [difficultyFilter, setDifficultyFilter] = React.useState("all");
+
+  const folderQuestions = questions.filter(
     (q) => q.folder_id === (openFolderId === "uncategorized" ? null : openFolderId)
   );
+
+  const filteredQuestions = folderQuestions.filter((q) => {
+    const matchesSearch = q.question_text.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDifficulty = difficultyFilter === "all" || q.difficulty?.toLowerCase() === difficultyFilter.toLowerCase();
+    return matchesSearch && matchesDifficulty;
+  });
 
   const toggleAll = () => {
     if (selectedIds.length === filteredQuestions.length) {
@@ -61,6 +70,30 @@ export function QuestionTable({
 
   return (
     <div className="space-y-4">
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search questions by text..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500 placeholder-slate-400"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <select
+            value={difficultyFilter}
+            onChange={(e) => setDifficultyFilter(e.target.value)}
+            className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+          >
+            <option value="all">All Difficulties</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between bg-slate-900 text-white p-4 rounded-none shadow-lg animate-in slide-in-from-top-2">
           <div className="flex items-center gap-4">

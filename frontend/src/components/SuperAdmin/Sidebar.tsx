@@ -34,7 +34,7 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-slate-950 text-white flex flex-col h-screen shrink-0 border-r border-slate-900 font-sans select-none z-20">
+    <aside className="w-64 bg-slate-950 text-white flex flex-col h-screen sticky top-0 shrink-0 border-r border-slate-900 font-sans select-none z-20">
       {/* Brand Header */}
       <div className="h-16 px-6 border-b border-slate-900 flex items-center gap-3">
         <div className="bg-red-600 p-1.5 rounded-sm">

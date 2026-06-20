@@ -212,12 +212,12 @@ export default async function handler(req: Request, res: Response) {
       .map((q) => ({
         sql: `INSERT OR REPLACE INTO questions
               (id, client_id, question_text, option_a, option_b, option_c, option_d,
-               correct_answer, marks, section_id, updated_at)
+               correct_answer, marks, updated_at)
               VALUES (?,
                 (SELECT client_id FROM tests WHERE id = ?),
-                ?,?,?,?,?,?,?,?,datetime('now'))`,
+                ?,?,?,?,?,?,?,datetime('now'))`,
         args: [q.id, test_id, q.question_text, q.option_a, q.option_b, q.option_c,
-               q.option_d, q.correct_answer, q.marks ?? 1, q.section_id ?? null],
+               q.option_d, q.correct_answer, q.marks ?? 1],
       }));
 
     // New questions (temp_ ids): insert into questions first

@@ -12,6 +12,7 @@ import { Toggle } from "@/components/Theme/Toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Footer } from "@/components/Brand/Footer";
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
+import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
 import { ArrowLeft, Save } from "lucide-react";
 
 export default function ClientSettings() {
@@ -61,35 +62,17 @@ export default function ClientSettings() {
       <ClientAdminSidebar activeTab="System Settings" />
       
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* Premium Header */}
-        <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate("/client-admin")}
-              className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex flex-col">
-              <h1 className="text-sm font-black uppercase tracking-[0.2em]">Organization Control</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">System Profile & Identity</p>
-            </div>
-          </div>
-          <Toggle />
-        </header>
+        <ClientAdminHeader 
+          title="Identity Management" 
+          subtitle="Configure your institute's public profile" 
+          showBackButton={true} 
+          backPath="/client-admin"
+        />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="container max-w-2xl mx-auto p-8 space-y-10">
-            
-            <div className="flex items-center justify-between border-b-2 border-slate-900 dark:border-slate-800 pb-4">
-              <div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Identity Management</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Configure your institute's public profile</p>
-              </div>
-            </div>
+          <div className="container max-w-7xl mx-auto p-8 space-y-10">
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none p-8 shadow-xl">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none p-8 shadow-xl max-w-2xl mx-auto">
               {fetchLoading ? (
                 <div className="space-y-6">
                   <div className="space-y-2">

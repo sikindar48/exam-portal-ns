@@ -30,6 +30,9 @@ const TestsManagement = lazy(() => import("./pages/ClientAdmin/Tests"));
 const Builder = lazy(() => import("./pages/ClientAdmin/Builder"));
 const Results = lazy(() => import("./pages/ClientAdmin/Results"));
 const ClientSettings = lazy(() => import("./pages/ClientAdmin/Settings"));
+const ProctoringLogs = lazy(() => import("./pages/ClientAdmin/ProctoringLogs"));
+const Analytics = lazy(() => import("./pages/ClientAdmin/Analytics"));
+const Subscription = lazy(() => import("./pages/ClientAdmin/Subscription"));
 
 // Student Pages
 const StudentDashboard = lazy(() => import("./pages/Student/Dashboard"));
@@ -140,10 +143,34 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/client-admin/proctoring"
+                  element={
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <ProctoringLogs />
+                    </Protected>
+                  }
+                />
+                <Route
                   path="/client-admin/settings"
                   element={
                     <Protected allowedRoles={["clientadmin"]}>
                       <ClientSettings />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/client-admin/analytics"
+                  element={
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <Analytics />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/client-admin/subscription"
+                  element={
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <Subscription />
                     </Protected>
                   }
                 />

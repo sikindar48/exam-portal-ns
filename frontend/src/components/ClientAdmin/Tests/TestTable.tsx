@@ -2,7 +2,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, MoveRight, Trash2, ClipboardList, Send, FileText, Copy } from "lucide-react";
+import { Pencil, MoveRight, Trash2, ClipboardList, BarChart3, FileText, Copy } from "lucide-react";
 import Sharing from "@/components/Test/Sharing";
 
 interface Test {
@@ -39,7 +39,10 @@ export function TestTable({
   onUpdate,
   onClone,
 }: TestTableProps) {
-  const filteredTests = tests.filter((t) => {
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+
+  const folderTests = tests.filter((t) => {
     if (openFolderId) {
       return t.folder_id === openFolderId;
     }
@@ -47,8 +50,41 @@ export function TestTable({
     return t.folder_id === null || t.active === true || t.status === "published";
   });
 
+  const filteredTests = folderTests.filter((t) => {
+    const matchesSearch = t.test_name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "live" && t.active === true) || 
+      (statusFilter === "draft" && !t.active);
+    return matchesSearch && matchesStatus;
+  });
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-xl">
+    <div className="space-y-4">
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search assessments by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500 placeholder-slate-400"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+          >
+            <option value="all">All Statuses</option>
+            <option value="live">Live Only</option>
+            <option value="draft">Draft Only</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-xl">
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2 border-slate-200 dark:border-slate-800">
@@ -133,7 +169,7 @@ export function TestTable({
                       className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-green-600 hover:border-green-200 transition-all p-0"
                       title="Performance Analytics"
                     >
-                      <Send className="h-3.5 w-3.5" />
+                      <BarChart3 className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -175,6 +211,7 @@ export function TestTable({
           )}
         </TableBody>
       </Table>
+    </div>
     </div>
   );
 }

@@ -139,12 +139,12 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
               faceAbsentStartRef.current = Date.now();
             } else {
               const absentDurationMs = Date.now() - faceAbsentStartRef.current;
-              // If face missing for more than 5 continuous seconds, trigger violation
-              if (absentDurationMs >= 5000) {
+              // If face missing for more than 3 continuous seconds, trigger violation
+              if (absentDurationMs >= 3000) {
                 const isFirst = activeViolationRef.current !== "NO_FACE";
                 if (isFirst) activeViolationRef.current = "NO_FACE";
 
-                triggerViolation("NO_FACE", 2.5, {
+                triggerViolation("NO_FACE", 1.0, {
                   faceCount: 0,
                   absentDurationSeconds: absentDurationMs / 1000,
                 }, isFirst);
@@ -158,7 +158,7 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
               const isFirst = activeViolationRef.current !== "MULTIPLE_FACES";
               if (isFirst) activeViolationRef.current = "MULTIPLE_FACES";
 
-              triggerViolation("MULTIPLE_FACES", 2.5, {
+              triggerViolation("MULTIPLE_FACES", 1.0, {
                 faceCount,
                 confidence: detections[0]?.score?.[0] || detections[0]?.score || 0.9,
               }, isFirst);
@@ -172,14 +172,14 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         detectorRef.current = detector;
         setModelLoaded(true);
 
-        // Periodically capture frames and pass to detector (every 2.5 seconds)
+        // Periodically capture frames and pass to detector (every 1.0 second)
         intervalIdRef.current = setInterval(async () => {
           if (!active || !videoElRef.current || !detectorRef.current) return;
 
           // Check if camera tracks are still active
           const videoTrack = stream.getVideoTracks()[0];
-          if (!videoTrack || videoTrack.readyState === "ended" || !videoTrack.enabled) {
-            triggerViolation("CAMERA_DISCONNECTED", 2.5);
+          if (!videoTrack || videoTrack.readyState === "ended" || !videoTrack.enabled || videoTrack.muted) {
+            triggerViolation("CAMERA_DISCONNECTED", 1.0);
             return;
           }
 
@@ -188,7 +188,7 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
           } catch (err) {
             console.error("MediaPipe inference error:", err);
           }
-        }, 2500);
+        }, 1000);
 
       } catch (err: any) {
         console.error("Failed to initialize proctoring detector:", err);
@@ -199,12 +199,27 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
     initDetector();
 
     // Listen for manual track changes (disconnections)
-    const handleTrackEnded = () => {
+    const handleTrackEndedOrMuted = () => {
       triggerViolation("CAMERA_DISCONNECTED", 2.5);
     };
 
+    const handleDeviceChange = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasVideoDevice = devices.some(device => device.kind === "videoinput");
+        if (!hasVideoDevice) {
+          triggerViolation("CAMERA_DISCONNECTED", 1.5);
+        }
+      } catch (err) {
+        console.error("Error checking devices list:", err);
+      }
+    };
+
+    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+
     stream.getVideoTracks().forEach((track) => {
-      track.addEventListener("ended", handleTrackEnded);
+      track.addEventListener("ended", handleTrackEndedOrMuted);
+      track.addEventListener("mute", handleTrackEndedOrMuted);
     });
 
     return () => {
@@ -214,8 +229,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         videoElRef.current.pause();
         videoElRef.current.srcObject = null;
       }
+      navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
       stream.getVideoTracks().forEach((track) => {
-        track.removeEventListener("ended", handleTrackEnded);
+        track.removeEventListener("ended", handleTrackEndedOrMuted);
+        track.removeEventListener("mute", handleTrackEndedOrMuted);
       });
     };
   }, [enabled, stream, attemptId, testId]);

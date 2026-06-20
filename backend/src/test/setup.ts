@@ -19,7 +19,7 @@ beforeAll(async () => {
   } catch (e) {}
 
   if (!schemaLoaded) {
-    const schemaPath = path.resolve(__dirname, "../../../docs/supabase/turso-schema.sql");
+    const schemaPath = path.resolve(__dirname, "../../../docs/supabase/.temp/turso-schema.sql");
     const schemaSql = fs.readFileSync(schemaPath, "utf8");
     
     // Split sql by semicolon

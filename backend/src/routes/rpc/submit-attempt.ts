@@ -129,7 +129,7 @@ export default async function handler(req: Request, res: Response) {
     args: [score, totalMarks, time_taken ?? 0, attempt_id],
   });
 
-  const resultsVisible = attempt.show_results_after_submission === 1 && attempt.result_status === "published";
+  const resultsVisible = attempt.show_results_after_submission === 1 || attempt.result_status === "published";
   const reportDownloadEnabled = attempt.allow_report_download === 1;
 
   if (!resultsVisible) {

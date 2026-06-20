@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import "dotenv/config";
+import path from "path";
 import { authMiddleware } from "./middleware/auth.js";
 import { rateLimit } from "express-rate-limit";
 
@@ -53,6 +54,7 @@ app.use((req, res, next) => {
 
 // Configure CORS for decoupled frontend
 const allowedOrigins = [
+  "http://localhost:8080",
   "http://localhost:8081",
   "http://localhost:3000",
   "https://exam-portal-ns-479112457276.asia-south2.run.app",
@@ -89,6 +91,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 app.use(express.json());
+app.use("/static", express.static(path.join(process.cwd(), "public")));
 
 // Apply Firebase Auth verification middleware globally
 app.use(authMiddleware);

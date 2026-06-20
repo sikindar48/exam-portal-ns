@@ -52,6 +52,7 @@ import {
 import { Footer } from "@/components/Brand/Footer";
 import { Progress } from "@/components/ui/progress";
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
+import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
 
 interface ImportRow {
   name: string;
@@ -75,6 +76,7 @@ export default function StudentsManagement() {
     name: string;
   } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -396,216 +398,205 @@ export default function StudentsManagement() {
       <ClientAdminSidebar activeTab="Manage Students" />
       
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* Premium Header */}
-        <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-8 shrink-0 shadow-md z-10">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate("/client-admin")}
-              className="h-8 w-8 rounded-none border border-slate-700 text-slate-400 hover:text-white p-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex flex-col">
-              <h1 className="text-sm font-black uppercase tracking-[0.2em]">Candidate Management</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Student Management</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Toggle />
-
-            <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
-              if (!importing) {
-                setIsImportDialogOpen(open);
-                if (!open) {
-                  setImportRows([]);
-                  setHasStartedImport(false);
-                  setProgressCount(0);
+        <ClientAdminHeader
+          title="Candidate Management"
+          subtitle="Student Management"
+          showBackButton={true}
+          backPath="/client-admin"
+          actions={
+            <>
+              <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+                if (!importing) {
+                  setIsImportDialogOpen(open);
+                  if (!open) {
+                    setImportRows([]);
+                    setHasStartedImport(false);
+                    setProgressCount(0);
+                  }
                 }
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button 
-                  variant="ghost"
-                  className="h-9 px-6 rounded-none border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest"
-                >
-                  <FileSpreadsheet className="mr-2 h-3.5 w-3.5 text-blue-500" /> Bulk Import (CSV)
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl rounded-none border-t-4 border-t-blue-600 bg-white dark:bg-slate-900 overflow-hidden flex flex-col max-h-[85vh] p-0">
-                <DialogHeader className="p-6 pb-4 border-b">
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight">Bulk Candidate Import</DialogTitle>
-                </DialogHeader>
-                
-                <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
-                  {!hasStartedImport && (
-                    <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-400 font-bold uppercase tracking-tight space-y-1">
-                      <p className="font-black text-[10px] tracking-widest">CSV Format Instructions:</p>
-                      <p className="normal-case font-medium text-slate-500 dark:text-slate-400">
-                        The file must contain columns: <span className="font-bold">name, email, password</span>.
-                        The first row is automatically skipped if it contains headers.
-                      </p>
-                    </div>
-                  )}
-
-                  {!hasStartedImport && (
-                    <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center cursor-pointer hover:border-blue-500 transition-all relative rounded-none">
-                      <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                      <p className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
-                        Select or Drag CSV File
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">
-                        Max file size: 5MB
-                      </p>
-                    </div>
-                  )}
-
-                  {importRows.length > 0 && (
-                    <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                      <div className="flex justify-between items-center shrink-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {importRows.length} Students Found
-                        </p>
-                        {hasStartedImport && (
-                          <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
-                            {progressCount} / {importRows.length} Processed
-                          </span>
-                        )}
-                      </div>
-
-                      {hasStartedImport && (
-                        <div className="space-y-2 shrink-0">
-                          <Progress value={(progressCount / importRows.length) * 100} className="h-2 rounded-none bg-slate-100 dark:bg-slate-800" />
-                        </div>
-                      )}
-
-                      <div className="flex-1 min-h-[200px] border border-slate-200 dark:border-slate-800 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-2">
-                        <table className="w-full text-left border-collapse text-[11px]">
-                          <thead>
-                            <tr className="border-b border-slate-200 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                              <th className="p-2">Name</th>
-                              <th className="p-2">Email</th>
-                              <th className="p-2">Password</th>
-                              <th className="p-2 text-right">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {importRows.map((row, idx) => (
-                              <tr key={idx} className="border-b border-slate-100 dark:border-slate-900/50">
-                                <td className="p-2 font-bold uppercase truncate max-w-[150px]">{row.name}</td>
-                                <td className="p-2 font-medium text-slate-500 truncate max-w-[200px]">{row.email}</td>
-                                <td className="p-2 font-mono text-slate-400 select-all">{row.password}</td>
-                                <td className="p-2 text-right font-black uppercase tracking-widest text-[9px]">
-                                  {row.status === "pending" && <span className="text-slate-400">Pending</span>}
-                                  {row.status === "processing" && <span className="text-blue-500 animate-pulse">Running</span>}
-                                  {row.status === "success" && <span className="text-green-600 bg-green-50 px-1.5 py-0.5 border border-green-100">Success</span>}
-                                  {row.status === "error" && (
-                                    <span className="text-red-600 bg-red-50 px-1.5 py-0.5 border border-red-100" title={row.error}>
-                                      Error
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-6 border-t flex justify-end gap-2 shrink-0 bg-slate-50 dark:bg-slate-900/50">
-                  <Button
+              }}>
+                <DialogTrigger asChild>
+                  <Button 
                     variant="ghost"
-                    disabled={importing}
-                    onClick={() => {
-                      setIsImportDialogOpen(false);
-                      setImportRows([]);
-                      setHasStartedImport(false);
-                      setProgressCount(0);
-                    }}
-                    className="h-10 rounded-none font-bold uppercase text-[10px] tracking-widest"
+                    className="h-9 px-6 rounded-none border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest"
                   >
-                    Close
+                    <FileSpreadsheet className="mr-2 h-3.5 w-3.5 text-blue-500" /> Bulk Import (CSV)
                   </Button>
-                  {importRows.length > 0 && !hasStartedImport && (
-                    <Button
-                      onClick={handleImport}
-                      className="h-10 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest px-8"
-                    >
-                      Start Import
-                    </Button>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl rounded-none border-t-4 border-t-blue-600 bg-white dark:bg-slate-900 overflow-hidden flex flex-col max-h-[85vh] p-0 animate-none">
+                  <DialogHeader className="p-6 pb-4 border-b">
+                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Bulk Candidate Import</DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
+                    {!hasStartedImport && (
+                      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-400 font-bold uppercase tracking-tight space-y-1">
+                        <p className="font-black text-[10px] tracking-widest">CSV Format Instructions:</p>
+                        <p className="normal-case font-medium text-slate-500 dark:text-slate-400">
+                          The file must contain columns: <span className="font-bold">name, email, password</span>.
+                          The first row is automatically skipped if it contains headers.
+                        </p>
+                      </div>
+                    )}
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  className="h-9 px-6 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg"
-                >
-                  <Plus className="mr-2 h-3.5 w-3.5" /> Register Student
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="rounded-none border-t-4 border-t-blue-600">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight">New Candidate Enrollment</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold"
-                      required
-                    />
+                    {!hasStartedImport && (
+                      <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center cursor-pointer hover:border-blue-500 transition-all relative rounded-none">
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                          Select or Drag CSV File
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">
+                          Max file size: 5MB
+                        </p>
+                      </div>
+                    )}
+
+                    {importRows.length > 0 && (
+                      <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                        <div className="flex justify-between items-center shrink-0">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {importRows.length} Students Found
+                          </p>
+                          {hasStartedImport && (
+                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                              {progressCount} / {importRows.length} Processed
+                            </span>
+                          )}
+                        </div>
+
+                        {hasStartedImport && (
+                          <div className="space-y-2 shrink-0">
+                            <Progress value={(progressCount / importRows.length) * 100} className="h-2 rounded-none bg-slate-100 dark:bg-slate-800" />
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-h-[200px] border border-slate-200 dark:border-slate-800 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-2">
+                          <table className="w-full text-left border-collapse text-[11px]">
+                            <thead>
+                              <tr className="border-b border-slate-200 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                <th className="p-2">Name</th>
+                                <th className="p-2">Email</th>
+                                <th className="p-2">Password</th>
+                                <th className="p-2 text-right">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {importRows.map((row, idx) => (
+                                <tr key={idx} className="border-b border-slate-100 dark:border-slate-900/50">
+                                  <td className="p-2 font-bold uppercase truncate max-w-[150px]">{row.name}</td>
+                                  <td className="p-2 font-medium text-slate-500 truncate max-w-[200px]">{row.email}</td>
+                                  <td className="p-2 font-mono text-slate-400 select-all">{row.password}</td>
+                                  <td className="p-2 text-right font-black uppercase tracking-widest text-[9px]">
+                                    {row.status === "pending" && <span className="text-slate-400">Pending</span>}
+                                    {row.status === "processing" && <span className="text-blue-500 animate-pulse">Running</span>}
+                                    {row.status === "success" && <span className="text-green-600 bg-green-50 px-1.5 py-0.5 border border-green-100">Success</span>}
+                                    {row.status === "error" && (
+                                      <span className="text-red-600 bg-red-50 px-1.5 py-0.5 border border-red-100" title={row.error}>
+                                        Error
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initial Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
-                      required
-                    />
-                  </div>
-                  <div className="pt-2">
-                    <Button 
-                      type="submit" 
-                      disabled={loading}
-                      className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px]"
+
+                  <div className="p-6 border-t flex justify-end gap-2 shrink-0 bg-slate-50 dark:bg-slate-900/50">
+                    <Button
+                      variant="ghost"
+                      disabled={importing}
+                      onClick={() => {
+                        setIsImportDialogOpen(false);
+                        setImportRows([]);
+                        setHasStartedImport(false);
+                        setProgressCount(0);
+                      }}
+                      className="h-10 rounded-none font-bold uppercase text-[10px] tracking-widest"
                     >
-                      {loading ? "Initializing..." : "Create Account"}
+                      Close
                     </Button>
+                    {importRows.length > 0 && !hasStartedImport && (
+                      <Button
+                        onClick={handleImport}
+                        className="h-10 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest px-8"
+                      >
+                        Start Import
+                      </Button>
+                    )}
                   </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </header>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    className="h-9 px-6 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg"
+                  >
+                    <Plus className="mr-2 h-3.5 w-3.5" /> Register Student
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-none border-t-4 border-t-blue-600">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-black uppercase tracking-tight">New Candidate Enrollment</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initial Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
+                        required
+                      />
+                    </div>
+                    <div className="pt-2">
+                      <Button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full h-11 rounded-none bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px]"
+                      >
+                        {loading ? "Initializing..." : "Create Account"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </>
+          }
+        />
 
         {/* Credentials Display Dialog */}
         <Dialog open={isCredentialsDialogOpen} onOpenChange={setIsCredentialsDialogOpen}>
@@ -705,16 +696,17 @@ export default function StudentsManagement() {
           <div className="container max-w-7xl mx-auto p-8 space-y-10">
             
             <section>
-              <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-900 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-slate-400" />
-                  <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                    Student Directory
-                  </h2>
-                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
-                    {allStudentIds.length} Records
-                  </span>
-                </div>
+              <div className="flex gap-4 items-center mb-6">
+                <input
+                  type="text"
+                  placeholder="Search candidates by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 h-11 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500 placeholder-slate-400 shadow-sm"
+                />
+                <span className="h-11 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center text-xs font-black uppercase tracking-widest text-slate-500 shrink-0 shadow-sm">
+                  {allStudentIds.length} Records
+                </span>
               </div>
 
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden shadow-xl">
@@ -737,20 +729,29 @@ export default function StudentsManagement() {
                           <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                         </TableRow>
                       ))
-                    ) : students.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="py-20 text-center">
-                          <div className="flex flex-col items-center gap-4 text-slate-400">
-                            <Users className="h-12 w-12 opacity-20" />
-                            <div>
-                              <p className="text-xs font-black uppercase tracking-widest">No Active Enrollments</p>
-                              <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Start building your student directory by adding candidates.</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      students.map((student) => (
+                    ) : (() => {
+                      const filteredStudents = students.filter(student => 
+                        student.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        student.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                      );
+
+                      if (filteredStudents.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-20 text-center">
+                              <div className="flex flex-col items-center gap-4 text-slate-400">
+                                <Users className="h-12 w-12 opacity-20" />
+                                <div>
+                                  <p className="text-xs font-black uppercase tracking-widest">No Matches Found</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Try expanding your search query.</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+
+                      return filteredStudents.map((student) => (
                         <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-b border-slate-100 dark:border-slate-800">
                           <TableCell className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight py-4">
                             {student.name}
@@ -783,7 +784,7 @@ export default function StudentsManagement() {
                           </TableCell>
                         </TableRow>
                       ))
-                    )}
+                    })()}
                   </TableBody>
                 </Table>
               </div>

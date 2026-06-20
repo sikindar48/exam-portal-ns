@@ -70,17 +70,18 @@ export default function Join() {
   };
 
   const handleJoin = () => {
-    if (user && role === "student") {
+    const isAnonymous = user?.isAnonymous;
+    if (user && role === "student" && !isAnonymous) {
       // Logged in student — always allowed
       navigate(`/student/test/${test.id}`);
-    } else if (user && role !== "student") {
+    } else if (user && role !== "student" && !isAnonymous) {
       toast({ 
         title: "Access Restricted", 
         description: "Only students can take tests. Please sign out of your admin account to continue.", 
         variant: "warning" 
       });
     } else {
-      // Guest — check if test allows guests
+      // Guest / Anonymous — check if test allows guests
       if (!test.allow_guests) {
         toast({
           title: "Sign in Required",
@@ -237,14 +238,14 @@ export default function Join() {
               <div className="space-y-4">
 
 
-                {user && role === "student" ? (
+                {user && role === "student" && !user.isAnonymous ? (
                   <Button
                     onClick={handleJoin}
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                   >
                     Start Test
                   </Button>
-                ) : user && role !== "student" ? (
+                ) : user && role !== "student" && !user.isAnonymous ? (
                   <div className="text-center space-y-3">
                     <p className="text-sm text-slate-600 dark:text-slate-400">
                       Only students can take tests

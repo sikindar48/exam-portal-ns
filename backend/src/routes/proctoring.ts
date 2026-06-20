@@ -32,9 +32,97 @@ export default async function handler(req: Request, res: Response) {
 
   // ── GET /api/proctoring/events ─────────────────────────────────────────────
   if (req.method === "GET") {
-    const { attempt_id } = req.query;
+    const { attempt_id, page, limit, test_id } = req.query;
     if (!attempt_id) {
-      return res.status(400).json({ error: "attempt_id is required" });
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+      const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+      const limitNum = Math.max(1, parseInt(limit as string, 10) || 10);
+      const offset = (pageNum - 1) * limitNum;
+
+      let sql = `
+        SELECT pe.*, a.student_id, p.name as student_name, p.email as student_email, t.test_name
+        FROM proctoring_events pe
+        JOIN attempts a ON a.id = pe.attempt_id
+        JOIN tests t ON t.id = a.test_id
+        LEFT JOIN profiles p ON p.id = a.student_id
+      `;
+      
+      const conditions: string[] = [];
+      const args: any[] = [];
+
+      if (!isSuper) {
+        const callerClientId = await getUserClientId(user.id);
+        conditions.push(`t.client_id = ?`);
+        args.push(callerClientId);
+      }
+
+      if (test_id) {
+        conditions.push(`t.id = ?`);
+        args.push(test_id as string);
+      }
+
+      if (conditions.length > 0) {
+        sql += ` WHERE ` + conditions.join(" AND ");
+      }
+
+      const countSql = `SELECT COUNT(*) as total FROM (${sql})`;
+      const { rows: countRows } = await db.execute({ sql: countSql, args });
+      const total = (countRows[0] as any).total;
+
+      sql += ` ORDER BY pe.created_at DESC LIMIT ? OFFSET ?`;
+      args.push(limitNum, offset);
+
+      const { rows: events } = await db.execute({ sql, args });
+
+      const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID || "exam-portal-ns"}.appspot.com`;
+      const enhancedEvents = await Promise.all(
+        events.map(async (row: any) => {
+          let imageUrl = null;
+          if (row.has_evidence && row.storage_path) {
+            if (getApps().length > 0) {
+              try {
+                const bucket = getStorage().bucket(storageBucketName);
+                const file = bucket.file(row.storage_path);
+                const [signedUrl] = await file.getSignedUrl({
+                  action: "read",
+                  expires: Date.now() + 15 * 60 * 1000,
+                });
+                imageUrl = signedUrl;
+              } catch (err) {
+                console.error("Error generating signed URL:", err);
+              }
+            } else {
+              if (process.env.NODE_ENV !== "production") {
+                imageUrl = `/static/mock-images/${row.storage_path}`;
+              }
+            }
+          }
+          
+          let parsedMetadata = null;
+          try {
+            if (row.metadata) parsedMetadata = JSON.parse(row.metadata);
+          } catch {
+            parsedMetadata = row.metadata;
+          }
+
+          return {
+            ...row,
+            image_url: imageUrl,
+            metadata: parsedMetadata,
+          };
+        })
+      );
+
+      return res.status(200).json({
+        events: enhancedEvents,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+        },
+      });
     }
 
     // 1. Fetch attempt and test to verify authorization

@@ -49,13 +49,13 @@ export function ProctoringTimeline({ events, totalRiskScore, loading }: Proctori
         <div className="flex items-center gap-3">
           <ShieldAlert className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Security Audit Status</p>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none">Unified Proctoring Timeline</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Proctoring</p>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none">Timeline</h3>
           </div>
         </div>
         <div className="text-right flex items-center gap-4">
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Risk Score</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Risk</p>
             <p className="text-base font-black tabular-nums text-slate-900 dark:text-white">{totalRiskScore}</p>
           </div>
           <span className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider border border-transparent ${riskBg}`}>

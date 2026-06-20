@@ -93,14 +93,14 @@ async function seedTestData() {
   await db.execute({
     sql: `INSERT INTO tests (id, client_id, test_name, timer, status, active, show_results_after_submission, allow_report_download, result_status)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: ["test-hidden", "client-1", "Hidden Results Test", 60, "published", 1, 0, 1, "published"]
+    args: ["test-hidden", "client-1", "Hidden Results Test", 60, "published", 1, 0, 1, "draft"]
   });
 
   // Test D: Results Enabled, Report Enabled, Draft result_status
   await db.execute({
     sql: `INSERT INTO tests (id, client_id, test_name, timer, status, active, show_results_after_submission, allow_report_download, result_status)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: ["test-draft", "client-1", "Draft Results Test", 60, "published", 1, 1, 1, "draft"]
+    args: ["test-draft", "client-1", "Draft Results Test", 60, "published", 1, 0, 1, "draft"]
   });
 
   // Seed Question
