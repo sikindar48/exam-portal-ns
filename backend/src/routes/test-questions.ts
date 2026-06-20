@@ -32,12 +32,12 @@ export default async function handler(req: Request, res: Response) {
       }
       const testClientId = (testRows[0] as any).client_id;
 
-      const callerClientId = await getUserClientId(user.id);
-      if (callerClientId !== testClientId) {
-        return res.status(403).json({ error: "Access denied. Client mismatch." });
-      }
-
-      if (!isClientAdmin) {
+      if (isClientAdmin) {
+        const callerClientId = await getUserClientId(user.id);
+        if (callerClientId !== testClientId) {
+          return res.status(403).json({ error: "Access denied. Client mismatch." });
+        }
+      } else {
         // Verify the student/guest has either an active (in_progress) or completed (submitted) attempt for this test
         const { rows: attemptRows } = await db.execute({
           sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ? AND status = 'in_progress'",

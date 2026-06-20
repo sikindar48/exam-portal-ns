@@ -217,7 +217,7 @@ export default function Builder() {
         scheduled_start: (testData as any).scheduled_start || null,
         scheduled_end: (testData as any).scheduled_end || null,
         client_id: clientId,
-        camera_required: testData.camera_required ? 1 : 0,
+        camera_required: !!testData.camera_required,
       };
 
       if (isNew) {

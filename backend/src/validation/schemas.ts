@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const booleanCoercible = z.preprocess((val) => {
+  if (typeof val === "number") return val === 1;
+  if (typeof val === "string") return val === "true" || val === "1";
+  return val;
+}, z.boolean());
+
 export const testCreateSchema = z.object({
   test_name: z.string().min(1, "Test name is required").max(100, "Test name is too long"),
   timer: z.number().int().min(1).max(480).optional(),
@@ -7,17 +13,17 @@ export const testCreateSchema = z.object({
   scheduled_start: z.string().datetime({ offset: true }).nullable().optional(),
   scheduled_end: z.string().datetime({ offset: true }).nullable().optional(),
   status: z.enum(["draft", "published"]).optional(),
-  active: z.boolean().optional(),
-  shuffle: z.boolean().optional(),
-  allow_review: z.boolean().optional(),
-  negative_marking: z.boolean().optional(),
+  active: booleanCoercible.optional(),
+  shuffle: booleanCoercible.optional(),
+  allow_review: booleanCoercible.optional(),
+  negative_marking: booleanCoercible.optional(),
   negative_marks: z.number().min(0).optional(),
-  restrict_navigation: z.boolean().optional(),
-  allow_guests: z.boolean().optional(),
-  public_link_enabled: z.boolean().optional(),
+  restrict_navigation: booleanCoercible.optional(),
+  allow_guests: booleanCoercible.optional(),
+  public_link_enabled: booleanCoercible.optional(),
   folder_id: z.string().nullable().optional(),
   share_code: z.string().max(20).optional(),
-  camera_required: z.boolean().optional(),
+  camera_required: booleanCoercible.optional(),
 });
 
 export const testUpdateSchema = testCreateSchema.partial();
