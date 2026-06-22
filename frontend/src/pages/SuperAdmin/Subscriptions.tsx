@@ -1,0 +1,317 @@
+import React, { useEffect, useState } from "react";
+import { SuperAdminSidebar } from "@/components/SuperAdmin/Sidebar";
+import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
+import { Footer } from "@/components/Brand/Footer";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CreditCard, Edit, Calendar, CheckCircle2, AlertOctagon, RefreshCcw, ShieldAlert, Award } from "lucide-react";
+import { apiClient } from "@/services/api/client";
+
+export default function SuperAdminSubscriptions() {
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>({
+    freeCount: 0,
+    starterCount: 0,
+    growthCount: 0,
+    enterpriseCount: 0,
+    expiringSoonCount: 0,
+    suspendedCount: 0,
+  });
+  const [loading, setLoading] = useState(false);
+  const [editSub, setEditSub] = useState<any | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const { toast } = useToast();
+
+  // Dialog form state
+  const [planId, setPlanId] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [status, setStatus] = useState("");
+  const [renewalStatus, setRenewalStatus] = useState("");
+
+  useEffect(() => {
+    fetchSubscriptions();
+  }, []);
+
+  const fetchSubscriptions = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient("/api/superadmin/subscriptions");
+      if (res && res.subscriptions) {
+        setSubscriptions(res.subscriptions);
+        setAnalytics(res.analytics);
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to load subscriptions",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditClick = (sub: any) => {
+    setEditSub(sub);
+    setPlanId(sub.plan_id);
+    setExpiryDate(sub.expiry_date);
+    setStatus(sub.status);
+    setRenewalStatus(sub.renewal_status);
+  };
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editSub) return;
+    setUpdating(true);
+
+    try {
+      const res = await apiClient(`/api/superadmin/subscriptions/${editSub.client_id}`, {
+        method: "PUT",
+        body: {
+          plan_id: planId,
+          expiry_date: expiryDate,
+          status,
+          renewal_status: renewalStatus,
+        },
+      });
+
+      if (res && res.success) {
+        toast({
+          title: "Success",
+          description: "Subscription plan updated successfully",
+        });
+        setEditSub(null);
+        fetchSubscriptions();
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update subscription",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
+      <SuperAdminSidebar activeTab="Subscriptions" />
+
+      <div className="flex-1 flex flex-col min-h-screen">
+        <ClientAdminHeader
+          title="Billing Command"
+          subtitle="Subscription & Licensing Control"
+          showBackButton={true}
+          backPath="/superadmin"
+          actions={
+            <Button
+              onClick={fetchSubscriptions}
+              disabled={loading}
+              className="h-9 px-4 rounded-none border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:border-slate-600 transition-all"
+            >
+              <RefreshCcw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+              Refresh Plans
+            </Button>
+          }
+        />
+
+        <main className="container max-w-7xl mx-auto p-8 flex-1 space-y-8">
+          
+          {/* Subscription Analytics Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-none shadow-sm flex flex-col justify-between">
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Free Clients</span>
+              <h4 className="text-xl font-black mt-2 text-slate-700 dark:text-slate-300">{analytics.freeCount}</h4>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-none shadow-sm flex flex-col justify-between">
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Starter Clients</span>
+              <h4 className="text-xl font-black mt-2 text-blue-500">{analytics.starterCount}</h4>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-none shadow-sm flex flex-col justify-between">
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Growth Clients</span>
+              <h4 className="text-xl font-black mt-2 text-emerald-500">{analytics.growthCount}</h4>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-none shadow-sm flex flex-col justify-between">
+              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Enterprise Clients</span>
+              <h4 className="text-xl font-black mt-2 text-purple-500">{analytics.enterpriseCount}</h4>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-none shadow-sm flex flex-col justify-between border-l-amber-500 dark:border-l-amber-500 border-l-2">
+              <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1"><Calendar className="h-3 w-3" /> Expiring 7 Days</span>
+              <h4 className="text-xl font-black mt-2 text-amber-600 dark:text-amber-500">{analytics.expiringSoonCount}</h4>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-none shadow-sm flex flex-col justify-between border-l-red-500 dark:border-l-red-500 border-l-2">
+              <span className="text-[9px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1"><ShieldAlert className="h-3 w-3" /> Suspended Orgs</span>
+              <h4 className="text-xl font-black mt-2 text-red-600">{analytics.suspendedCount}</h4>
+            </div>
+          </div>
+
+          {/* Subscriptions Table */}
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-none shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Organization</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Plan Name</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Start Date</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Expiry Date</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Renewal</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Status</th>
+                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center">
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-red-600" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Loading Tenant Plans...</p>
+                      </td>
+                    </tr>
+                  ) : subscriptions.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center">
+                        <CreditCard className="h-10 w-10 text-slate-300 mx-auto" />
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400 mt-3">No subscriptions found</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    subscriptions.map((sub) => {
+                      let statusBadge = "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800";
+                      if (sub.status === "active") statusBadge = "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/50";
+                      if (sub.status === "trial") statusBadge = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50";
+                      if (sub.status === "expired") statusBadge = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50";
+                      if (sub.status === "suspended") statusBadge = "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50";
+
+                      return (
+                        <tr key={sub.client_id} className="border-b border-slate-100 dark:border-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-all">
+                          <td className="py-4 px-6">
+                            <span className="font-bold text-slate-900 dark:text-white text-xs">{sub.client_name}</span>
+                          </td>
+                          <td className="py-4 px-6 text-xs font-black uppercase tracking-tight text-slate-700 dark:text-slate-300">
+                            {sub.plan_name}
+                          </td>
+                          <td className="py-4 px-6 text-xs text-slate-500 font-medium">
+                            {sub.start_date}
+                          </td>
+                          <td className="py-4 px-6 text-xs text-slate-500 font-medium">
+                            {sub.expiry_date}
+                          </td>
+                          <td className="py-4 px-6 text-xs font-black uppercase text-slate-500">
+                            {sub.renewal_status.replace(/_/g, " ")}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`text-[9px] font-black px-2 py-0.5 border rounded-sm uppercase tracking-widest ${statusBadge}`}>
+                              {sub.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <button
+                              onClick={() => handleEditClick(sub)}
+                              className="h-8 px-3 border border-slate-200 dark:border-slate-800 hover:border-red-400 dark:hover:border-red-900 text-slate-600 dark:text-slate-400 hover:text-red-600 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ml-auto transition-all rounded-none"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                              Edit Plan
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+
+        <Footer />
+      </div>
+
+      {/* Edit Subscription Plan Dialog */}
+      <Dialog open={editSub !== null} onOpenChange={(open) => !open && setEditSub(null)}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-none font-sans p-6 text-slate-900 dark:text-white">
+          <DialogHeader className="border-b border-slate-100 dark:border-slate-900 pb-4 mb-4">
+            <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-red-500" />
+              Edit Client Plan: {editSub?.client_name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateSubmit} className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Select Subscription Plan</label>
+              <select
+                value={planId}
+                onChange={(e) => setPlanId(e.target.value)}
+                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
+              >
+                <option value="free">Free Plan (3 Exams, 20 Students, 50 Qs)</option>
+                <option value="starter">Starter Plan (25 Exams, 100 Students, 100 Qs)</option>
+                <option value="growth">Growth Plan (50 Exams, 250 Students, 200 Qs)</option>
+                <option value="enterprise">Enterprise Plan (Unlimited Limits)</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Plan Expiry Date</label>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold px-3 outline-none rounded-none focus:border-red-500"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Subscription Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
+              >
+                <option value="active">Active</option>
+                <option value="trial">Trial</option>
+                <option value="expired">Expired</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Renewal Mode</label>
+              <select
+                value={renewalStatus}
+                onChange={(e) => setRenewalStatus(e.target.value)}
+                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
+              >
+                <option value="auto_renew">Auto Renew</option>
+                <option value="manual">Manual Renewal</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-900">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditSub(null)}
+                className="h-9 px-4 rounded-none border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-900"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updating}
+                className="h-9 px-6 bg-slate-900 dark:bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest transition-all rounded-none"
+              >
+                {updating ? "Saving changes..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

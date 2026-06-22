@@ -32,7 +32,7 @@ export default async function handler(req: Request, res: Response) {
 
   // ── GET /api/proctoring/events ─────────────────────────────────────────────
   if (req.method === "GET") {
-    const { attempt_id, page, limit, test_id } = req.query;
+    const { attempt_id, page, limit, test_id, client_id, event_type, severity, start_date, end_date } = req.query;
     if (!attempt_id) {
       if (!isAdmin) {
         return res.status(403).json({ error: "Permission denied" });
@@ -42,11 +42,12 @@ export default async function handler(req: Request, res: Response) {
       const offset = (pageNum - 1) * limitNum;
 
       let sql = `
-        SELECT pe.*, a.student_id, p.name as student_name, p.email as student_email, t.test_name
+        SELECT pe.*, a.student_id, p.name as student_name, p.email as student_email, t.test_name, t.client_id, c.name as client_name
         FROM proctoring_events pe
         JOIN attempts a ON a.id = pe.attempt_id
         JOIN tests t ON t.id = a.test_id
         LEFT JOIN profiles p ON p.id = a.student_id
+        LEFT JOIN clients c ON c.id = t.client_id
       `;
       
       const conditions: string[] = [];
@@ -56,6 +57,9 @@ export default async function handler(req: Request, res: Response) {
         const callerClientId = await getUserClientId(user.id);
         conditions.push(`t.client_id = ?`);
         args.push(callerClientId);
+      } else if (client_id) {
+        conditions.push(`t.client_id = ?`);
+        args.push(client_id as string);
       }
 
       if (test_id) {
@@ -63,18 +67,39 @@ export default async function handler(req: Request, res: Response) {
         args.push(test_id as string);
       }
 
+      if (event_type) {
+        conditions.push(`pe.event_type = ?`);
+        args.push(event_type as string);
+      }
+
+      if (severity) {
+        conditions.push(`pe.severity = ?`);
+        args.push(severity as string);
+      }
+
+      if (start_date) {
+        conditions.push(`pe.created_at >= ?`);
+        args.push(start_date as string);
+      }
+
+      if (end_date) {
+        conditions.push(`pe.created_at <= ?`);
+        args.push(end_date as string);
+      }
+
       if (conditions.length > 0) {
         sql += ` WHERE ` + conditions.join(" AND ");
       }
 
       const countSql = `SELECT COUNT(*) as total FROM (${sql})`;
-      const { rows: countRows } = await db.execute({ sql: countSql, args });
+      const countArgs = [...args];
+      const { rows: countRows } = await db.execute({ sql: countSql, args: countArgs });
       const total = (countRows[0] as any).total;
 
       sql += ` ORDER BY pe.created_at DESC LIMIT ? OFFSET ?`;
-      args.push(limitNum, offset);
+      const queryArgs = [...args, limitNum, offset];
 
-      const { rows: events } = await db.execute({ sql, args });
+      const { rows: events } = await db.execute({ sql, args: queryArgs });
 
       const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID || "exam-portal-ns"}.appspot.com`;
       const enhancedEvents = await Promise.all(

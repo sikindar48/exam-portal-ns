@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { ReactNode, useEffect, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { clientsApi } from "@/services/api/client";
 import { Loader2 } from "lucide-react";
 
 type AppRole = "superadmin" | "clientadmin" | "student";
@@ -20,15 +21,43 @@ export function Protected({
   children,
   allowedRoles,
 }: ProtectedProps) {
-  const { user, loading, role } = useAuth();
+  const { user, loading, role, clientId } = useAuth();
+  const [isSuspended, setIsSuspended] = useState<boolean | null>(null);
+  const location = useLocation();
 
-  // Only shown on first-ever visit (no cache) while we fetch role from Supabase
-  if (loading) {
+  useEffect(() => {
+    async function checkSuspension() {
+      if (!clientId || role === "superadmin") {
+        setIsSuspended(false);
+        return;
+      }
+      try {
+        const { data } = await clientsApi.get(clientId);
+        if (data && (data as any).active_status === 0) {
+          setIsSuspended(true);
+        } else {
+          setIsSuspended(false);
+        }
+      } catch (err) {
+        console.error("Failed to check organization status:", err);
+        setIsSuspended(false);
+      }
+    }
+    checkSuspension();
+  }, [clientId, role]);
+
+  // Only shown on first-ever visit (no cache) while we fetch role from Supabase or check suspension
+  if (loading || isSuspended === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // Redirect non-superadmin users of suspended clients to the suspension page
+  if (isSuspended && location.pathname !== "/suspended") {
+    return <Navigate to="/suspended" replace />;
   }
 
   // Allow guest access for tests if specified in URL

@@ -152,6 +152,63 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       );
     `);
 
+    // Client limits table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS client_limits (
+        client_id TEXT PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE,
+        max_exams_per_month INTEGER DEFAULT -1,
+        max_students_per_exam INTEGER DEFAULT -1,
+        max_questions_per_exam INTEGER DEFAULT -1,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Monthly usage tracking table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS client_usage_monthly (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        month TEXT NOT NULL,
+        exams_created INTEGER DEFAULT 0,
+        attempts_created INTEGER DEFAULT 0,
+        storage_used_mb REAL DEFAULT 0,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(client_id, month)
+      );
+    `);
+
+    // Global settings table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS global_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Seed default global settings
+    await db.execute(`
+      INSERT OR IGNORE INTO global_settings (key, value)
+      VALUES 
+        ('maintenance_mode', 'false'),
+        ('announcement_banner', ''),
+        ('registration_enabled', 'true'),
+        ('platform_logo', '')
+    `);
+
+    // Audit logs table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT,
+        metadata TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Proctoring events table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS proctoring_events (
@@ -175,6 +232,100 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_created ON proctoring_events(created_at);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_attempts_student_test ON attempts(student_id, test_id);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_test_questions_test ON test_questions(test_id);`);
+    // Additional performance indexes
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_client_subs_status ON client_subscriptions(status);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_client_subs_expiry ON client_subscriptions(expiry_date);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_attempts_started ON attempts(started_at);`);
+
+    // Subscription plans table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        max_exams_per_month INTEGER DEFAULT -1,
+        max_students_per_exam INTEGER DEFAULT -1,
+        max_questions_per_exam INTEGER DEFAULT -1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Plan features mapping table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS subscription_plan_features (
+        plan_id TEXT NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+        feature_name TEXT NOT NULL,
+        PRIMARY KEY (plan_id, feature_name)
+      );
+    `);
+
+    // Client subscriptions table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS client_subscriptions (
+        client_id TEXT PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE,
+        plan_id TEXT NOT NULL REFERENCES subscription_plans(id),
+        start_date TEXT NOT NULL,
+        expiry_date TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active', 'expired', 'trial', 'suspended', 'cancelled')),
+        renewal_status TEXT NOT NULL CHECK (renewal_status IN ('auto_renew', 'manual')),
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Subscription history table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS subscription_history (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        old_plan_id TEXT,
+        new_plan_id TEXT NOT NULL,
+        changed_by TEXT,
+        changed_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Seed default subscription plans if empty
+    await db.execute(`
+      INSERT OR IGNORE INTO subscription_plans (id, name, max_exams_per_month, max_students_per_exam, max_questions_per_exam)
+      VALUES 
+        ('free', 'Free Plan', 3, 20, 50),
+        ('starter', 'Starter Plan', 25, 100, 100),
+        ('growth', 'Growth Plan', 50, 250, 200),
+        ('enterprise', 'Enterprise Plan', -1, -1, -1)
+    `);
+
+    // Seed default plan feature mappings
+    const planFeatures = [
+      { plan_id: "starter", features: ["camera_proctoring", "csv_import"] },
+      { plan_id: "growth", features: ["camera_proctoring", "csv_import", "xlsx_export", "analytics"] },
+      { plan_id: "enterprise", features: ["camera_proctoring", "csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_reports", "priority_support"] }
+    ];
+    for (const pf of planFeatures) {
+      for (const feature of pf.features) {
+        await db.execute({
+          sql: "INSERT OR IGNORE INTO subscription_plan_features (plan_id, feature_name) VALUES (?, ?)",
+          args: [pf.plan_id, feature]
+        });
+      }
+    }
+
+    // Seed default trial subscriptions for existing clients
+    const existingClients = await db.execute("SELECT id FROM clients");
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const expiryStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    for (const cRow of existingClients.rows) {
+      const cId = (cRow as any).id;
+      await db.execute({
+        sql: "INSERT OR IGNORE INTO client_subscriptions (client_id, plan_id, start_date, expiry_date, status, renewal_status) VALUES (?, 'free', ?, ?, 'trial', 'manual')",
+        args: [cId, todayStr, expiryStr]
+      });
+      await db.execute({
+        sql: "INSERT OR IGNORE INTO client_limits (client_id, max_exams_per_month, max_students_per_exam, max_questions_per_exam) VALUES (?, 3, 20, 50)",
+        args: [cId]
+      });
+    }
 
     console.log("Database migrations ran successfully.");
   } catch (err) {

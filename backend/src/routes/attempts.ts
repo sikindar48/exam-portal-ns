@@ -289,6 +289,13 @@ export default async function handler(req: Request, res: Response) {
 
   // ── POST /api/attempts (create or resume attempt) ───────────────────────────
   if (req.method === "POST") {
+    // 1. Check Maintenance Mode
+    const { rows: maintRows } = await db.execute("SELECT value FROM global_settings WHERE key = 'maintenance_mode'");
+    const maintenanceMode = maintRows.length > 0 && maintRows[0].value === "true";
+    if (maintenanceMode) {
+      return res.status(503).json({ error: "Platform is under maintenance. Please try again later." });
+    }
+
     const validation = attemptCreateSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({ error: validation.error.errors[0].message });
@@ -304,6 +311,25 @@ export default async function handler(req: Request, res: Response) {
 
     const ipAddress = req.ip || "";
 
+    // Fetch test details to get the client_id
+    const { rows: testDetails } = await db.execute({
+      sql: "SELECT client_id, active FROM tests WHERE id = ?",
+      args: [test_id],
+    });
+    if (testDetails.length === 0) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+    const testClientId = (testDetails[0] as any).client_id;
+
+    // 2. Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [testClientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: The hosting organization has been suspended." });
+    }
+
     // Guest resumption is managed securely via student_id checks.
     // IP address matching is removed to prevent concurrent VUs/users on the same public network from sharing attempts.
 
@@ -318,6 +344,28 @@ export default async function handler(req: Request, res: Response) {
       return res.status(200).json(existing[0]);
     }
 
+    // 3. Enforce max_students_per_exam limit
+    const { getClientLimits, incrementClientUsage } = await import("../services/limits.js");
+    const limits = await getClientLimits(testClientId);
+    if (limits.max_students_per_exam !== -1) {
+      const { rows: attemptCountRows } = await db.execute({
+        sql: "SELECT COUNT(DISTINCT student_id) as count FROM attempts WHERE test_id = ?",
+        args: [test_id],
+      });
+      const currentStudents = Number((attemptCountRows[0] as any).count || 0);
+
+      // Check if student already has an attempt (if resuming or has previous attempts for this test, don't block them)
+      const { rows: studentAttempts } = await db.execute({
+        sql: "SELECT COUNT(*) as count FROM attempts WHERE student_id = ? AND test_id = ?",
+        args: [resolvedStudentId, test_id],
+      });
+      const hasAttempt = Number((studentAttempts[0] as any).count || 0) > 0;
+
+      if (!hasAttempt && currentStudents >= limits.max_students_per_exam) {
+        return res.status(403).json({ error: `Quota Exceeded: The maximum limit of ${limits.max_students_per_exam} candidates for this exam has been reached.` });
+      }
+    }
+
     const id = randomUUID();
     const attempt_token = randomUUID();
     await db.execute({
@@ -325,6 +373,10 @@ export default async function handler(req: Request, res: Response) {
             VALUES (?,?,?,?,datetime('now'),NULL,?,?)`,
       args: [id, resolvedStudentId, test_id, status, ipAddress, attempt_token],
     });
+
+    // 4. Increment attempts usage
+    await incrementClientUsage(testClientId, "attempts_created");
+
     const { rows } = await db.execute({ sql: "SELECT * FROM attempts WHERE id = ?", args: [id] });
     return res.status(201).json(rows[0]);
   }

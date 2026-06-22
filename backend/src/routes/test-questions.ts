@@ -158,19 +158,44 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: "Permission denied" });
     }
 
+    const { rows: testRows } = await db.execute({
+      sql: "SELECT client_id FROM tests WHERE id = ?",
+      args: [test_id as string],
+    });
+    if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+    const testClientId = (testRows[0] as any).client_id;
+
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
-      const { rows: testRows } = await db.execute({
-        sql: "SELECT client_id FROM tests WHERE id = ?",
-        args: [test_id as string],
-      });
-      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
-      if (testRows[0].client_id !== callerClientId) {
+      if (callerClientId !== testClientId) {
         return res.status(403).json({ error: "Permission denied" });
       }
     }
 
+    // Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [testClientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
+    }
+
     const body = Array.isArray(req.body) ? req.body : [req.body];
+
+    // Enforce max_questions_per_exam limit
+    const { getClientLimits } = await import("../services/limits.js");
+    const limits = await getClientLimits(testClientId);
+    if (limits.max_questions_per_exam !== -1) {
+      const { rows: currentQCountRows } = await db.execute({
+        sql: "SELECT COUNT(*) as count FROM test_questions WHERE test_id = ?",
+        args: [test_id as string],
+      });
+      const currentCount = Number((currentQCountRows[0] as any).count || 0);
+      if (currentCount + body.length > limits.max_questions_per_exam) {
+        return res.status(403).json({ error: `Quota Exceeded: The maximum limit of ${limits.max_questions_per_exam} questions per exam has been reached.` });
+      }
+    }
 
     const stmts = body.map((row: any) => ({
       sql: `INSERT OR IGNORE INTO test_questions (id, test_id, question_id, section_id, position)
@@ -192,19 +217,39 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: "Permission denied" });
     }
 
+    const { rows: testRows } = await db.execute({
+      sql: "SELECT client_id FROM tests WHERE id = ?",
+      args: [test_id as string],
+    });
+    if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+    const testClientId = (testRows[0] as any).client_id;
+
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
-      const { rows: testRows } = await db.execute({
-        sql: "SELECT client_id FROM tests WHERE id = ?",
-        args: [test_id as string],
-      });
-      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
       if (testRows[0].client_id !== callerClientId) {
         return res.status(403).json({ error: "Permission denied" });
       }
     }
 
+    // Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [testClientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
+    }
+
     const questions: any[] = req.body;
+
+    // Enforce max_questions_per_exam limit
+    const { getClientLimits } = await import("../services/limits.js");
+    const limits = await getClientLimits(testClientId);
+    if (limits.max_questions_per_exam !== -1) {
+      if (questions.length > limits.max_questions_per_exam) {
+        return res.status(403).json({ error: `Quota Exceeded: The maximum limit of ${limits.max_questions_per_exam} questions per exam has been reached.` });
+      }
+    }
 
     // Step 1: upsert each question into the questions table
     const upsertStmts = questions
@@ -269,16 +314,27 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: "Permission denied" });
     }
 
+    const { rows: testRows } = await db.execute({
+      sql: "SELECT client_id FROM tests WHERE id = ?",
+      args: [test_id as string],
+    });
+    if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+    const testClientId = (testRows[0] as any).client_id;
+
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
-      const { rows: testRows } = await db.execute({
-        sql: "SELECT client_id FROM tests WHERE id = ?",
-        args: [test_id as string],
-      });
-      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
       if (testRows[0].client_id !== callerClientId) {
         return res.status(403).json({ error: "Permission denied" });
       }
+    }
+
+    // Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [testClientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
     }
 
     await db.execute({

@@ -37,6 +37,12 @@ export default function ClientsManagement() {
     address: "",
     logo_url: "",
     active_status: true,
+    limits: {
+      max_exams_per_month: -1,
+      max_students_per_exam: -1,
+      max_questions_per_exam: -1,
+    },
+    features: [] as string[],
   });
   const [adminForm, setAdminForm] = useState({
     name: "",
@@ -52,12 +58,14 @@ export default function ClientsManagement() {
   }, []);
 
   const fetchClients = async () => {
+    setLoading(true);
     const { data, error } = await clientsApi.list();
     if (error) {
       toast({ title: "Error", description: "Failed to fetch clients", variant: "destructive" });
     } else {
       setClients((data as any[]) || []);
     }
+    setLoading(false);
   };
 
   const fetchClientAdmins = async (clientId: string) => {
@@ -151,6 +159,12 @@ export default function ClientsManagement() {
       address: client.address || "",
       logo_url: client.logo_url || "",
       active_status: client.active_status,
+      limits: client.limits || {
+        max_exams_per_month: -1,
+        max_students_per_exam: -1,
+        max_questions_per_exam: -1,
+      },
+      features: client.features || [],
     });
     setIsClientDialogOpen(true);
   };
@@ -162,13 +176,24 @@ export default function ClientsManagement() {
   };
 
   const resetClientForm = () => {
-    setClientForm({ name: "", address: "", logo_url: "", active_status: true });
+    setClientForm({
+      name: "",
+      address: "",
+      logo_url: "",
+      active_status: true,
+      limits: {
+        max_exams_per_month: -1,
+        max_students_per_exam: -1,
+        max_questions_per_exam: -1,
+      },
+      features: [],
+    });
     setEditingClient(null);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
-      <SuperAdminSidebar activeTab="Manage Organizations" />
+      <SuperAdminSidebar activeTab="Organizations" />
       
       <div className="flex-1 flex flex-col min-h-screen">
         <ClientHeader 
@@ -180,6 +205,7 @@ export default function ClientsManagement() {
         <main className="container max-w-7xl mx-auto p-8 flex-1">
           <ClientTable 
             clients={clients}
+            loading={loading}
             handleManageAdmins={handleManageAdmins}
             handleEditClient={handleEditClient}
             setDeleteClientTarget={setDeleteClientTarget}

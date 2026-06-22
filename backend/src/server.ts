@@ -23,6 +23,9 @@ import submitAttemptHandler from "./routes/rpc/submit-attempt.js";
 import reportHandler from "./routes/report.js";
 import testSectionsHandler from "./routes/test-sections.js";
 import proctoringHandler from "./routes/proctoring.js";
+import settingsHandler from "./routes/settings.js";
+import subscriptionsHandler from "./routes/subscriptions.js";
+import auditLogsHandler from "./routes/audit-logs.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -119,6 +122,10 @@ app.all("/api/test-folders", testFoldersHandler);
 app.all("/api/stats", statsHandler);
 app.all("/api/create-user", createUserHandler);
 app.all("/api/proctoring/events", proctoringHandler);
+app.all("/api/settings*", settingsHandler);
+app.all("/api/superadmin/subscriptions/:client_id", subscriptionsHandler);
+app.all("/api/superadmin/subscriptions", subscriptionsHandler);
+app.all("/api/superadmin/audit-logs", auditLogsHandler);
 
 // RPC / Custom endpoints
 app.all("/api/rpc/clone-test", cloneTestHandler);

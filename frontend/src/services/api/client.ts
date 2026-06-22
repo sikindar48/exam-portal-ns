@@ -79,7 +79,8 @@ export async function apiClient(
   options: { token?: string; method?: string; body?: any } = {}
 ): Promise<any> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (options.token) headers["Authorization"] = `Bearer ${options.token}`;
+  const token = options.token || (await getToken());
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const url = getUrl(path);
   const res = await fetch(url, {
@@ -273,13 +274,21 @@ export const proctoringApi = {
     metadata?: any;
   }) => apiFetch("/proctoring/events", { method: "POST", body: JSON.stringify(body) }),
   listEvents: (attempt_id: string) => apiFetch<{ events: any[]; total_risk_score: number }>(`/proctoring/events?attempt_id=${attempt_id}`),
-  listAllEvents: (page?: number, limit?: number, testId?: string) => {
-    let url = `/proctoring/events?`;
-    const params = new URLSearchParams();
-    if (page !== undefined) params.set("page", String(page));
-    if (limit !== undefined) params.set("limit", String(limit));
-    if (testId) params.set("test_id", testId);
-    return apiFetch<{ events: any[]; pagination: { page: number; limit: number; total: number } }>(url + params.toString());
+  listAllEvents: (params: {
+    page?: number;
+    limit?: number;
+    test_id?: string;
+    client_id?: string;
+    event_type?: string;
+    severity?: string;
+    start_date?: string;
+    end_date?: string;
+  } = {}) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
+    }
+    return apiFetch<{ events: any[]; pagination: { page: number; limit: number; total: number } }>(`/proctoring/events?${p.toString()}`);
   },
 };
 

@@ -4,6 +4,21 @@ import { getDb } from "../db/db.js";
 export async function isFeatureEnabled(clientId: string | null, featureName: string): Promise<boolean> {
   if (!clientId) return false;
   const db = getDb();
+
+  // 1. Check if the client has an active subscription plan that enables this feature
+  const { rows: subFeatures } = await db.execute({
+    sql: `SELECT 1 
+          FROM client_subscriptions cs
+          JOIN subscription_plan_features spf ON spf.plan_id = cs.plan_id
+          WHERE cs.client_id = ? AND cs.status IN ('active', 'trial') AND spf.feature_name = ?`,
+    args: [clientId, featureName]
+  });
+
+  if (subFeatures.length > 0) {
+    return true;
+  }
+
+  // 2. Fallback: check manual client overrides in client_features
   const { rows } = await db.execute({
     sql: "SELECT enabled FROM client_features WHERE client_id = ? AND feature_name = ?",
     args: [clientId, featureName],

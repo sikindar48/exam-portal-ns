@@ -4,6 +4,8 @@ import { requireUser, getUser } from "../auth/auth.js";
 import { hasRole, getUserClientId } from "../services/roles.js";
 import { randomUUID } from "crypto";
 import { testCreateSchema, testUpdateSchema } from "../validation/schemas.js";
+import { isFeatureEnabled } from "../services/features.js";
+import { getClientLimits, getClientUsageMonthly, incrementClientUsage } from "../services/limits.js";
 
 const BOOL_FIELDS = ["shuffle","allow_review","negative_marking","restrict_navigation","active","allow_guests","public_link_enabled","camera_required"];
 
@@ -78,40 +80,34 @@ export default async function handler(req: Request, res: Response) {
 
     const resolvedClientId = isSuper ? (client_id as string) : callerClientId;
     if (!resolvedClientId)
-      return res.status(400).json({ error: "client_id required" });
+      return res.status(403).json({ error: "Access denied" });
 
-    const isStudent = await hasRole(user.id, "student");
+    // Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [resolvedClientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
+    }
+
+    // Ensure pagination parameters are processed
     const isPaginationRequested = page !== undefined && limit !== undefined;
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.max(1, parseInt(limit as string, 10) || 10);
+    const offset = (pageNum - 1) * limitNum;
 
-    let countSql = "SELECT COUNT(*) as total FROM tests WHERE client_id = ?";
-    let dataSql = "";
-    let args: any[] = [resolvedClientId];
+    let dataSql = "SELECT * FROM tests WHERE client_id = ? ORDER BY created_at DESC";
+    let countSql = "SELECT COUNT(*) as count FROM tests WHERE client_id = ?";
+    const args: any[] = [resolvedClientId];
 
-    if (isStudent) {
-      countSql += " AND active = 1";
-    }
-
-    const { rows: countRows } = await db.execute({ sql: countSql, args });
-    const total = (countRows[0] as any).total;
-
-    if (with_question_count === "true") {
-      dataSql = `SELECT t.*,
-                  (SELECT COUNT(*) FROM test_questions tq WHERE tq.test_id = t.id) as question_count
-                FROM tests t
-                WHERE t.client_id = ?`;
-      if (isStudent) dataSql += " AND t.active = 1";
-      dataSql += " ORDER BY t.created_at DESC";
-    } else {
-      dataSql = "SELECT * FROM tests WHERE client_id = ?";
-      if (isStudent) dataSql += " AND active = 1";
-      dataSql += " ORDER BY created_at DESC";
-    }
-
+    let total = 0;
     if (isPaginationRequested) {
-      const pNum = Math.max(1, parseInt(page as string, 10));
-      const lNum = Math.max(1, parseInt(limit as string, 10));
-      const offset = (pNum - 1) * lNum;
+      const { rows: countRows } = await db.execute({ sql: countSql, args });
+      total = Number((countRows[0] as any).count || 0);
+
       dataSql += " LIMIT ? OFFSET ?";
+      const lNum = limitNum;
       args.push(lNum, offset);
     }
 
@@ -122,8 +118,8 @@ export default async function handler(req: Request, res: Response) {
       return res.status(200).json({
         data: formattedData,
         pagination: {
-          page: Math.max(1, parseInt(page as string, 10)),
-          limit: Math.max(1, parseInt(limit as string, 10)),
+          page: pageNum,
+          limit: limitNum,
           total,
         },
       });
@@ -151,7 +147,34 @@ export default async function handler(req: Request, res: Response) {
     const clientId = await getUserClientId(user.id);
     if (!clientId) return res.status(403).json({ error: "No client" });
 
+    // Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [clientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
+    }
+
     const b = validation.data;
+
+    // Enforce Camera Proctoring License Feature Check
+    if (b.camera_required) {
+      const proctoringAllowed = await isFeatureEnabled(clientId, "camera_proctoring");
+      if (!proctoringAllowed) {
+        return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan." });
+      }
+    }
+
+    // Enforce Monthly Exams Quota Limit
+    const limits = await getClientLimits(clientId);
+    if (limits.max_exams_per_month !== -1) {
+      const usage = await getClientUsageMonthly(clientId);
+      if (usage.exams_created >= limits.max_exams_per_month) {
+        return res.status(403).json({ error: `Quota Exceeded: Your organization monthly limit of ${limits.max_exams_per_month} exam papers has been reached.` });
+      }
+    }
+
     const id = randomUUID();
     const shareCode = b.share_code || generateShareCode();
 
@@ -174,6 +197,9 @@ export default async function handler(req: Request, res: Response) {
         b.camera_required ? 1 : 0,
       ],
     });
+
+    // Increment exams monthly usage metrics
+    await incrementClientUsage(clientId, "exams_created");
 
     const { rows } = await db.execute({ sql: "SELECT * FROM tests WHERE id = ?", args: [id] });
     return res.status(201).json(rowBools(rows[0] as any, BOOL_FIELDS));
@@ -198,9 +224,28 @@ export default async function handler(req: Request, res: Response) {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id required" });
 
+    const callerClientId = await getUserClientId(user.id);
+    if (!callerClientId) return res.status(403).json({ error: "No client associated" });
+
+    // Verify client active status
+    const { rows: clientStatus } = await db.execute({
+      sql: "SELECT active_status FROM clients WHERE id = ?",
+      args: [callerClientId],
+    });
+    if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
+      return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
+    }
+
+    // Enforce Camera Proctoring License check on update toggling
+    if (req.body.camera_required) {
+      const proctoringAllowed = await isFeatureEnabled(callerClientId, "camera_proctoring");
+      if (!proctoringAllowed) {
+        return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan." });
+      }
+    }
+
     // Client Admin Isolation Check
     if (isClientAdmin && !isSuper) {
-      const callerClientId = await getUserClientId(user.id);
       const { rows: testRows } = await db.execute({
         sql: "SELECT client_id FROM tests WHERE id = ?",
         args: [String(id)],

@@ -7,6 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { Protected } from "./components/Auth/Protected";
 import { Provider } from "./components/Theme/Provider";
 import { Suspense, lazy } from "react";
+import { GlobalAnnouncementBanner } from "./components/Brand/GlobalAnnouncementBanner";
 
 // Lazy load pages for code splitting
 const Home = lazy(() => import("./pages/Home/Page"));
@@ -19,6 +20,11 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 // Super Admin Pages
 const SuperAdminDashboard = lazy(() => import("./pages/SuperAdmin/Dashboard"));
 const ClientsManagement = lazy(() => import("./pages/SuperAdmin/Clients"));
+const SuperAdminSecurity = lazy(() => import("./pages/SuperAdmin/Security"));
+const SuperAdminSettings = lazy(() => import("./pages/SuperAdmin/Settings"));
+const SuperAdminSubscriptions = lazy(() => import("./pages/SuperAdmin/Subscriptions"));
+const SuperAdminAuditLogs = lazy(() => import("./pages/SuperAdmin/AuditLogs"));
+const Suspended = lazy(() => import("./pages/Suspended"));
 
 // Client Admin Pages
 const ClientAdminDashboard = lazy(
@@ -57,6 +63,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter basename="/">
+          <GlobalAnnouncementBanner />
           <AuthProvider>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
@@ -66,6 +73,7 @@ const App = () => (
                 <Route path="/reset-password" element={<Reset />} />
                 <Route path="/join/:code" element={<Join />} />
                 <Route path="/join" element={<Join />} />
+                <Route path="/suspended" element={<Suspended />} />
 
                 {/* Super Admin Routes */}
                 <Route
@@ -81,6 +89,38 @@ const App = () => (
                   element={
                     <Protected allowedRoles={["superadmin"]}>
                       <ClientsManagement />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/security"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminSecurity />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/settings"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminSettings />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/subscriptions"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminSubscriptions />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/audit-logs"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminAuditLogs />
                     </Protected>
                   }
                 />
