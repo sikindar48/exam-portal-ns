@@ -123,17 +123,54 @@ export default async function handler(req: Request, res: Response) {
 
     // Prevent profile hijacking / overwrite of non-guest accounts
     const isSuper = await hasRole(user.id, "superadmin");
+    const isClientAdmin = await hasRole(user.id, "clientadmin");
+    const callerClientId = await getUserClientId(user.id);
+
     if (!isSuper && profileId !== user.id) {
-      const { rows } = await db.execute({
-        sql: "SELECT email FROM profiles WHERE id = ?",
-        args: [profileId],
-      });
-      if (rows.length > 0) {
-        const existingEmail = (rows[0] as any).email || "";
-        const isGuestEmail = existingEmail.startsWith("guest_") && existingEmail.endsWith("@temp.exam");
-        if (!isGuestEmail) {
+      if (isClientAdmin) {
+        const { rows } = await db.execute({
+          sql: "SELECT client_id FROM profiles WHERE id = ?",
+          args: [profileId],
+        });
+        const targetClientId = rows[0]?.client_id;
+        if (!callerClientId || targetClientId !== callerClientId) {
           return res.status(403).json({ error: "Cannot modify this profile" });
         }
+      } else {
+        const { rows } = await db.execute({
+          sql: "SELECT email FROM profiles WHERE id = ?",
+          args: [profileId],
+        });
+        if (rows.length > 0) {
+          const existingEmail = (rows[0] as any).email || "";
+          const isGuestEmail = existingEmail.startsWith("guest_") && existingEmail.endsWith("@temp.exam");
+          if (!isGuestEmail) {
+            return res.status(403).json({ error: "Cannot modify this profile" });
+          }
+        }
+      }
+    }
+
+    // Sync with Firebase Auth if Firebase Admin SDK is active and the user is not a guest
+    if (getApps().length > 0) {
+      try {
+        const { rows: existingRows } = await db.execute({
+          sql: "SELECT email FROM profiles WHERE id = ?",
+          args: [profileId],
+        });
+        if (existingRows.length > 0) {
+          const existingEmail = (existingRows[0] as any).email || "";
+          const isGuestEmail = existingEmail.startsWith("guest_") && existingEmail.endsWith("@temp.exam");
+          if (!isGuestEmail) {
+            await getAuth().updateUser(profileId, {
+              email: email.trim(),
+              displayName: name.trim(),
+            });
+          }
+        }
+      } catch (authErr: any) {
+        console.error("Failed to update Firebase Auth user:", authErr);
+        return res.status(400).json({ error: authErr.message || "Failed to update Firebase Auth credentials" });
       }
     }
 

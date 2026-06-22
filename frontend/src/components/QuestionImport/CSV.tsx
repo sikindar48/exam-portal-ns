@@ -185,6 +185,14 @@ export default function CSV({
       )
     );
 
+    const existingKeyToIdMap: Record<string, string> = {};
+    if (existingData) {
+      for (const q of existingData) {
+        const key = `${normalize(q.question_text)}|${q.question_type || "mcq"}|${q.client_id || clientId}`;
+        existingKeyToIdMap[key] = q.id;
+      }
+    }
+
     // Strip rowNumber and filter duplicates
     const allQuestions = questions.map(({ rowNumber, ...q }) => ({
       ...q,
@@ -203,7 +211,18 @@ export default function CSV({
 
     let successCount = 0;
     let failedCount = 0;
-    const insertedIds: string[] = [];
+    const idsToLink: string[] = [];
+
+    // Add skipped ones (already existing in DB) to idsToLink
+    allQuestions.forEach((q) => {
+      const key = `${normalize(q.question_text)}|${q.question_type}|${clientId}`;
+      if (existingKeys.has(key)) {
+        const existingId = existingKeyToIdMap[key];
+        if (existingId) {
+          idsToLink.push(existingId);
+        }
+      }
+    });
 
     if (questionsToInsert.length > 0) {
       const batchSize = 100;
@@ -219,7 +238,8 @@ export default function CSV({
           successCount += batch.length;
           if (data) {
             const list = Array.isArray(data) ? data : [data];
-            insertedIds.push(...list.map((r: { id: string }) => r.id));
+            const newIds = list.map((r: { id: string }) => r.id);
+            idsToLink.push(...newIds);
           }
         }
 
@@ -230,8 +250,8 @@ export default function CSV({
     }
 
     // If linked to a test, create test_questions rows
-    if (testId && insertedIds.length > 0) {
-      const linkRows = insertedIds.map((qId) => ({
+    if (testId && idsToLink.length > 0) {
+      const linkRows = idsToLink.map((qId) => ({
         test_id: testId,
         question_id: qId,
       }));

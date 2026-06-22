@@ -34,6 +34,7 @@ import {
   FileSpreadsheet,
   Upload,
   Key,
+  Pencil,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,6 +78,12 @@ export default function StudentsManagement() {
   } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    email: "",
+  });
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -360,6 +367,50 @@ export default function StudentsManagement() {
     }
 
     setLoading(false);
+  };
+
+  const handleEdit = (student: any) => {
+    setEditingStudent(student);
+    setEditFormData({
+      name: student.name || "",
+      email: student.email || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    setLoading(true);
+
+    try {
+      const { data, error } = await profilesApi.upsert({
+        id: editingStudent.id,
+        name: editFormData.name.trim(),
+        email: editFormData.email.trim(),
+        client_id: clientId,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      toast({
+        title: "Success",
+        description: "Student details updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingStudent(null);
+      fetchStudents(true);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update student details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -765,6 +816,15 @@ export default function StudentsManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handleEdit(student)}
+                                className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all p-0"
+                                title="Edit Student Details"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleResetPassword(student.email)}
                                 className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all p-0"
                                 title="Reset Password"
@@ -803,6 +863,55 @@ export default function StudentsManagement() {
             </section>
           </div>
         </main>
+
+        {/* Edit Student Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="rounded-none border-t-4 border-t-blue-600">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">Edit Candidate Details</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-6 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
+                  required
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="h-11 rounded-none font-bold uppercase text-[10px] tracking-widest"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="h-11 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px] px-6"
+                >
+                  {loading ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

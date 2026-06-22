@@ -187,6 +187,27 @@ export default async function handler(req: Request, res: Response) {
         correct_answers = [q.correct_answer];
       }
 
+      // Ensure option_a..d and correct_answer are populated to satisfy legacy NOT NULL and CHECK constraints in SQLite schema
+      const optA = q.option_a || options[0] || "N/A";
+      const optB = q.option_b || options[1] || "N/A";
+      const optC = q.option_c || options[2] || "N/A";
+      const optD = q.option_d || options[3] || "N/A";
+
+      let correctAns = "A";
+      if (q.correct_answer && ["A", "B", "C", "D"].includes(q.correct_answer.toUpperCase())) {
+        correctAns = q.correct_answer.toUpperCase();
+      } else if (correct_answers.length > 0) {
+        const idx = options.findIndex((opt: string) => opt.toLowerCase().trim() === correct_answers[0].toLowerCase().trim());
+        if (idx >= 0 && idx < 4) {
+          correctAns = ["A", "B", "C", "D"][idx];
+        } else {
+          const possibleLetter = correct_answers[0].toUpperCase();
+          if (["A", "B", "C", "D"].includes(possibleLetter)) {
+            correctAns = possibleLetter;
+          }
+        }
+      }
+
       try {
         const result = await db.execute({
           sql: `INSERT OR IGNORE INTO questions
@@ -197,8 +218,8 @@ export default async function handler(req: Request, res: Response) {
           args: [
             id, targetClientId, q.folder_id ?? null,
             q.question_text,
-            q.option_a ?? null, q.option_b ?? null, q.option_c ?? null, q.option_d ?? null,
-            q.correct_answer ?? null, q.difficulty ?? "medium", q.marks ?? 1,
+            optA, optB, optC, optD,
+            correctAns, q.difficulty ?? "medium", q.marks ?? 1,
             question_type,
             JSON.stringify(options),
             JSON.stringify(correct_answers),
