@@ -232,12 +232,9 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_proctoring_created ON proctoring_events(created_at);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_attempts_student_test ON attempts(student_id, test_id);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_test_questions_test ON test_questions(test_id);`);
-    // Additional performance indexes
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);`);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_client_subs_status ON client_subscriptions(status);`);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_client_subs_expiry ON client_subscriptions(expiry_date);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_attempts_started ON attempts(started_at);`);
 
     // Subscription plans table
@@ -273,6 +270,9 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_client_subs_status ON client_subscriptions(status);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_client_subs_expiry ON client_subscriptions(expiry_date);`);
 
     // Subscription history table
     await db.execute(`

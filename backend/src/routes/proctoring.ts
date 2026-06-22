@@ -178,6 +178,10 @@ export default async function handler(req: Request, res: Response) {
           if (!isGuest) {
             return res.status(403).json({ error: "Permission denied" });
           }
+          const headerToken = req.headers["x-attempt-token"] || req.query.attempt_token;
+          if (!headerToken || attempt.attempt_token !== headerToken) {
+            return res.status(403).json({ error: "Permission denied: Invalid attempt token" });
+          }
         }
       }
     }
@@ -268,9 +272,13 @@ export default async function handler(req: Request, res: Response) {
 
     // 2. Validate ownership (must be the student who owns the attempt)
     if (attempt.student_id !== user.id) {
-      const isGuest = await isGuestStudent(attempt.student_id);
-      if (!isGuest) {
-        return res.status(403).json({ error: "Unauthorized access to this attempt" });
+      return res.status(403).json({ error: "Unauthorized access to this attempt" });
+    }
+    const isGuest = await isGuestStudent(attempt.student_id);
+    if (isGuest) {
+      const headerToken = req.headers["x-attempt-token"] || req.query.attempt_token;
+      if (!headerToken || attempt.attempt_token !== headerToken) {
+        return res.status(403).json({ error: "Permission denied: Invalid attempt token" });
       }
     }
 

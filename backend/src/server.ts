@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 8080;
 // Rate limiters
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 10000,
+  limit: 1000, // Reduced from 10000
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
@@ -42,7 +42,7 @@ const globalLimiter = rateLimit({
 
 const strictLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  limit: 1000,
+  limit: 100, // Reduced from 1000
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
@@ -102,6 +102,11 @@ app.use(authMiddleware);
 // Rate limiting application
 if (process.env.DISABLE_RATE_LIMITER !== "true") {
   app.use("/api", globalLimiter);
+  app.use("/api/create-user", strictLimiter);
+  app.use("/api/attempts", strictLimiter);
+  app.use("/api/attempt-answers", strictLimiter);
+  app.use("/api/proctoring/events", strictLimiter);
+  app.use("/api/rpc/submit-attempt", strictLimiter);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

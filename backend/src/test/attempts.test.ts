@@ -63,9 +63,9 @@ async function seedAttemptsData() {
   });
 
   await db.execute({
-    sql: `INSERT INTO tests (id, client_id, test_name, timer, status, active)
-          VALUES (?, ?, ?, ?, ?, ?)`,
-    args: ["test-1", "client-1", "Math Test", 60, "published", 1]
+    sql: `INSERT INTO tests (id, client_id, test_name, timer, status, active, allow_guests, public_link_enabled)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: ["test-1", "client-1", "Math Test", 60, "published", 1, 1, 1]
   });
 }
 

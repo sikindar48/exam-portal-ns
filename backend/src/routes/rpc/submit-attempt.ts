@@ -42,6 +42,13 @@ export default async function handler(req: Request, res: Response) {
     return res.status(403).json({ error: "Permission denied" });
   }
 
+  if (isGuest && !isSuper) {
+    const headerToken = req.headers["x-attempt-token"] || req.query.attempt_token;
+    if (!headerToken || attempt.attempt_token !== headerToken) {
+      return res.status(403).json({ error: "Permission denied: Invalid attempt token" });
+    }
+  }
+
   // Prevent duplicate submission
   if (attempt.status === "submitted") {
     return res.status(400).json({ error: "Attempt has already been submitted" });

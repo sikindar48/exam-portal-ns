@@ -19,7 +19,7 @@ export default async function handler(req: Request, res: Response) {
 
     // Verify ownership of the attempt
     const { rows: attemptRows } = await db.execute({
-      sql: `SELECT a.student_id, t.client_id
+      sql: `SELECT a.student_id, a.attempt_token, t.client_id
             FROM attempts a JOIN tests t ON t.id = a.test_id
             WHERE a.id = ?`,
       args: [attempt_id as string],
@@ -36,9 +36,13 @@ export default async function handler(req: Request, res: Response) {
         }
       } else {
         if (attempt.student_id !== user.id) {
-          const isGuest = await isGuestStudent(attempt.student_id);
-          if (!isGuest) {
-            return res.status(403).json({ error: "Permission denied" });
+          return res.status(403).json({ error: "Permission denied" });
+        }
+        const isGuest = await isGuestStudent(attempt.student_id);
+        if (isGuest) {
+          const headerToken = req.headers["x-attempt-token"] || req.query.attempt_token;
+          if (!headerToken || attempt.attempt_token !== headerToken) {
+            return res.status(403).json({ error: "Permission denied: Invalid attempt token" });
           }
         }
       }
@@ -62,7 +66,7 @@ export default async function handler(req: Request, res: Response) {
     // Validate that the target attempt belongs to the user and is in_progress
     const targetAttemptId = body[0].attempt_id;
     const { rows: attemptRows } = await db.execute({
-      sql: "SELECT student_id, status, test_id, started_at FROM attempts WHERE id = ?",
+      sql: "SELECT student_id, status, test_id, started_at, attempt_token FROM attempts WHERE id = ?",
       args: [targetAttemptId],
     });
 
@@ -70,8 +74,15 @@ export default async function handler(req: Request, res: Response) {
     const attempt = attemptRows[0] as any;
 
     const isGuest = await isGuestStudent(attempt.student_id);
-    if (!isSuper && attempt.student_id !== user.id && !isGuest) {
+    if (!isSuper && attempt.student_id !== user.id) {
       return res.status(403).json({ error: "Permission denied" });
+    }
+
+    if (isGuest && !isSuper) {
+      const headerToken = req.headers["x-attempt-token"] || req.query.attempt_token;
+      if (!headerToken || attempt.attempt_token !== headerToken) {
+        return res.status(403).json({ error: "Permission denied: Invalid attempt token" });
+      }
     }
 
     if (attempt.status !== "in_progress") {

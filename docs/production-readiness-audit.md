@@ -1,110 +1,166 @@
-# Production Readiness Audit & Security Report
+Audit Result
+I completed a code-grounded audit of the current repo state at /Users/nssikinar/Sites/exam-portal/exam-portal-ns. This was a static/code and build/test audit, not a full browser/manual penetration test against a live deployed system.
+Overall Score: 52/100
+Security Score: 38/100
+Performance Score: 62/100
+Maintainability Score: 55/100
+SaaS Readiness Score: 58/100
+Final verdict: Not Ready for production or enterprise exam use yet. The app has meaningful foundations, but there are several integrity and authorization issues that are too serious for a proctored assessment platform.
+Critical Findings
+Guest attempt authorization is unsafe
+In [backend/src/routes/attempt-answers.ts (line 38)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/attempt-answers.ts:38), [backend/src/routes/attempt-answers.ts (line 72)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/attempt-answers.ts:72), [backend/src/routes/rpc/submit-attempt.ts (line 40)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/rpc/submit-attempt.ts:40), and [backend/src/routes/proctoring.ts (line 270)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/proctoring.ts:270), the code allows access when the target attempt belongs to any guest profile. That proves the attempt is a guest attempt, but not that the caller controls it. A logged-in user could read, modify, submit, or log events for another guest attempt if they know the attempt id.
 
-**Project**: NS Exam Portal  
-**Auditor**: Senior Staff Engineer & Production Readiness Auditor  
-**Date**: June 18, 2026  
-**Status**: **Production Ready** (Revised Post-Audit Fixes)
+attempt_token is generated but not enforced
+[backend/src/routes/attempts.ts (line 369)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/attempts.ts:369) creates an attempt_token, but answer save, report, proctoring, and submission routes do not consistently require it. This weakens guest resume, anti-tamper, and exam integrity controls.
 
----
+Attempt creation does not enforce published/active/scheduled/guest rules strongly enough
+[backend/src/routes/attempts.ts (line 315)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/attempts.ts:315) fetches only client_id and active. It does not verify status = published, scheduled start/end windows, allow_guests, public_link_enabled, or attempts allowed before creating/resuming attempts.
 
-## 1. Dead Code Analysis
+Runtime migrations can fail silently
+[backend/src/db/db.ts (line 239)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/db/db.ts:239) creates indexes on client_subscriptions before the table is created at [backend/src/db/db.ts (line 264)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/db/db.ts:264). Backend tests hit this immediately. Migration failure is caught and logged instead of failing startup, which can leave production partially migrated.
 
-The codebase has been cleaned of obsolete and redundant elements to maintain package size and security cleanliness:
+High Priority Findings
+Rate limits are far too permissive for auth, attempt, answer-save, import, and proctoring endpoints: [backend/src/server.ts (line 35)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/server.ts:35) allows 10,000 requests per 15 minutes, and the stricter limiter is defined but unused.
+Public test lookup exposes full test rows via share code, including configuration fields: [backend/src/routes/tests.ts (line 24)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/tests.ts:24). It should return a minimal join payload.
+CORS allows broad preview domains such as any .pages.dev and .firebaseapp.com: [backend/src/server.ts (line 76)](/Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/server.ts:76). That is risky with credentialed requests.
+Proctoring is mostly client-generated telemetry. It detects tab/camera events, but backend trust is too high and event authenticity is weak.
+Subscription expiry/trial expiry appears modeled, but enforcement is incomplete across workflows. Test creation checks some limits, but attempt creation and feature usage are not uniformly gated.
+Medium Findings
+Frontend lint fails with 191 errors and 32 warnings, mostly any usage and missing React hook dependencies. This affects maintainability and can hide stale-state bugs in exam workflows.
+Frontend production build succeeds, but the largest chunks include chart-vendor at ~401 KB and ui-vendor at ~258 KB before gzip. Acceptable for admin screens, but lazy loading should be reviewed.
+README architecture is stale: it describes Supabase, while the actual backend is Express + Turso + Firebase. This is a production-readiness/documentation gap.
+.DS_Store files are present in source paths, and generated/local artifacts like backend/test.db exist in the worktree.
+API tests exist, but there is no backend test script in backend/package.json.
+Verification Performed
+backend TypeScript build: passed
+frontend production build: passed
+frontend lint: failed, 223 total problems
+backend Vitest run: failed, primarily migration ordering plus sandbox socket binding errors
+Broken/At-Risk Flows
+Guest student attempts are vulnerable to cross-attempt access.
+Public/private test availability can be bypassed at attempt creation.
+Scheduled exam windows are not reliably enforced server-side.
+Proctoring evidence can be spoofed or suppressed client-side.
+Subscription limits are only partially enforced.
+Recommended Next Fixes
+Require attempt_token for all guest attempt read/write/submit/report/proctoring operations.
+Fix guest authorization checks so “target is guest” never grants access by itself.
+Enforce test active, published, schedule, guest/public-link, and attempts-allowed rules in POST /api/attempts.
+Move schema migrations out of runtime startup, fix ordering, and fail fast on migration errors.
+Add focused backend tests for BOLA/IDOR, guest attempts, subscription expiry, schedule enforcement, and tenant isolation.
+This has good bones, but right now I would not trust it for high-stakes exams until the guest attempt and server-side exam-rule enforcement issues are fixed.
 
-| File Path | Description | Safe to Remove? | Action Status |
-| :--- | :--- | :--- | :--- |
-| `backend/src/db/migrate.ts` | Obsolete one-off migration script modifying attempt schemas. | **Yes** | **Removed** |
-| `backend/loadtest.js` | k6 performance evaluation script in the backend root. | **No** | **Retained** (Optimized with token caching and headers). |
-| `backend/src/server.ts` | Commented-out rate limiting lines in middleware registers. | **Yes** | **Cleaned** |
 
----
 
-## 2. Production Code Quality Review
+This audit is actually quite valuable. Out of everything, only 4 items are genuine launch blockers.
 
-High-priority issues identified in earlier cycles have been resolved:
+Fix Before Launch (Critical)
 
-| Severity | File Path | Finding | Mitigation / Fix |
-| :--- | :--- | :--- | :--- |
-| **High** | [loadtest.js](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/loadtest.js) | Hardcoded Firebase API Key. | Injected Firebase credentials directly through execution scopes (standardized for k6 environment runs). |
-| **Medium** | [auth.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/auth/auth.ts) | Signature-less developer JWT fallback logic. | Restricted signature checks to development mode flags. |
-| **Low** | [submit-attempt.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/rpc/submit-attempt.ts) | console.log statements. | Winston/GCP Cloud Logging integration recommended for staging. |
+Priority	Issue	Impact
+🔴 Critical	Guest attempt authorization	One guest could potentially access another guest’s attempt
+🔴 Critical	attempt_token not enforced	Guest session security weak
+🔴 Critical	Attempt creation not validating publish/schedule rules	Students may start tests they shouldn’t
+🔴 Critical	Migration ordering issue	Production deployments can end up partially migrated
 
----
+⸻
 
-## 3. Security Audit (Revised)
+Fix Soon (High)
 
-The following vulnerabilities have been fully mitigated in the active codebase:
+Priority	Issue
+🟠 High	Rate limiting too loose
+🟠 High	Public test lookup exposes too much data
+🟠 High	Proctoring events are mostly client-trusted
+🟠 High	Subscription enforcement not consistent
 
-### Fixed: Authorization Bypass in `/api/test-questions`
-* **Vulnerability**: Unauthenticated or unauthorized students could fetch full question lists for tests by providing target IDs directly.
-* **Mitigation**: The route handler in [test-questions.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/test-questions.ts#L18-L38) now explicitly verifies that the requester has a matching, active (`in_progress`) or submitted attempt for the test before sending question data.
+⸻
 
-### Fixed: Draft Test Leakage via Share Code Lookups
-* **Vulnerability**: Public lookup permitted draft and inactive test configurations to be fetched by invite code.
-* **Mitigation**: The share code search query in [tests.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/tests.ts#L22-L29) now filters tests by enforcing `status = 'published'` and `active = 1`.
+Can Wait
 
-### Fixed: Score Leakage in Attempts & Submission Endpoints
-* **Vulnerability**: Scores and grading details were returned in submission RPC and attempts retrieval payloads even when tests were marked as draft/hidden.
-* **Mitigation**: Filtered and masked score details out of Express responses for student/guest roles if `show_results_after_submission` is disabled or `result_status` is `"draft"`.
+Priority	Issue
+🟡 Medium	191 lint errors
+🟡 Medium	Large frontend bundles
+🟡 Medium	Stale README
+🟡 Medium	.DS_Store / test.db cleanup
 
-### Fixed: BOLA Vulnerability in XLSX Performance Reports
-* **Vulnerability**: Candidates could download other candidates' detailed performance report spreadsheets by replacing UUID parameters.
-* **Mitigation**: Implemented strict ownership checks in [report.ts](file:///Users/nssikinar/Sites/exam-portal/exam-portal-ns/backend/src/routes/report.ts) matching student IDs, and secured guest report downloads with dynamic cryptographically random `attempt_token` verification gates.
+These won’t stop production.
 
-### Fixed: Cascading Orphan Mappings on Section Deletion
-* **Vulnerability**: Deleting a section risked leaving orphaned question references or dropping mapped questions from the database.
-* **Mitigation**: Added database transactional cascades set to NULL on section references inside `test_questions` table, cleanly migrating questions to the default flat palette on section removal.
+⸻
 
----
+My Assessment
 
-## 4. Scalability Review & Concurrency Limits
+Current state:
 
-### GCP Cloud Run Container Configuration
-* **CPU Allocation**: `1 CPU`
-* **Memory Limit**: `1Gi` (Prevents container crashes during heavy grading submissions)
-* **Concurrency**: `80` (Standard concurrency limit per container)
-* **Instance Limits**: `Min: 1` (Eliminates cold start latency), `Max: 3` (Manages connection pooling)
+Area	Score
+UI/UX	8.5/10
+Features	9/10
+Multi-Tenant SaaS	7.5/10
+Security	5/10
+Exam Integrity	6/10
+Production Readiness	6.5/10
 
-### Concurrency Estimation & Capacity Zones
-* **Comfortable Zone** (`0 - 150` VUs): Zero latency degradation. DB reads and writes complete in `<100ms`.
-* **Safe Zone** (`150 - 300` VUs): Handled smoothly due to `2000ms` frontend answer-saving debounces. Average CPU load is `<45%`.
-* **Stress Zone** (`300 - 450` VUs): Autoscaling triggers additional instances. Minor latency spikes during concurrent submits.
-* **Failure Zone** (`450+` VUs): Connection queue limits on Turso might trigger SQLITE_BUSY timeouts. Recommend horizontal DB replica configurations.
+⸻
 
----
+What I would do next
 
-## 5. Cost Estimation (Daily Workload Matrix)
+Phase 1 (Mandatory)
 
-Workload estimates based on GCP Cloud Run, Firebase Spark plan, and Turso starter plans:
+Fix:
 
-| Metric / Service | 50 Candidates/day | 200 Candidates/day | 500 Candidates/day | 1000 Candidates/day |
-| :--- | :--- | :--- | :--- | :--- |
-| **GCP Cloud Run** | $0.00 (Free Tier) | $0.00 (Free Tier) | $0.00 (Free Tier) | ~$1.20 |
-| **Firebase Auth** | $0.00 (Free) | $0.00 (Free) | $0.00 (Free) | $0.00 (Free) |
-| **Turso Database** | $0.00 (Free Starter) | $0.00 (Free Starter) | $0.00 (Free Starter) | $0.00 (Free Starter) |
-| **Network Egress** | $0.00 (Free Tier) | ~$0.15 | ~$0.40 | ~$0.90 |
-| **Total / Month** | **$0.00** | **~$0.15** | **~$0.40** | **~$2.10** |
+1. Guest authorization
+2. Enforce attempt_token
+3. Validate:
+    * Published
+    * Active
+    * Scheduled window
+    * Guest access
+    * Public link access
+4. Fix migration order
 
----
+After that:
 
-## 6. Risk Register
+Re-run the audit.
 
-* **P0: Critical**: None remaining.
-* **P1: High**: None remaining.
-* **P2: Medium**: None remaining (resolved by removing IP-based candidate resumption).
-* **P3: Low**: Lack of Winston/structured log collection on Cloud Run.
+⸻
 
----
+Phase 2
 
-## 7. Production Readiness Score
+Add backend tests for:
 
-* **Security**: `95 / 100` (Critical route authorization gaps fully closed)
-* **Scalability**: `94 / 100` (Excellent performance under load testing)
-* **Reliability**: `94 / 100` (No cold starts and dead migration scripts removed)
-* **Maintainability**: `92 / 100` (Clean TypeScript architecture)
-* **Cost Efficiency**: `100 / 100` (Extremely low operating overhead)
+* Guest attempt access
+* Tenant isolation
+* Schedule enforcement
+* Subscription expiry
+* Proctoring endpoints
 
-### Overall Score: **95 / 100**
+⸻
 
-### Deployment Recommendation: **PRODUCTION READY**
-The codebase has resolved the security bypass vulnerabilities and is optimized to support high-stakes, high-concurrency examinations under the current GCP Cloud Run configuration.
+Phase 3
+
+Then do a real browser E2E audit using:
+
+* Playwright
+* Multiple roles:
+    * Super Admin
+    * Client Admin
+    * Student
+    * Guest Student
+
+Because this audit is mostly code-based. Many issues in exam portals only appear during actual workflows:
+
+* Import students
+* Import questions
+* Publish tests
+* Resume attempts
+* Section timers
+* Proctoring
+* Result publishing
+* Subscription limits
+* Organization suspension
+
+Those need browser automation testing.
+
+Bottom line
+
+The audit did not find catastrophic architecture problems.
+
+The biggest concern is guest attempt security and server-side exam rule enforcement. Once those are fixed, your platform would likely move from roughly 52/100 to around 75–80/100 production readiness, which is a solid beta-launch position for the Exam Portal.

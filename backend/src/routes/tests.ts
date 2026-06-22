@@ -55,7 +55,7 @@ export default async function handler(req: Request, res: Response) {
 
       // Tenant isolation check
       if (!isSuper && row.client_id !== callerClientId) {
-        const isPublicTest = row.active === 1 && row.status === "published";
+        const isPublicTest = row.active === 1 && row.status === "published" && row.public_link_enabled === 1;
         if (!isPublicTest) {
           const { rows: attemptRows } = await db.execute({
             sql: "SELECT id FROM attempts WHERE student_id = ? AND test_id = ?",

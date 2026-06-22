@@ -46,6 +46,20 @@ export default async function handler(req: Request, res: Response) {
 
     const { user_id, client_id, role } = req.query;
 
+    const isSuper = await hasRole(user.id, "superadmin");
+    if (!isSuper) {
+      const callerClientId = await getUserClientId(user.id);
+      if (client_id && client_id !== callerClientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (user_id) {
+        const targetClientId = await getUserClientId(user_id as string);
+        if (targetClientId !== callerClientId) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+    }
+
     let sql = "SELECT * FROM user_roles WHERE 1=1";
     const args: any[] = [];
 

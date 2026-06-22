@@ -44,9 +44,13 @@ export default async function handler(req: Request, res: Response) {
         } else {
           // Student / Guest
           if (row.student_id !== user.id) {
-            const isGuest = await isGuestStudent(row.student_id);
-            if (!isGuest) {
-              return res.status(403).json({ error: "Permission denied" });
+            return res.status(403).json({ error: "Permission denied" });
+          }
+          const isGuest = await isGuestStudent(row.student_id);
+          if (isGuest) {
+            const headerToken = req.headers["x-attempt-token"] || req.query.attempt_token;
+            if (!headerToken || row.attempt_token !== headerToken) {
+              return res.status(403).json({ error: "Permission denied: Invalid attempt token" });
             }
           }
         }
@@ -311,15 +315,45 @@ export default async function handler(req: Request, res: Response) {
 
     const ipAddress = req.ip || "";
 
-    // Fetch test details to get the client_id
+    // Fetch test details
     const { rows: testDetails } = await db.execute({
-      sql: "SELECT client_id, active FROM tests WHERE id = ?",
+      sql: "SELECT client_id, active, status, allow_guests, public_link_enabled, scheduled_start, scheduled_end, attempts_allowed FROM tests WHERE id = ?",
       args: [test_id],
     });
     if (testDetails.length === 0) {
       return res.status(404).json({ error: "Test not found" });
     }
-    const testClientId = (testDetails[0] as any).client_id;
+    const test = testDetails[0] as any;
+    const testClientId = test.client_id;
+
+    // Validate active/published state for student/guest creation
+    if (!isSuper && !isClientAdmin) {
+      if (test.active !== 1 || test.status !== "published") {
+        return res.status(403).json({ error: "This test is currently not available." });
+      }
+
+      // Validate Guest / Public Link constraints
+      if (isGuest) {
+        if (test.allow_guests !== 1 || test.public_link_enabled !== 1) {
+          return res.status(403).json({ error: "Guest attempts are not allowed for this test." });
+        }
+      }
+
+      // Validate Scheduled Windows
+      const now = new Date();
+      if (test.scheduled_start) {
+        const start = new Date(test.scheduled_start);
+        if (now < start) {
+          return res.status(403).json({ error: "Exam window has not started yet." });
+        }
+      }
+      if (test.scheduled_end) {
+        const end = new Date(test.scheduled_end);
+        if (now > end) {
+          return res.status(403).json({ error: "Exam window has expired." });
+        }
+      }
+    }
 
     // 2. Verify client active status
     const { rows: clientStatus } = await db.execute({
@@ -328,6 +362,21 @@ export default async function handler(req: Request, res: Response) {
     });
     if (clientStatus.length > 0 && clientStatus[0].active_status === 0) {
       return res.status(403).json({ error: "Access Denied: The hosting organization has been suspended." });
+    }
+
+    // Verify subscription status
+    const { rows: subStatus } = await db.execute({
+      sql: "SELECT status FROM client_subscriptions WHERE client_id = ?",
+      args: [testClientId],
+    });
+    if (subStatus.length > 0) {
+      const status = subStatus[0].status;
+      if (status === "expired") {
+        return res.status(403).json({ error: "Access Denied: The hosting organization subscription has expired." });
+      }
+      if (status === "suspended") {
+        return res.status(403).json({ error: "Access Denied: The hosting organization subscription has been suspended." });
+      }
     }
 
     // Guest resumption is managed securely via student_id checks.
@@ -342,6 +391,18 @@ export default async function handler(req: Request, res: Response) {
     if (existing.length > 0) {
       // Return existing attempt to resume seamlessly
       return res.status(200).json(existing[0]);
+    }
+
+    // Validate attempts limits
+    if (!isSuper && !isClientAdmin && test.attempts_allowed > 0) {
+      const { rows: countRows } = await db.execute({
+        sql: "SELECT COUNT(*) as count FROM attempts WHERE student_id = ? AND test_id = ?",
+        args: [resolvedStudentId, test_id]
+      });
+      const userAttempts = Number((countRows[0] as any).count || 0);
+      if (userAttempts >= test.attempts_allowed) {
+        return res.status(403).json({ error: "Maximum attempts allowed for this test has been reached." });
+      }
     }
 
     // 3. Enforce max_students_per_exam limit
