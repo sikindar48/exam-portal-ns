@@ -269,6 +269,9 @@ export default function Engine() {
         params.set("token", (submitData as any).attempt_token);
       }
 
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        sessionStorage.removeItem("guest_attempt_token");
+      }
       navigate(`/student/submit-success?${params.toString()}`);
     } catch (err: any) {
       console.error("Detailed submission error:", err);
@@ -366,10 +369,16 @@ export default function Engine() {
           activeAttemptToken = newAttempt.attempt_token;
           setAttemptId(newAttempt.id);
           setAttemptToken(newAttempt.attempt_token || "");
+          if (newAttempt.attempt_token) {
+            sessionStorage.setItem("guest_attempt_token", newAttempt.attempt_token);
+          }
         }
       } else {
         setAttemptId(activeAttemptId);
         setAttemptToken(activeAttemptToken || "");
+        if (activeAttemptToken) {
+          sessionStorage.setItem("guest_attempt_token", activeAttemptToken);
+        }
       }
 
       setTest(testData);
@@ -666,6 +675,10 @@ export default function Engine() {
 
   // Visibility and Fullscreen Warning
   useEffect(() => {
+    if (showInstructions || loading) return;
+    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
+    if (!proctoringEnabled) return;
+
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setIsFullscreen(false);
@@ -687,11 +700,15 @@ export default function Engine() {
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [handleSubmit, triggerAlert, attemptId, testId]);
+  }, [handleSubmit, triggerAlert, attemptId, testId, test, showInstructions, loading]);
 
   useEffect(() => {
+    if (showInstructions || loading) return;
+    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
+    if (!proctoringEnabled) return;
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && !showInstructions && !loading) {
+      if (document.visibilityState === "hidden") {
         setFullscreenExitCount(prev => {
           const next = prev + 1;
 
@@ -710,23 +727,25 @@ export default function Engine() {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [handleSubmit, triggerAlert, showInstructions, loading, attemptId, testId]);
+  }, [handleSubmit, triggerAlert, showInstructions, loading, attemptId, testId, test]);
 
   // Window Blur Listener
   useEffect(() => {
+    if (showInstructions || loading) return;
+    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
+    if (!proctoringEnabled) return;
+
     const handleBlur = () => {
-      if (!showInstructions && !loading) {
-        proctoringApi.logEvent({
-          attempt_id: attemptId,
-          test_id: testId!,
-          event_type: "WINDOW_BLUR",
-          duration_seconds: 0
-        }).catch(console.error);
-      }
+      proctoringApi.logEvent({
+        attempt_id: attemptId,
+        test_id: testId!,
+        event_type: "WINDOW_BLUR",
+        duration_seconds: 0
+      }).catch(console.error);
     };
     window.addEventListener("blur", handleBlur);
     return () => window.removeEventListener("blur", handleBlur);
-  }, [showInstructions, loading, attemptId, testId]);
+  }, [showInstructions, loading, attemptId, testId, test]);
 
   // Cleanup camera tracks on unmount
   useEffect(() => {
@@ -748,6 +767,9 @@ export default function Engine() {
   // Secure Browsing
   useEffect(() => {
     if (!loading && !showInstructions) {
+      const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
+      if (!proctoringEnabled) return;
+
       const preventDefault = (e: Event) => e.preventDefault();
       
       document.addEventListener("contextmenu", preventDefault);
@@ -762,7 +784,7 @@ export default function Engine() {
         document.removeEventListener("paste", preventDefault);
       };
     }
-  }, [loading, showInstructions]);
+  }, [loading, showInstructions, test]);
 
   const handleAnswer = (qId: string, val: string | null) => {
     const question = questions.find(q => q.id === qId);

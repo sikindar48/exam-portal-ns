@@ -27,7 +27,15 @@ export async function isFeatureEnabled(clientId: string | null, featureName: str
   if (rows.length === 0) {
     // Default fallback rules if no feature-permission record exists yet:
     // Premium features default to false; others can default to true.
-    const premiumFeatures = ["camera_proctoring"];
+    const premiumFeatures = [
+      "camera_proctoring",
+      "advanced_proctoring",
+      "analytics",
+      "csv_import",
+      "xlsx_export",
+      "custom_branding",
+      "priority_support"
+    ];
     if (premiumFeatures.includes(featureName)) {
       return false;
     }

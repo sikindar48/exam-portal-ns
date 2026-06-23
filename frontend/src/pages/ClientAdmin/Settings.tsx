@@ -23,6 +23,7 @@ export default function ClientSettings() {
     address: "",
     logo_url: "",
   });
+  const [features, setFeatures] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { clientId, loading: authLoading } = useAuth();
@@ -41,6 +42,7 @@ export default function ClientSettings() {
     } else if (data) {
       const d = data as any;
       setFormData({ name: d.name || "", address: d.address || "", logo_url: d.logo_url || "" });
+      setFeatures(d.features || []);
     }
     setFetchLoading(false);
   };
@@ -110,22 +112,30 @@ export default function ClientSettings() {
 
                   <div className="space-y-2">
                     <Label htmlFor="logo_url" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Branding Asset (Logo URL)</Label>
-                    <Input
-                      id="logo_url"
-                      type="url"
-                      value={formData.logo_url}
-                      onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                      className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
-                      placeholder="https://assets.example.com/logo.png"
-                    />
-                    {formData.logo_url && (
-                      <div className="mt-4 p-4 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex items-center justify-center">
-                        <img
-                          src={formData.logo_url}
-                          alt="Organization logo preview"
-                          className="h-16 w-auto object-contain"
-                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    {features.includes("custom_branding") ? (
+                      <>
+                        <Input
+                          id="logo_url"
+                          type="url"
+                          value={formData.logo_url}
+                          onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                          className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-medium"
+                          placeholder="https://assets.example.com/logo.png"
                         />
+                        {formData.logo_url && (
+                          <div className="mt-4 p-4 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex items-center justify-center">
+                            <img
+                              src={formData.logo_url}
+                              alt="Organization logo preview"
+                              className="h-16 w-auto object-contain"
+                              onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 text-slate-400 text-[10px] font-black uppercase tracking-widest text-center">
+                        Custom Branding is a premium feature. Please upgrade your subscription to configure a custom logo.
                       </div>
                     )}
                   </div>

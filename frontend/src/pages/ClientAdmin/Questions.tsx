@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { questionsApi, questionFoldersApi } from "@/services/api/client";
+import { questionsApi, questionFoldersApi, clientsApi } from "@/services/api/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";
@@ -39,6 +39,7 @@ export default function QuestionsManagement() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [features, setFeatures] = useState<string[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const openFolderId = searchParams.get("folder");
@@ -78,10 +79,23 @@ export default function QuestionsManagement() {
   const { clientId, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  const fetchFeatures = async () => {
+    if (!clientId) return;
+    try {
+      const { data } = await clientsApi.get(clientId);
+      if (data && (data as any).features) {
+        setFeatures((data as any).features);
+      }
+    } catch (err) {
+      console.error("Error fetching client features:", err);
+    }
+  };
+
   useEffect(() => {
     if (clientId && !authLoading) {
       fetchQuestions();
       fetchFolders();
+      fetchFeatures();
     }
   }, [clientId, authLoading]);
 
@@ -295,6 +309,7 @@ export default function QuestionsManagement() {
           navigate={navigate}
           setIsCreateFolderOpen={setIsCreateFolderOpen}
           fetchQuestions={fetchQuestions}
+          features={features}
         />
 
         <main className="flex-1 overflow-y-auto">

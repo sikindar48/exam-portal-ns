@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
-import { hasRole, isGuestStudent } from "../services/roles.js";
+import { hasRole, isGuestStudent, getUserClientId } from "../services/roles.js";
+import { isFeatureEnabled } from "../services/features.js";
 import XLSX from "xlsx";
 
 export default async function handler(req: Request, res: Response) {
@@ -36,6 +37,12 @@ export default async function handler(req: Request, res: Response) {
   }
   const attempt = attemptRows[0] as any;
 
+  // Enforce XLSX Reports Export Feature Flag
+  const xlsxAllowed = await isFeatureEnabled(attempt.test_client_id, "xlsx_export");
+  if (!xlsxAllowed) {
+    return res.status(403).json({ error: "Access Denied: XLSX Reports Export feature is not enabled for your organization plan." });
+  }
+
   // 2. Validate Authorization
   const isSuper = await hasRole(user.id, "superadmin");
   const isClientAdmin = await hasRole(user.id, "clientadmin");
@@ -54,7 +61,7 @@ export default async function handler(req: Request, res: Response) {
 
   // 3. Validate Report Visibility settings for Student/Guest
   if (!isAdmin) {
-    const resultsVisible = attempt.show_results_after_submission === 1 && attempt.result_status === "published";
+    const resultsVisible = attempt.show_results_after_submission === 1 || attempt.result_status === "published";
     const reportDownloadEnabled = attempt.allow_report_download === 1;
     if (!resultsVisible || !reportDownloadEnabled) {
       return res.status(403).json({ error: "Report download is not enabled for this test." });
@@ -95,6 +102,15 @@ export default async function handler(req: Request, res: Response) {
   const negativeMarksPerWrong = attempt.negative_marks ?? 0;
 
   const detailedRows: any[] = [];
+
+  // Helper: map option letter (A/B/C/D) to its text
+  const optionLetters = ["A", "B", "C", "D"];
+  const resolveOptionText = (letter: string | undefined | null, opts: string[]) => {
+    if (!letter) return "";
+    const idx = optionLetters.indexOf(letter.toUpperCase());
+    if (idx >= 0 && opts[idx]) return `${letter}) ${opts[idx]}`;
+    return letter; // fallback to raw value
+  };
 
   questionRows.forEach((q: any, index: number) => {
     const selected = answerMap.get(q.id);
@@ -143,13 +159,14 @@ export default async function handler(req: Request, res: Response) {
     detailedRows.push([
       index + 1,
       q.question_text,
-      opts[0] || "",
-      opts[1] || "",
-      opts[2] || "",
-      opts[3] || "",
-      selected || "",
-      corrects.join(", "),
+      opts.length > 0 ? `A) ${opts[0]}` : "",
+      opts.length > 1 ? `B) ${opts[1]}` : "",
+      opts.length > 2 ? `C) ${opts[2]}` : "",
+      opts.length > 3 ? `D) ${opts[3]}` : "",
+      isAttempted ? resolveOptionText(selected, opts) : "— Skipped —",
+      corrects.map(c => resolveOptionText(c, opts)).join(", "),
       status,
+      q.marks ?? 1,
       marksAwarded >= 0 ? `+${marksAwarded}` : `${marksAwarded}`,
       negativeMarkingEnabled ? negativeMarksPerWrong : 0,
       q.explanation || "",
@@ -188,7 +205,7 @@ export default async function handler(req: Request, res: Response) {
   // Sheet 2: Detailed Questions
   const detailedHeader = [
     "Q No", "Question", "Option A", "Option B", "Option C", "Option D",
-    "Chosen Answer", "Correct Answer", "Status", "Marks Awarded", "Negative Marks", "Explanation"
+    "Student's Answer", "Correct Answer", "Result", "Max Marks", "Marks Awarded", "Negative Marks", "Explanation"
   ];
   const wsDetailed = XLSX.utils.aoa_to_sheet([detailedHeader, ...detailedRows]);
   XLSX.utils.book_append_sheet(wb, wsDetailed, "Detailed Questions");

@@ -166,21 +166,10 @@ export function ClientTable({
                     <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
-                        size="sm"
-                        onClick={() => handleManageAdmins(client)}
-                        className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-blue-600 hover:border-blue-200 dark:hover:border-blue-900 transition-all p-0"
-                        title="Manage Organization Admins"
-                      >
-                        <UserCog className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
                         onClick={() => handleEditClient(client)}
-                        className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-slate-900 hover:border-slate-300 dark:hover:border-slate-100 transition-all p-0"
-                        title="Modify Organization Details"
+                        className="h-8 px-3 rounded-none border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700 text-[9px] font-black uppercase tracking-widest transition-all"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
                       </Button>
                       <Button
                         variant="ghost"

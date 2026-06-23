@@ -34,8 +34,10 @@ interface CSVProps {
   testId?: string;
   /** If provided, imported questions are placed in this section */
   sectionId?: string;
-  /** Custom trigger element; defaults to a button */
+  /** Custom trigger element; defaults to a button. Pass null to disable trigger rendering. */
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function CSV({
@@ -43,8 +45,18 @@ export default function CSV({
   testId,
   sectionId,
   trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: CSVProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = (val: boolean) => {
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(val);
+    } else {
+      setInternalOpen(val);
+    }
+  };
   const [file, setFile] = useState<File | null>(null);
   const [questions, setQuestions] = useState<ParsedQuestion[]>([]);
   const [parseErrors, setParseErrors] = useState<
@@ -279,7 +291,7 @@ export default function CSV({
           failedCount > 0 ? `, ${failedCount} failed` : ""
         }`,
       });
-      onImportSuccess(insertedIds);
+      onImportSuccess(idsToLink);
     }
 
     if (failedCount === questionsToInsert.length && questionsToInsert.length > 0) {
@@ -344,7 +356,9 @@ export default function CSV({
         setIsOpen(open);
       }}
     >
-      <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Questions from CSV</DialogTitle>

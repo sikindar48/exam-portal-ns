@@ -291,6 +291,14 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
+    const isBasicProctoringEvent = ["TAB_SWITCH", "WINDOW_BLUR", "FULLSCREEN_EXIT"].includes(event_type);
+    if (isBasicProctoringEvent) {
+      const proctoringAllowed = await isFeatureEnabled(attempt.client_id, "advanced_proctoring");
+      if (!proctoringAllowed) {
+        return res.status(403).json({ error: "Advanced proctoring is not enabled on this subscription plan" });
+      }
+    }
+
     // 4. Map severity and score
     const mapped = SEVERITY_MAPPING[event_type] || { severity: "LOW", score: 0 };
 

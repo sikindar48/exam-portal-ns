@@ -6,9 +6,54 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { clientsApi } from "@/services/api/client";
 
+const PLAN_DETAILS: Record<string, { name: string; price: string; features: string[] }> = {
+  free: {
+    name: "Free Plan",
+    price: "₹0",
+    features: [
+      "Up to 3 Exams per Month",
+      "Up to 50 Questions per Exam",
+      "Up to 20 Students per Exam",
+      "Question Shuffle & Basic Analytics",
+    ]
+  },
+  starter: {
+    name: "Starter Plan",
+    price: "₹1,999",
+    features: [
+      "Up to 25 Exams per Month",
+      "Up to 100 Questions per Exam",
+      "Up to 100 Students per Exam",
+      "Custom Brand Logo, CSV Import, XLSX Export",
+      "Advanced Analytics & Basic Proctoring",
+    ]
+  },
+  growth: {
+    name: "Growth Plan",
+    price: "₹3,999",
+    features: [
+      "Up to 50 Exams per Month",
+      "Up to 200 Questions per Exam",
+      "Up to 250 Students per Exam",
+      "Everything in Starter, Advanced Analytics",
+    ]
+  },
+  enterprise: {
+    name: "Enterprise Plan",
+    price: "Custom Pricing",
+    features: [
+      "Unlimited Exams & Student Enrollment",
+      "Unlimited Questions per Exam",
+      "Camera Proctoring Lite & Custom Branding",
+      "Everything in Growth",
+    ]
+  }
+};
+
 export default function Subscription() {
   const { clientId } = useAuth();
   const [features, setFeatures] = useState<string[]>([]);
+  const [client, setClient] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,8 +61,11 @@ export default function Subscription() {
       if (!clientId) return;
       try {
         const { data, error } = await clientsApi.get(clientId);
-        if (!error && data && data.features) {
-          setFeatures(data.features);
+        if (!error && data) {
+          setClient(data);
+          if (data.features) {
+            setFeatures(data.features);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -27,6 +75,8 @@ export default function Subscription() {
     }
     fetchFeatures();
   }, [clientId]);
+
+  const activePlan = client?.plan_id ? PLAN_DETAILS[client.plan_id] : PLAN_DETAILS.free;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
@@ -51,25 +101,26 @@ export default function Subscription() {
                 </div>
                 
                 <div className="pb-6 border-b border-slate-100 dark:border-slate-800">
-                  <span className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1">Enterprise Pro</span>
-                  <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-4">$299<span className="text-xs text-slate-400 font-bold uppercase tracking-wider"> / month</span></p>
+                  <span className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1">
+                    {activePlan.name}
+                  </span>
+                  <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-4">
+                    {activePlan.price}
+                    {client?.plan_id !== "enterprise" && (
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider"> / month</span>
+                    )}
+                  </p>
                 </div>
 
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Supported Features</h4>
                   <ul className="space-y-3">
-                    <li className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      Unlimited assessments & student enrollment
-                    </li>
-                    <li className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      Section-wise configurations & custom timers
-                    </li>
-                    <li className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      Real-time timeline auditing logs
-                    </li>
+                    {activePlan.features.map((feat, index) => (
+                      <li key={index} className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                        {feat}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>
@@ -87,7 +138,7 @@ export default function Subscription() {
                   ) : (
                     <>
                       <div className="flex items-center justify-between p-3 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Camera Proctoring</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-350">Camera Proctoring</span>
                         {features.includes("camera_proctoring") ? (
                           <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 border border-green-100 px-2 py-0.5">Active</span>
                         ) : (

@@ -56,7 +56,12 @@ export default function SuperAdminSubscriptions() {
     setEditSub(sub);
     setPlanId(sub.plan_id);
     setExpiryDate(sub.expiry_date);
-    setStatus(sub.status);
+    
+    let initialStatus = sub.status;
+    if (sub.plan_id === "free" && (initialStatus === "trial" || initialStatus === "expired")) {
+      initialStatus = "active";
+    }
+    setStatus(initialStatus);
     setRenewalStatus(sub.renewal_status);
   };
 
@@ -72,7 +77,7 @@ export default function SuperAdminSubscriptions() {
           plan_id: planId,
           expiry_date: expiryDate,
           status,
-          renewal_status: renewalStatus,
+          renewal_status: "manual",
         },
       });
 
@@ -157,7 +162,6 @@ export default function SuperAdminSubscriptions() {
                     <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Plan Name</th>
                     <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Start Date</th>
                     <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Expiry Date</th>
-                    <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Renewal</th>
                     <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest">Status</th>
                     <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
                   </tr>
@@ -165,14 +169,14 @@ export default function SuperAdminSubscriptions() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center">
+                      <td colSpan={6} className="py-16 text-center">
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-red-600" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Loading Tenant Plans...</p>
                       </td>
                     </tr>
                   ) : subscriptions.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center">
+                      <td colSpan={6} className="py-16 text-center">
                         <CreditCard className="h-10 w-10 text-slate-300 mx-auto" />
                         <p className="text-xs font-black uppercase tracking-widest text-slate-400 mt-3">No subscriptions found</p>
                       </td>
@@ -198,9 +202,6 @@ export default function SuperAdminSubscriptions() {
                           </td>
                           <td className="py-4 px-6 text-xs text-slate-500 font-medium">
                             {sub.expiry_date}
-                          </td>
-                          <td className="py-4 px-6 text-xs font-black uppercase text-slate-500">
-                            {sub.renewal_status.replace(/_/g, " ")}
                           </td>
                           <td className="py-4 px-6">
                             <span className={`text-[9px] font-black px-2 py-0.5 border rounded-sm uppercase tracking-widest ${statusBadge}`}>
@@ -244,7 +245,13 @@ export default function SuperAdminSubscriptions() {
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Select Subscription Plan</label>
               <select
                 value={planId}
-                onChange={(e) => setPlanId(e.target.value)}
+                onChange={(e) => {
+                  const newPlanId = e.target.value;
+                  setPlanId(newPlanId);
+                  if (newPlanId === "free" && (status === "trial" || status === "expired")) {
+                    setStatus("active");
+                  }
+                }}
                 className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
               >
                 <option value="free">Free Plan (3 Exams, 20 Students, 50 Qs)</option>
@@ -273,22 +280,9 @@ export default function SuperAdminSubscriptions() {
                 className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
               >
                 <option value="active">Active</option>
-                <option value="trial">Trial</option>
-                <option value="expired">Expired</option>
+                {planId !== "free" && <option value="trial">Trial</option>}
+                {planId !== "free" && <option value="expired">Expired</option>}
                 <option value="suspended">Suspended</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Renewal Mode</label>
-              <select
-                value={renewalStatus}
-                onChange={(e) => setRenewalStatus(e.target.value)}
-                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
-              >
-                <option value="auto_renew">Auto Renew</option>
-                <option value="manual">Manual Renewal</option>
               </select>
             </div>
 

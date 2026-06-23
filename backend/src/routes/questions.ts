@@ -3,6 +3,7 @@ import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { hasRole, getUserClientId } from "../services/roles.js";
 import { randomUUID } from "crypto";
+import { isFeatureEnabled } from "../services/features.js";
 import { questionCreateSchema, questionUpdateSchema } from "../validation/schemas.js";
 
 // Helper to map database rows (with legacy fallback support)
@@ -162,6 +163,15 @@ export default async function handler(req: Request, res: Response) {
 
     const clientId = await getUserClientId(user.id);
     if (!clientId) return res.status(403).json({ error: "No client" });
+
+    // Enforce CSV Import Feature Flag
+    const isImport = body.some((q) => q.import_batch_id);
+    if (isImport) {
+      const csvImportAllowed = await isFeatureEnabled(clientId, "csv_import");
+      if (!csvImportAllowed) {
+        return res.status(403).json({ error: "Access Denied: CSV Student/Question Import feature is not enabled for your organization plan." });
+      }
+    }
 
     const inserted: any[] = [];
     let importedCount = 0;

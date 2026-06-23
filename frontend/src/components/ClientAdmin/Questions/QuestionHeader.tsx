@@ -12,6 +12,7 @@ interface QuestionHeaderProps {
   navigate: (path: string) => void;
   setIsCreateFolderOpen: (open: boolean) => void;
   fetchQuestions: () => void;
+  features?: string[];
 }
 
 export function QuestionHeader({
@@ -21,6 +22,7 @@ export function QuestionHeader({
   navigate,
   setIsCreateFolderOpen,
   fetchQuestions,
+  features = [],
 }: QuestionHeaderProps) {
   const onBack = () => (breadcrumbs.length > 0 ? navigateToBreadcrumb(breadcrumbs.length - 2) : navigate("/client-admin"));
 
@@ -58,14 +60,16 @@ export function QuestionHeader({
           >
             <FolderPlus className="mr-2 h-3.5 w-3.5" /> New Folder
           </Button>
-          <CSVImport
-            onImportSuccess={fetchQuestions}
-            trigger={
-              <Button className="h-9 px-4 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all">
-                Batch Import
-              </Button>
-            }
-          />
+          {features.includes("csv_import") && (
+            <CSVImport
+              onImportSuccess={fetchQuestions}
+              trigger={
+                <Button className="h-9 px-4 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all">
+                  Batch Import
+                </Button>
+              }
+            />
+          )}
         </>
       }
     />

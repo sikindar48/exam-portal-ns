@@ -27,7 +27,8 @@ export default async function handler(req: Request, res: Response) {
   // 1. Load the attempt + test config
   const { rows: attemptRows } = await db.execute({
     sql: `SELECT a.*, t.negative_marking, t.negative_marks,
-                 t.show_results_after_submission, t.allow_report_download, t.result_status
+                 t.show_results_after_submission, t.allow_report_download, t.result_status,
+                 t.client_id as test_client_id
           FROM attempts a JOIN tests t ON t.id = a.test_id
           WHERE a.id = ?`,
     args: [attempt_id],
@@ -136,8 +137,10 @@ export default async function handler(req: Request, res: Response) {
     args: [score, totalMarks, time_taken ?? 0, attempt_id],
   });
 
+  const { isFeatureEnabled } = await import("../../services/features.js");
+  const xlsxAllowed = await isFeatureEnabled(attempt.test_client_id, "xlsx_export");
   const resultsVisible = attempt.show_results_after_submission === 1 || attempt.result_status === "published";
-  const reportDownloadEnabled = attempt.allow_report_download === 1;
+  const reportDownloadEnabled = attempt.allow_report_download === 1 && xlsxAllowed;
 
   if (!resultsVisible) {
     return res.status(200).json({

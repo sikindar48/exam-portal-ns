@@ -17,13 +17,11 @@ interface ClientDialogProps {
 }
 
 const AVAILABLE_FEATURES = [
-  { key: "camera_proctoring", label: "Camera Proctoring" },
-  { key: "analytics", label: "Analytics Dashboard" },
+  { key: "camera_proctoring", label: "Camera Proctoring Lite" },
+  { key: "analytics", label: "Advanced Analytics" },
   { key: "csv_import", label: "CSV Student Import" },
   { key: "xlsx_export", label: "XLSX Reports Export" },
   { key: "custom_branding", label: "Custom Branding" },
-  { key: "advanced_reports", label: "Advanced AI Reports" },
-  { key: "priority_support", label: "Priority Support" },
 ];
 
 export function ClientDialog({

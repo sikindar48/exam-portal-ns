@@ -21,7 +21,7 @@ export default async function handler(req: Request, res: Response) {
     await db.execute({
       sql: `UPDATE client_subscriptions 
             SET status = 'expired' 
-            WHERE expiry_date < ? AND status IN ('active', 'trial')`,
+            WHERE expiry_date < ? AND status IN ('active', 'trial') AND plan_id != 'free'`,
       args: [today]
     });
   } catch (err) {

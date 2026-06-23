@@ -7,12 +7,11 @@
   * Up to 50 Questions per Exam
   * Up to 20 Students per Exam
   * Question Shuffle
-  * Analytics Dashboard
+  * Basic Analytics
 * **Not Included**:
-  * CSV Import
+  * CSV Import ( students & questions )
   * XLSX Export
   * Custom Brand Logo
-  * Basic Proctoring
 
 ---
 
@@ -26,8 +25,8 @@
   * CSV Import
   * XLSX Export
   * Question Shuffle
-  * Analytics Dashboard
-  * Basic Proctoring:
+  * Advanced Analytics Dashboard
+  * Advanced Proctoring:
     * Tab Switching Detection
     * Window Blur Detection
     * Copy/Paste Blocking
@@ -170,7 +169,7 @@
   * Only Violation Snapshots Stored
   * Camera Active Only During Exam Session
 * **Not Included**:
-  * Live Human Invigilation
+  * Live Human Invigilation 
   * Video Recording
   * Custom Enterprise Integrations
   * Dedicated Account Manager

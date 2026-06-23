@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi, proctoringApi } from "@/services/api/client";
+import { testsApi, testQuestionsApi, attemptsApi, profilesApi, attemptAnswersApi, proctoringApi, clientsApi } from "@/services/api/client";
 import { ProctoringTimeline } from "@/components/Admin/ProctoringTimeline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,8 @@ export default function Results() {
   const { testId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { loading: authLoading } = useAuth();
+  const { clientId, loading: authLoading } = useAuth();
+  const [features, setFeatures] = useState<string[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [testInfo, setTestInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -56,13 +57,18 @@ export default function Results() {
   const fetchResults = async () => {
     setLoading(true);
     try {
-      // Fetch test info and questions count in parallel
-      const [testRes, qCountRes] = await Promise.all([
+      // Fetch test info, features, and questions count in parallel
+      const [testRes, qCountRes, clientRes] = await Promise.all([
         testsApi.get(testId),
-        testQuestionsApi.list(testId)
+        testQuestionsApi.list(testId),
+        clientId ? clientsApi.get(clientId) : Promise.resolve({ data: null })
       ]);
-
+ 
       if (!testRes.data) throw new Error("Test not found");
+      
+      if (clientRes.data && (clientRes.data as any).features) {
+        setFeatures((clientRes.data as any).features);
+      }
       
       setTestInfo(testRes.data);
       setTotalQuestions(qCountRes.data?.length || 0);
@@ -266,13 +272,15 @@ export default function Results() {
           showBackButton={true}
           backPath="/client-admin/tests"
           actions={
-            <Button
-              onClick={exportResults}
-              disabled={results.length === 0}
-              className="h-9 px-4 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
-            >
-              <Download className="mr-2 h-3.5 w-3.5" /> Export Data
-            </Button>
+            features.includes("xlsx_export") ? (
+              <Button
+                onClick={exportResults}
+                disabled={results.length === 0}
+                className="h-9 px-4 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                <Download className="mr-2 h-3.5 w-3.5" /> Export Data
+              </Button>
+            ) : null
           }
         />
 

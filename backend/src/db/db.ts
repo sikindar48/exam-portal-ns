@@ -296,11 +296,12 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         ('enterprise', 'Enterprise Plan', -1, -1, -1)
     `);
 
-    // Seed default plan feature mappings
+    // Sync plan feature mappings with plans documentation
+    await db.execute("DELETE FROM subscription_plan_features");
     const planFeatures = [
-      { plan_id: "starter", features: ["camera_proctoring", "csv_import"] },
-      { plan_id: "growth", features: ["camera_proctoring", "csv_import", "xlsx_export", "analytics"] },
-      { plan_id: "enterprise", features: ["camera_proctoring", "csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_reports", "priority_support"] }
+      { plan_id: "starter", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_proctoring"] },
+      { plan_id: "growth", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_proctoring"] },
+      { plan_id: "enterprise", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "camera_proctoring", "advanced_proctoring"] }
     ];
     for (const pf of planFeatures) {
       for (const feature of pf.features) {
@@ -318,7 +319,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
     for (const cRow of existingClients.rows) {
       const cId = (cRow as any).id;
       await db.execute({
-        sql: "INSERT OR IGNORE INTO client_subscriptions (client_id, plan_id, start_date, expiry_date, status, renewal_status) VALUES (?, 'free', ?, ?, 'trial', 'manual')",
+        sql: "INSERT OR IGNORE INTO client_subscriptions (client_id, plan_id, start_date, expiry_date, status, renewal_status) VALUES (?, 'free', ?, ?, 'active', 'manual')",
         args: [cId, todayStr, expiryStr]
       });
       await db.execute({
@@ -326,6 +327,13 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         args: [cId]
       });
     }
+
+    // Ensure all existing free subscriptions have status 'active' if they are 'trial' or 'expired'
+    await db.execute(`
+      UPDATE client_subscriptions
+      SET status = 'active'
+      WHERE plan_id = 'free' AND status IN ('trial', 'expired')
+    `);
 
     console.log("Database migrations ran successfully.");
   } catch (err) {

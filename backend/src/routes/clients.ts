@@ -4,6 +4,7 @@ import { requireUser } from "../auth/auth.js";
 import { hasRole, getUserClientId } from "../services/roles.js";
 import { createAuditLog } from "../services/audit.js";
 import { randomUUID } from "crypto";
+import { isFeatureEnabled } from "../services/features.js";
 
 const BOOL_FIELDS = ["active_status"];
 
@@ -30,10 +31,20 @@ export default async function handler(req: Request, res: Response) {
     if (id) {
       // Single client fetch (settings page, sidebar branding)
       const { rows } = await db.execute({
-        sql: "SELECT * FROM clients WHERE id = ?",
+        sql: `SELECT c.*, cs.plan_id, sp.name as plan_name 
+              FROM clients c
+              LEFT JOIN client_subscriptions cs ON cs.client_id = c.id
+              LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
+              WHERE c.id = ?`,
         args: [id as string],
       });
       if (!rows.length) return res.status(404).json({ error: "Not found" });
+      
+      const clientData = rows[0] as any;
+      const hasBranding = await isFeatureEnabled(id as string, "custom_branding");
+      if (!hasBranding) {
+        clientData.logo_url = null;
+      }
       
       const { rows: features } = await db.execute({
         sql: "SELECT feature_name FROM client_features WHERE client_id = ? AND enabled = 1",
@@ -152,7 +163,14 @@ export default async function handler(req: Request, res: Response) {
       sql: "SELECT * FROM clients WHERE id = ?",
       args: [clientId],
     });
-    return res.status(200).json(rows.map((r) => rowBools(r as any, BOOL_FIELDS)));
+    const clientRows = rows.map((r) => rowBools(r as any, BOOL_FIELDS));
+    for (const client of clientRows) {
+      const hasBranding = await isFeatureEnabled(client.id, "custom_branding");
+      if (!hasBranding) {
+        client.logo_url = null;
+      }
+    }
+    return res.status(200).json(clientRows);
   }
 
   // ── POST /api/clients ───────────────────────────────────────────────────────
@@ -230,6 +248,14 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { name, address, logo_url, active_status, limits, features } = req.body;
+
+    // Check Custom Branding permission for client admin
+    if (!isSuperAdmin && logo_url !== undefined && logo_url !== null && logo_url !== "") {
+      const hasBranding = await isFeatureEnabled(idStr, "custom_branding");
+      if (!hasBranding) {
+        return res.status(403).json({ error: "Access Denied: Custom Branding feature is not enabled for your organization plan." });
+      }
+    }
 
     // Super Admin updates Limits and Features
     if (isSuperAdmin) {

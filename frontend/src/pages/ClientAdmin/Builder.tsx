@@ -309,6 +309,7 @@ export default function Builder() {
         saving={saving} 
         onSave={saveTest} 
         onImport={() => setCsvDialogOpen(true)} 
+        showImport={features.includes("csv_import")}
       />
 
       <main className="container mx-auto px-6 py-8">
@@ -371,17 +372,13 @@ export default function Builder() {
 
       <Footer />
 
-      <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border-none rounded-none p-0 overflow-hidden">
-          <div className="h-1 bg-blue-600" />
-          <DialogHeader className="p-6 border-b">
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Import Questions</DialogTitle>
-          </DialogHeader>
-          <div className="p-6">
-            <CSV onImportSuccess={onCsvImportSuccess} />
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CSV
+        onImportSuccess={onCsvImportSuccess}
+        testId={testId}
+        open={csvDialogOpen}
+        onOpenChange={setCsvDialogOpen}
+        trigger={null}
+      />
 
       <Dialog open={repoDialogOpen} onOpenChange={setRepoDialogOpen}>
         <DialogContent className="max-w-4xl bg-white dark:bg-slate-900 border-none rounded-none p-0 overflow-hidden">

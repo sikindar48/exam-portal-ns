@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { hasRole, getUserClientId } from "../services/roles.js";
+import { isFeatureEnabled } from "../services/features.js";
 
 /**
  * GET /api/stats?scope=platform  → SuperAdmin dashboard
@@ -209,6 +210,7 @@ export default async function handler(req: Request, res: Response) {
   if (scope === "client") {
     const clientId = await getUserClientId(user.id);
     if (!clientId) return res.status(403).json({ error: "No client" });
+    // Basic stats are free for all, so we do not restrict the overall API endpoint.
 
     const [students, questions, tests, attemptsMetrics, topRows, testPerfRows] = await Promise.all([
       db.execute({ sql: "SELECT COUNT(*) as count FROM user_roles WHERE client_id = ? AND role = 'student'", args: [clientId] }),

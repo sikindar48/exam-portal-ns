@@ -59,6 +59,13 @@ async function apiFetch<T = any>(
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const guestAttemptToken = sessionStorage.getItem("guest_attempt_token");
+      if (guestAttemptToken) {
+        headers["x-attempt-token"] = guestAttemptToken;
+      }
+    }
+
     const url = getUrl(path);
     const res = await fetch(url, { ...options, headers });
     const json = await res.json();
@@ -81,6 +88,13 @@ export async function apiClient(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = options.token || (await getToken());
   if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    const guestAttemptToken = sessionStorage.getItem("guest_attempt_token");
+    if (guestAttemptToken) {
+      headers["x-attempt-token"] = guestAttemptToken;
+    }
+  }
 
   const url = getUrl(path);
   const res = await fetch(url, {

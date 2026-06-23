@@ -31,9 +31,22 @@ export default async function handler(req: Request, res: Response) {
       });
       if (!rows.length) return res.status(404).json({ error: "Not found" });
       const row = rows[0] as any;
+
+      // Fetch enabled features for this client
+      const { rows: featureRows } = await db.execute({
+        sql: `SELECT feature_name FROM subscription_plan_features spf 
+              JOIN client_subscriptions cs ON cs.plan_id = spf.plan_id
+              WHERE cs.client_id = ? AND cs.status IN ('active', 'trial')
+              UNION
+              SELECT feature_name FROM client_features
+              WHERE client_id = ? AND enabled = 1`,
+        args: [row.client_id, row.client_id],
+      });
+      const clientFeatures = featureRows.map((f: any) => f.feature_name);
+
       return res.status(200).json({
         ...rowBools(row, BOOL_FIELDS),
-        clients: { name: row.client_name, logo_url: row.client_logo_url },
+        clients: { name: row.client_name, logo_url: row.client_logo_url, features: clientFeatures },
       });
     }
 
@@ -67,9 +80,21 @@ export default async function handler(req: Request, res: Response) {
         }
       }
 
+      // Fetch enabled features for this client
+      const { rows: featureRows } = await db.execute({
+        sql: `SELECT feature_name FROM subscription_plan_features spf 
+              JOIN client_subscriptions cs ON cs.plan_id = spf.plan_id
+              WHERE cs.client_id = ? AND cs.status IN ('active', 'trial')
+              UNION
+              SELECT feature_name FROM client_features
+              WHERE client_id = ? AND enabled = 1`,
+        args: [row.client_id, row.client_id],
+      });
+      const clientFeatures = featureRows.map((f: any) => f.feature_name);
+
       return res.status(200).json({
         ...rowBools(row, BOOL_FIELDS),
-        clients: { name: row.client_name, logo_url: row.client_logo_url },
+        clients: { name: row.client_name, logo_url: row.client_logo_url, features: clientFeatures },
       });
     }
 
@@ -178,6 +203,10 @@ export default async function handler(req: Request, res: Response) {
     const id = randomUUID();
     const shareCode = b.share_code || generateShareCode();
 
+    // Derive active from status to ensure consistency
+    const resolvedStatus = b.status ?? "draft";
+    const resolvedActive = resolvedStatus === "published" ? 1 : 0;
+
     await db.execute({
       sql: `INSERT INTO tests
             (id, client_id, folder_id, test_name, timer, shuffle, allow_review,
@@ -190,7 +219,7 @@ export default async function handler(req: Request, res: Response) {
         b.shuffle ? 1 : 0, b.allow_review !== false ? 1 : 0,
         b.negative_marking ? 1 : 0, b.negative_marks ?? 0,
         b.restrict_navigation ? 1 : 0, b.attempts_allowed ?? 1,
-        b.status ?? "draft", b.active !== false ? 1 : 0,
+        resolvedStatus, resolvedActive,
         b.allow_guests ? 1 : 0,
         b.scheduled_start ?? null, b.scheduled_end ?? null,
         shareCode, b.public_link_enabled ? 1 : 0,
@@ -270,6 +299,16 @@ export default async function handler(req: Request, res: Response) {
         args.push(boolFields.has(key) ? (req.body[key] ? 1 : 0) : req.body[key]);
       }
     }
+
+    // Auto-sync active ↔ status to prevent UI mismatch
+    if ("status" in req.body && !("active" in req.body)) {
+      fields.push("active = ?");
+      args.push(req.body.status === "published" ? 1 : 0);
+    } else if ("active" in req.body && !("status" in req.body)) {
+      fields.push("status = ?");
+      args.push(req.body.active ? "published" : "draft");
+    }
+
     if (!fields.length) return res.status(400).json({ error: "Nothing to update" });
     fields.push("updated_at = datetime('now')");
     args.push(String(id));

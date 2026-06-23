@@ -4,6 +4,12 @@ import { clientsApi, userRolesApi, profilesApi, createUser } from "@/services/ap
 import { useNavigate } from "react-router-dom";
 import { Footer } from "@/components/Brand/Footer";
 import { SuperAdminSidebar } from "@/components/SuperAdmin/Sidebar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
+import { Button } from "@/components/ui/button";
 
 // Extracted Components
 import { ClientHeader } from "@/components/SuperAdmin/Clients/ClientHeader";
@@ -17,20 +23,8 @@ export default function ClientsManagement() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
-  const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
-  const [isCredentialsDialogOpen, setIsCredentialsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
-  const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [clientAdmins, setClientAdmins] = useState<any[]>([]);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [deleteClientTarget, setDeleteClientTarget] = useState<string | null>(null);
-  const [deleteAdminTarget, setDeleteAdminTarget] = useState<string | null>(null);
-  const [createdCredentials, setCreatedCredentials] = useState<{
-    email: string;
-    password: string;
-    name: string;
-  } | null>(null);
 
   const [clientForm, setClientForm] = useState({
     name: "",
@@ -43,11 +37,6 @@ export default function ClientsManagement() {
       max_questions_per_exam: -1,
     },
     features: [] as string[],
-  });
-  const [adminForm, setAdminForm] = useState({
-    name: "",
-    email: "",
-    password: "",
   });
 
   const { toast } = useToast();
@@ -68,77 +57,19 @@ export default function ClientsManagement() {
     setLoading(false);
   };
 
-  const fetchClientAdmins = async (clientId: string) => {
-    setAdminLoading(true);
-    const { data: roleData } = await userRolesApi.list({ client_id: clientId, role: "clientadmin" });
-    if (!roleData || (roleData as any[]).length === 0) {
-      setClientAdmins([]);
-      setAdminLoading(false);
-      return;
-    }
-    const ids = (roleData as any[]).map((r: any) => r.user_id);
-    const { data } = await profilesApi.getByIds(ids);
-    setClientAdmins((data as any[]) || []);
-    setAdminLoading(false);
-  };
-
   const handleClientSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    if (editingClient) {
-      const { error } = await clientsApi.update(editingClient.id, clientForm);
-      if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Success", description: "Client updated successfully" });
-        setIsClientDialogOpen(false);
-        fetchClients();
-        resetClientForm();
-      }
+    const { error } = await clientsApi.create(clientForm);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      const { error } = await clientsApi.create(clientForm);
-      if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Success", description: "Client added successfully" });
-        setIsClientDialogOpen(false);
-        fetchClients();
-        resetClientForm();
-      }
+      toast({ title: "Success", description: "Client added successfully" });
+      setIsClientDialogOpen(false);
+      fetchClients();
+      resetClientForm();
     }
     setLoading(false);
-  };
-
-  const handleAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdminLoading(true);
-    const { data: result, error } = await createUser({
-      email: adminForm.email.trim(),
-      password: adminForm.password,
-      name: adminForm.name.trim(),
-      client_id: selectedClient.id,
-      role: "clientadmin",
-    });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      setCreatedCredentials({ email: adminForm.email.trim(), password: adminForm.password, name: adminForm.name.trim() });
-      setIsCredentialsDialogOpen(true);
-      setAdminForm({ name: "", email: "", password: "" });
-      fetchClientAdmins(selectedClient.id);
-    }
-    setAdminLoading(false);
-  };
-
-  const handleDeleteAdmin = async (adminId: string) => {
-    const { error } = await userRolesApi.delete(adminId, "clientadmin");
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Success", description: "Admin removed" });
-      fetchClientAdmins(selectedClient.id);
-    }
-    setDeleteAdminTarget(null);
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -153,26 +84,11 @@ export default function ClientsManagement() {
   };
 
   const handleEditClient = (client: any) => {
-    setEditingClient(client);
-    setClientForm({
-      name: client.name,
-      address: client.address || "",
-      logo_url: client.logo_url || "",
-      active_status: client.active_status,
-      limits: client.limits || {
-        max_exams_per_month: -1,
-        max_students_per_exam: -1,
-        max_questions_per_exam: -1,
-      },
-      features: client.features || [],
-    });
-    setIsClientDialogOpen(true);
+    navigate(`/superadmin/clients/setting?id=${client.id}`);
   };
 
   const handleManageAdmins = (client: any) => {
-    setSelectedClient(client);
-    fetchClientAdmins(client.id);
-    setIsAdminDialogOpen(true);
+    navigate(`/superadmin/clients/setting?id=${client.id}`);
   };
 
   const resetClientForm = () => {
@@ -222,27 +138,6 @@ export default function ClientsManagement() {
           handleSubmit={handleClientSubmit}
         />
 
-        <AdminManagementDialog 
-          isOpen={isAdminDialogOpen}
-          onOpenChange={setIsAdminDialogOpen}
-          selectedClient={selectedClient}
-          adminForm={adminForm}
-          setAdminForm={setAdminForm}
-          adminLoading={adminLoading}
-          handleAdminSubmit={handleAdminSubmit}
-          clientAdmins={clientAdmins}
-          setDeleteAdminTarget={setDeleteAdminTarget}
-        />
-
-        <CredentialsDialog 
-          isOpen={isCredentialsDialogOpen}
-          onOpenChange={setIsCredentialsDialogOpen}
-          createdCredentials={createdCredentials}
-          showPassword={showPassword}
-          setShowPassword={setShowPassword}
-          setCreatedCredentials={setCreatedCredentials}
-        />
-
         {/* Delete Client Confirmation */}
         <AlertDialog open={!!deleteClientTarget} onOpenChange={(open) => !open && setDeleteClientTarget(null)}>
           <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
@@ -255,22 +150,6 @@ export default function ClientsManagement() {
             <AlertDialogFooter className="pt-4">
               <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
               <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteClientTarget && handleDeleteClient(deleteClientTarget)}>Confirm Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Delete Admin Confirmation */}
-        <AlertDialog open={!!deleteAdminTarget} onOpenChange={(open) => !open && setDeleteAdminTarget(null)}>
-          <AlertDialogContent className="rounded-none border-t-4 border-t-red-600">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl font-black uppercase tracking-tight">Delete Admin Account?</AlertDialogTitle>
-              <AlertDialogDescription className="text-sm font-medium leading-relaxed">
-                This will revoke the administrator's access to this organization. Their profile data will be retained but their role will be stripped.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="pt-4">
-              <AlertDialogCancel className="rounded-none border-slate-200 font-bold uppercase text-[10px] tracking-widest">Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white rounded-none font-black uppercase text-[10px] tracking-widest" onClick={() => deleteAdminTarget && handleDeleteAdmin(deleteAdminTarget)}>Confirm Revocation</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

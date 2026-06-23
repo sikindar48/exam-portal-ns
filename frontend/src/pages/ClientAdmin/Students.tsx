@@ -21,7 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/client';
-import { userRolesApi, profilesApi, createUser } from "@/services/api/client";
+import { userRolesApi, profilesApi, createUser, clientsApi } from "@/services/api/client";
 import {
   ArrowLeft,
   Plus,
@@ -49,6 +49,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Footer } from "@/components/Brand/Footer";
 import { Progress } from "@/components/ui/progress";
@@ -67,6 +68,7 @@ export default function StudentsManagement() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [features, setFeatures] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCredentialsDialogOpen, setIsCredentialsDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -323,6 +325,12 @@ export default function StudentsManagement() {
       setPage(0);
       setAllStudentIds([]);
       fetchStudents(true);
+
+      const fetchClientFeatures = async () => {
+        const { data } = await clientsApi.get(clientId);
+        if (data && data.features) setFeatures(data.features);
+      };
+      fetchClientFeatures();
     }
   }, [clientId, authLoading]);
 
@@ -456,137 +464,139 @@ export default function StudentsManagement() {
           backPath="/client-admin"
           actions={
             <>
-              <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
-                if (!importing) {
-                  setIsImportDialogOpen(open);
-                  if (!open) {
-                    setImportRows([]);
-                    setHasStartedImport(false);
-                    setProgressCount(0);
+              {features.includes("csv_import") && (
+                <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+                  if (!importing) {
+                    setIsImportDialogOpen(open);
+                    if (!open) {
+                      setImportRows([]);
+                      setHasStartedImport(false);
+                      setProgressCount(0);
+                    }
                   }
-                }
-              }}>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="ghost"
-                    className="h-9 px-6 rounded-none border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest"
-                  >
-                    <FileSpreadsheet className="mr-2 h-3.5 w-3.5 text-blue-500" /> Bulk Import (CSV)
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl rounded-none border-t-4 border-t-blue-600 bg-white dark:bg-slate-900 overflow-hidden flex flex-col max-h-[85vh] p-0 animate-none">
-                  <DialogHeader className="p-6 pb-4 border-b">
-                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Bulk Candidate Import</DialogTitle>
-                  </DialogHeader>
-                  
-                  <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
-                    {!hasStartedImport && (
-                      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-400 font-bold uppercase tracking-tight space-y-1">
-                        <p className="font-black text-[10px] tracking-widest">CSV Format Instructions:</p>
-                        <p className="normal-case font-medium text-slate-500 dark:text-slate-400">
-                          The file must contain columns: <span className="font-bold">name, email, password</span>.
-                          The first row is automatically skipped if it contains headers.
-                        </p>
-                      </div>
-                    )}
-
-                    {!hasStartedImport && (
-                      <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center cursor-pointer hover:border-blue-500 transition-all relative rounded-none">
-                        <input
-                          type="file"
-                          accept=".csv"
-                          onChange={handleFileChange}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                        <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                        <p className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
-                          Select or Drag CSV File
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">
-                          Max file size: 5MB
-                        </p>
-                      </div>
-                    )}
-
-                    {importRows.length > 0 && (
-                      <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                        <div className="flex justify-between items-center shrink-0">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {importRows.length} Students Found
-                          </p>
-                          {hasStartedImport && (
-                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
-                              {progressCount} / {importRows.length} Processed
-                            </span>
-                          )}
-                        </div>
-
-                        {hasStartedImport && (
-                          <div className="space-y-2 shrink-0">
-                            <Progress value={(progressCount / importRows.length) * 100} className="h-2 rounded-none bg-slate-100 dark:bg-slate-800" />
-                          </div>
-                        )}
-
-                        <div className="flex-1 min-h-[200px] border border-slate-200 dark:border-slate-800 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-2">
-                          <table className="w-full text-left border-collapse text-[11px]">
-                            <thead>
-                              <tr className="border-b border-slate-200 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                <th className="p-2">Name</th>
-                                <th className="p-2">Email</th>
-                                <th className="p-2">Password</th>
-                                <th className="p-2 text-right">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {importRows.map((row, idx) => (
-                                <tr key={idx} className="border-b border-slate-100 dark:border-slate-900/50">
-                                  <td className="p-2 font-bold uppercase truncate max-w-[150px]">{row.name}</td>
-                                  <td className="p-2 font-medium text-slate-500 truncate max-w-[200px]">{row.email}</td>
-                                  <td className="p-2 font-mono text-slate-400 select-all">{row.password}</td>
-                                  <td className="p-2 text-right font-black uppercase tracking-widest text-[9px]">
-                                    {row.status === "pending" && <span className="text-slate-400">Pending</span>}
-                                    {row.status === "processing" && <span className="text-blue-500 animate-pulse">Running</span>}
-                                    {row.status === "success" && <span className="text-green-600 bg-green-50 px-1.5 py-0.5 border border-green-100">Success</span>}
-                                    {row.status === "error" && (
-                                      <span className="text-red-600 bg-red-50 px-1.5 py-0.5 border border-red-100" title={row.error}>
-                                        Error
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-6 border-t flex justify-end gap-2 shrink-0 bg-slate-50 dark:bg-slate-900/50">
-                    <Button
+                }}>
+                  <DialogTrigger asChild>
+                    <Button 
                       variant="ghost"
-                      disabled={importing}
-                      onClick={() => {
-                        setIsImportDialogOpen(false);
-                        setImportRows([]);
-                        setHasStartedImport(false);
-                        setProgressCount(0);
-                      }}
-                      className="h-10 rounded-none font-bold uppercase text-[10px] tracking-widest"
+                      className="h-9 px-6 rounded-none border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest"
                     >
-                      Close
+                      <FileSpreadsheet className="mr-2 h-3.5 w-3.5 text-blue-500" /> Bulk Import (CSV)
                     </Button>
-                    {importRows.length > 0 && !hasStartedImport && (
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl rounded-none border-t-4 border-t-blue-600 bg-white dark:bg-slate-900 overflow-hidden flex flex-col max-h-[85vh] p-0 animate-none">
+                    <DialogHeader className="p-6 pb-4 border-b">
+                      <DialogTitle className="text-xl font-black uppercase tracking-tight">Bulk Candidate Import</DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
+                      {!hasStartedImport && (
+                        <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 text-xs text-blue-700 dark:text-blue-400 font-bold uppercase tracking-tight space-y-1">
+                          <p className="font-black text-[10px] tracking-widest">CSV Format Instructions:</p>
+                          <p className="normal-case font-medium text-slate-500 dark:text-slate-400">
+                            The file must contain columns: <span className="font-bold">name, email, password</span>.
+                            The first row is automatically skipped if it contains headers.
+                          </p>
+                        </div>
+                      )}
+
+                      {!hasStartedImport && (
+                        <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center cursor-pointer hover:border-blue-500 transition-all relative rounded-none">
+                          <input
+                            type="file"
+                            accept=".csv"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                          <p className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                            Select or Drag CSV File
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">
+                            Max file size: 5MB
+                          </p>
+                        </div>
+                      )}
+
+                      {importRows.length > 0 && (
+                        <div className="space-y-4 flex-1 flex flex-col min-h-0">
+                          <div className="flex justify-between items-center shrink-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              {importRows.length} Students Found
+                            </p>
+                            {hasStartedImport && (
+                              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                                {progressCount} / {importRows.length} Processed
+                              </span>
+                            )}
+                          </div>
+
+                          {hasStartedImport && (
+                            <div className="space-y-2 shrink-0">
+                              <Progress value={(progressCount / importRows.length) * 100} className="h-2 rounded-none bg-slate-100 dark:bg-slate-800" />
+                            </div>
+                          )}
+
+                          <div className="flex-1 min-h-[200px] border border-slate-200 dark:border-slate-800 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-2">
+                            <table className="w-full text-left border-collapse text-[11px]">
+                              <thead>
+                                <tr className="border-b border-slate-200 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2">Email</th>
+                                  <th className="p-2">Password</th>
+                                  <th className="p-2 text-right">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {importRows.map((row, idx) => (
+                                  <tr key={idx} className="border-b border-slate-100 dark:border-slate-900/50">
+                                    <td className="p-2 font-bold uppercase truncate max-w-[150px]">{row.name}</td>
+                                    <td className="p-2 font-medium text-slate-500 truncate max-w-[200px]">{row.email}</td>
+                                    <td className="p-2 font-mono text-slate-400 select-all">{row.password}</td>
+                                    <td className="p-2 text-right font-black uppercase tracking-widest text-[9px]">
+                                      {row.status === "pending" && <span className="text-slate-400">Pending</span>}
+                                      {row.status === "processing" && <span className="text-blue-500 animate-pulse">Running</span>}
+                                      {row.status === "success" && <span className="text-green-600 bg-green-50 px-1.5 py-0.5 border border-green-100">Success</span>}
+                                      {row.status === "error" && (
+                                        <span className="text-red-600 bg-red-50 px-1.5 py-0.5 border border-red-100" title={row.error}>
+                                          Error
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-6 border-t flex justify-end gap-2 shrink-0 bg-slate-50 dark:bg-slate-900/50">
                       <Button
-                        onClick={handleImport}
-                        className="h-10 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest px-8"
+                        variant="ghost"
+                        disabled={importing}
+                        onClick={() => {
+                          setIsImportDialogOpen(false);
+                          setImportRows([]);
+                          setHasStartedImport(false);
+                          setProgressCount(0);
+                        }}
+                        className="h-10 rounded-none font-bold uppercase text-[10px] tracking-widest"
                       >
-                        Start Import
+                        Close
                       </Button>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+                      {importRows.length > 0 && !hasStartedImport && (
+                        <Button
+                          onClick={handleImport}
+                          className="h-10 rounded-none bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest px-8"
+                        >
+                          Start Import
+                        </Button>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
 
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>

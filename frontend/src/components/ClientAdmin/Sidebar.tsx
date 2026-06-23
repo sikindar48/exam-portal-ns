@@ -22,7 +22,7 @@ interface ClientAdminSidebarProps {
 }
 
 // Module-level cache to persist organization branding across sidebar mounts (preventing re-fetch layout flash)
-let cachedBranding: { clientId: string; name: string; logoUrl: string | null } | null = null;
+let cachedBranding: { clientId: string; name: string; logoUrl: string | null; features: string[] } | null = null;
 
 export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
   const { signOut, clientId } = useAuth();
@@ -59,6 +59,21 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
     return null;
   });
 
+  const [features, setFeatures] = useState<string[]>(() => {
+    if (cachedBranding && cachedBranding.clientId === clientId) return cachedBranding.features || [];
+    if (clientId) {
+      const sessionData = sessionStorage.getItem(`org_branding_${clientId}`);
+      if (sessionData) {
+        try {
+          return JSON.parse(sessionData).features || [];
+        } catch {
+          // ignore invalid session cache
+        }
+      }
+    }
+    return [];
+  });
+
   useEffect(() => {
     async function fetchOrgBranding() {
       if (!clientId) return;
@@ -73,9 +88,10 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       if (sessionData) {
         try {
           const parsed = JSON.parse(sessionData);
-          cachedBranding = { clientId, name: parsed.name, logoUrl: parsed.logoUrl };
+          cachedBranding = { clientId, name: parsed.name, logoUrl: parsed.logoUrl, features: parsed.features || [] };
           setOrgName(parsed.name);
           setLogoUrl(parsed.logoUrl);
+          setFeatures(parsed.features || []);
           return;
         } catch {
           // ignore invalid session cache, will re-fetch from API
@@ -87,10 +103,12 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
         if (!error && data) {
           const name = (data as any).name;
           const logoUrl = (data as any).logo_url;
-          cachedBranding = { clientId, name, logoUrl };
-          sessionStorage.setItem(sessionKey, JSON.stringify({ name, logoUrl }));
+          const feats = (data as any).features || [];
+          cachedBranding = { clientId, name, logoUrl, features: feats };
+          sessionStorage.setItem(sessionKey, JSON.stringify({ name, logoUrl, features: feats }));
           setOrgName(name);
           setLogoUrl(logoUrl);
+          setFeatures(feats);
         }
       } catch (err) {
         console.error("Error fetching client branding:", err);
@@ -150,6 +168,8 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
     },
   ];
 
+  const filteredNavItems = navItems;
+
   return (
     <aside className="w-64 bg-slate-950 text-white flex flex-col h-screen sticky top-0 shrink-0 border-r border-slate-900 font-sans select-none z-20">
       {/* Brand Header */}
@@ -178,7 +198,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
             Navigation
           </p>
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.label || location.pathname === item.path || (item.path !== "/client-admin" && location.pathname.startsWith(item.path));
               return (
