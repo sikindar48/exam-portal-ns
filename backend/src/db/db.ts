@@ -1,8 +1,8 @@
 import { createClient } from "@libsql/client";
 
 let client: ReturnType<typeof createClient> | null = null;
-
 let migrated = false;
+export let migrationPromise = Promise.resolve();
 
 async function runMigrations(db: ReturnType<typeof createClient>) {
   if (migrated) return;
@@ -286,6 +286,18 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       );
     `);
 
+    // Client subscription requests table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS client_subscription_requests (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        plan_id TEXT NOT NULL REFERENCES subscription_plans(id),
+        status TEXT NOT NULL CHECK (status IN ('requested', 'approved', 'rejected')),
+        requested_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        actioned_at TEXT
+      );
+    `);
+
     // Seed default subscription plans if empty
     await db.execute(`
       INSERT OR IGNORE INTO subscription_plans (id, name, max_exams_per_month, max_students_per_exam, max_questions_per_exam)
@@ -335,6 +347,134 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       WHERE plan_id = 'free' AND status IN ('trial', 'expired')
     `);
 
+    // Pay Per Test migrations: add read_only to tests table
+    try {
+      await db.execute(`ALTER TABLE tests ADD COLUMN read_only INTEGER DEFAULT 0`);
+      console.log("Added column read_only to tests table.");
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding column read_only to tests:", err);
+      }
+    }
+
+    // Create Pay Per Test packages table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS test_packages (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        max_questions INTEGER NOT NULL,
+        max_candidates INTEGER NOT NULL,
+        csv_import INTEGER DEFAULT 0,
+        xlsx_export INTEGER DEFAULT 0,
+        analytics INTEGER DEFAULT 1,
+        custom_branding INTEGER DEFAULT 0,
+        basic_proctoring INTEGER DEFAULT 0,
+        camera_proctoring INTEGER DEFAULT 0,
+        priority_support INTEGER DEFAULT 0,
+        active INTEGER DEFAULT 1
+      );
+    `);
+
+    // Create Client Test Purchases inventory table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS client_test_purchases (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        package_id TEXT NOT NULL REFERENCES test_packages(id) ON DELETE RESTRICT,
+        status TEXT NOT NULL CHECK (status IN ('requested', 'available', 'used')),
+        purchased_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        used_at TEXT,
+        assigned_test_id TEXT UNIQUE REFERENCES tests(id) ON DELETE SET NULL
+      );
+    `);
+
+    try {
+      await db.execute(`ALTER TABLE client_test_purchases ADD COLUMN custom_max_candidates INTEGER DEFAULT NULL`);
+      console.log("Added custom_max_candidates to client_test_purchases table.");
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding custom_max_candidates to client_test_purchases:", err);
+      }
+    }
+
+    try {
+      await db.execute(`ALTER TABLE client_test_purchases ADD COLUMN custom_max_questions INTEGER DEFAULT NULL`);
+      console.log("Added custom_max_questions to client_test_purchases table.");
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding custom_max_questions to client_test_purchases:", err);
+      }
+    }
+
+    // Create Test Billing mapping locks table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS test_billing (
+        test_id TEXT PRIMARY KEY REFERENCES tests(id) ON DELETE CASCADE,
+        purchase_id TEXT NOT NULL REFERENCES client_test_purchases(id) ON DELETE RESTRICT,
+        package_id TEXT NOT NULL REFERENCES test_packages(id) ON DELETE RESTRICT,
+        max_questions INTEGER NOT NULL,
+        max_candidates INTEGER NOT NULL,
+        basic_proctoring INTEGER DEFAULT 0,
+        camera_proctoring INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed')),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Seed default packages
+    const seedPackages = [
+      { id: "base", name: "Base Assessment", price: 99.00, max_questions: 50, max_candidates: 50, csv_import: 0, xlsx_export: 0, analytics: 1, custom_branding: 1, basic_proctoring: 0, camera_proctoring: 0 },
+      { id: "basic", name: "Basic Assessment", price: 199.00, max_questions: 50, max_candidates: 50, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 0 },
+      { id: "standard", name: "Standard Assessment", price: 399.00, max_questions: 50, max_candidates: 50, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 },
+      { id: "professional", name: "Professional Assessment", price: 499.00, max_questions: 100, max_candidates: 100, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 }, // lite
+      { id: "placement_drive", name: "Placement Drive", price: 1499.00, max_questions: 200, max_candidates: 500, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 } // lite
+    ];
+
+    for (const pkg of seedPackages) {
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO test_packages (id, name, price, max_questions, max_candidates, csv_import, xlsx_export, analytics, custom_branding, basic_proctoring, camera_proctoring)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [pkg.id, pkg.name, pkg.price, pkg.max_questions, pkg.max_candidates, pkg.csv_import, pkg.xlsx_export, pkg.analytics, pkg.custom_branding, pkg.basic_proctoring, pkg.camera_proctoring]
+      });
+    }
+
+    // Migration to support 'requested' status in client_test_purchases table
+    try {
+      await db.execute(`
+        INSERT INTO client_test_purchases (id, client_id, package_id, status)
+        VALUES ('temp-migration-test', 'non-existent', 'non-existent', 'requested')
+      `);
+      await db.execute("DELETE FROM client_test_purchases WHERE id = 'temp-migration-test'");
+    } catch (err: any) {
+      if (err.message.includes("constraint failed")) {
+        console.log("Migrating client_test_purchases table to support 'requested' status...");
+        await db.execute("PRAGMA foreign_keys=OFF;");
+        await db.execute(`
+          CREATE TABLE IF NOT EXISTS client_test_purchases_new (
+            id TEXT PRIMARY KEY,
+            client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+            package_id TEXT NOT NULL REFERENCES test_packages(id) ON DELETE RESTRICT,
+            status TEXT NOT NULL CHECK (status IN ('requested', 'available', 'used')),
+            purchased_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            used_at TEXT,
+            assigned_test_id TEXT UNIQUE REFERENCES tests(id) ON DELETE SET NULL,
+            custom_max_candidates INTEGER DEFAULT NULL,
+            custom_max_questions INTEGER DEFAULT NULL
+          );
+        `);
+        // Check if old table has custom columns, which it does
+        await db.execute(`
+          INSERT INTO client_test_purchases_new (id, client_id, package_id, status, purchased_at, used_at, assigned_test_id, custom_max_candidates, custom_max_questions)
+          SELECT id, client_id, package_id, status, purchased_at, used_at, assigned_test_id, custom_max_candidates, custom_max_questions FROM client_test_purchases;
+        `);
+        await db.execute("DROP TABLE client_test_purchases;");
+        await db.execute("ALTER TABLE client_test_purchases_new RENAME TO client_test_purchases;");
+        await db.execute("PRAGMA foreign_keys=ON;");
+        console.log("Successfully migrated client_test_purchases table structure.");
+      }
+    }
+
     console.log("Database migrations ran successfully.");
   } catch (err) {
     console.error("Database migrations failed:", err);
@@ -354,7 +494,7 @@ export function getDb() {
     });
 
     // Run columns and table migrations asynchronously
-    runMigrations(client);
+    migrationPromise = runMigrations(client);
   }
   return client;
 }

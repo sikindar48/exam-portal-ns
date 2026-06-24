@@ -17,6 +17,7 @@ interface TestDialogProps {
   handleSubmit: (e: React.FormEvent) => void;
   features?: string[];
   folders?: any[];
+  purchases?: any[];
 }
 
 export function TestDialog({
@@ -28,7 +29,10 @@ export function TestDialog({
   loading,
   handleSubmit,
   features = [],
+  purchases = [],
 }: TestDialogProps) {
+  const isReadOnly = editingTest && Number(editingTest.read_only) === 1;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl rounded-none border-t-4 border-t-blue-600 max-h-[90vh] overflow-y-auto">
@@ -38,6 +42,37 @@ export function TestDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          {isReadOnly && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-bold uppercase tracking-wide">
+              This exam has consumed its candidate capacity or been completed, and is now read-only. Structural adjustments (questions, timer, grading logic) are locked.
+            </div>
+          )}
+
+          {!editingTest && purchases && purchases.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Billing Package (Optional)</Label>
+              <Select
+                value={formData.purchase_id || "none"}
+                onValueChange={(val) => setFormData({ ...formData, purchase_id: val === "none" ? "" : val })}
+              >
+                <SelectTrigger className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold">
+                  <SelectValue placeholder="Use Default Plan" />
+                </SelectTrigger>
+                <SelectContent className="rounded-none">
+                  <SelectItem value="none" className="font-bold">Use Default Subscription/Free Plan</SelectItem>
+                  {purchases.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id} className="font-bold text-xs">
+                      {p.package_name} ({p.id.slice(0, 8)}...)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">
+                Note: Pay Per Test credits are consumed immediately upon test creation.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="test_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Test Name</Label>
             <Input
@@ -60,6 +95,7 @@ export function TestDialog({
                 onChange={(e) => setFormData({ ...formData, timer: parseInt(e.target.value) })}
                 className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-black"
                 required
+                disabled={isReadOnly}
               />
             </div>
 
@@ -85,7 +121,7 @@ export function TestDialog({
               <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">Test Settings</h3>
               <div className="flex items-center justify-between">
                 <Label htmlFor="shuffle" className="text-xs font-bold uppercase tracking-tight">Shuffle Questions</Label>
-                <Switch id="shuffle" checked={formData.shuffle} onCheckedChange={(checked) => setFormData({ ...formData, shuffle: checked })} />
+                <Switch id="shuffle" checked={formData.shuffle} onCheckedChange={(checked) => setFormData({ ...formData, shuffle: checked })} disabled={isReadOnly} />
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="allow_review" className="text-xs font-bold uppercase tracking-tight">Enable Post-Review</Label>
@@ -93,7 +129,7 @@ export function TestDialog({
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="restrict_navigation" className="text-xs font-bold uppercase tracking-tight">Restrict Navigation</Label>
-                <Switch id="restrict_navigation" checked={formData.restrict_navigation} onCheckedChange={(checked) => setFormData({ ...formData, restrict_navigation: checked })} />
+                <Switch id="restrict_navigation" checked={formData.restrict_navigation} onCheckedChange={(checked) => setFormData({ ...formData, restrict_navigation: checked })} disabled={isReadOnly} />
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="public_link_enabled" className="text-xs font-bold uppercase tracking-tight">Public Access Link</Label>
@@ -103,7 +139,7 @@ export function TestDialog({
               {features.includes("camera_proctoring") && (
                 <div className="flex items-center justify-between">
                   <Label htmlFor="camera_required" className="text-xs font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">Enforce Camera Proctoring</Label>
-                  <Switch id="camera_required" checked={formData.camera_required} onCheckedChange={(checked) => setFormData({ ...formData, camera_required: checked })} />
+                  <Switch id="camera_required" checked={formData.camera_required} onCheckedChange={(checked) => setFormData({ ...formData, camera_required: checked })} disabled={isReadOnly} />
                 </div>
               )}
               
@@ -139,7 +175,7 @@ export function TestDialog({
               <h3 className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-2">Grading Logic</h3>
               <div className="flex items-center justify-between">
                 <Label htmlFor="negative_marking" className="text-xs font-bold uppercase tracking-tight">Negative Marking</Label>
-                <Switch id="negative_marking" checked={formData.negative_marking} onCheckedChange={(checked) => setFormData({ ...formData, negative_marking: checked })} />
+                <Switch id="negative_marking" checked={formData.negative_marking} onCheckedChange={(checked) => setFormData({ ...formData, negative_marking: checked })} disabled={isReadOnly} />
               </div>
               {formData.negative_marking && (
                 <div className="space-y-2 pt-2 animate-in slide-in-from-top-2 duration-200">
@@ -151,6 +187,7 @@ export function TestDialog({
                     value={formData.negative_marks}
                     onChange={(e) => setFormData({ ...formData, negative_marks: parseFloat(e.target.value) })}
                     className="h-9 rounded-none border-slate-200 dark:border-slate-800 font-bold"
+                    disabled={isReadOnly}
                   />
                 </div>
               )}
@@ -163,6 +200,7 @@ export function TestDialog({
                     value={formData.attempts_allowed}
                     onChange={(e) => setFormData({ ...formData, attempts_allowed: parseInt(e.target.value) })}
                     className="h-9 rounded-none border-slate-200 dark:border-slate-800 font-bold pr-8"
+                    disabled={isReadOnly}
                   />
                   {formData.attempts_allowed === 0 && <InfinityIcon className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />}
                 </div>

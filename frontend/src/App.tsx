@@ -40,6 +40,11 @@ const ClientSettings = lazy(() => import("./pages/ClientAdmin/Settings"));
 const ProctoringLogs = lazy(() => import("./pages/ClientAdmin/ProctoringLogs"));
 const Analytics = lazy(() => import("./pages/ClientAdmin/Analytics"));
 const Subscription = lazy(() => import("./pages/ClientAdmin/Subscription"));
+const PackageSelection = lazy(() => import("./pages/ClientAdmin/PackageSelection"));
+const SuperAdminPackages = lazy(() => import("./pages/SuperAdmin/Packages"));
+const SuperAdminPackagesRequests = lazy(() => import("./pages/SuperAdmin/PackagesRequests"));
+const SuperAdminSubscriptionRequests = lazy(() => import("./pages/SuperAdmin/SubscriptionRequests"));
+const ClientAdminPlans = lazy(() => import("./pages/ClientAdmin/Plans"));
 
 // Student Pages
 const StudentDashboard = lazy(() => import("./pages/Student/Dashboard"));
@@ -114,6 +119,30 @@ const App = () => (
                   element={
                     <Protected allowedRoles={["superadmin"]}>
                       <SuperAdminSettings />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/packages"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminPackages />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/packages-requests"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminPackagesRequests />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/subscription-requests"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminSubscriptionRequests />
                     </Protected>
                   }
                 />
@@ -220,6 +249,22 @@ const App = () => (
                   element={
                     <Protected allowedRoles={["clientadmin"]}>
                       <Subscription />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/client-admin/subscription/packages"
+                  element={
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <PackageSelection />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/client-admin/subscription/plans"
+                  element={
+                    <Protected allowedRoles={["clientadmin"]}>
+                      <ClientAdminPlans />
                     </Protected>
                   }
                 />

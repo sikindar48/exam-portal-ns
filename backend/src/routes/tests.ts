@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { testCreateSchema, testUpdateSchema } from "../validation/schemas.js";
 import { isFeatureEnabled } from "../services/features.js";
 import { getClientLimits, getClientUsageMonthly, incrementClientUsage } from "../services/limits.js";
+import { getEffectivePlan, assignPackageToTest, validatePackageFeatures } from "../services/billing.js";
 
 const BOOL_FIELDS = ["shuffle","allow_review","negative_marking","restrict_navigation","active","allow_guests","public_link_enabled","camera_required"];
 
@@ -183,29 +184,37 @@ export default async function handler(req: Request, res: Response) {
 
     const b = validation.data;
 
-    // Enforce Camera Proctoring License Feature Check
-    if (b.camera_required) {
-      const proctoringAllowed = await isFeatureEnabled(clientId, "camera_proctoring");
-      if (!proctoringAllowed) {
-        return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan." });
-      }
-    }
-
-    // Enforce Monthly Exams Quota Limit
-    const limits = await getClientLimits(clientId);
-    if (limits.max_exams_per_month !== -1) {
-      const usage = await getClientUsageMonthly(clientId);
-      if (usage.exams_created >= limits.max_exams_per_month) {
-        return res.status(403).json({ error: `Quota Exceeded: Your organization monthly limit of ${limits.max_exams_per_month} exam papers has been reached.` });
-      }
-    }
-
     const id = randomUUID();
     const shareCode = b.share_code || generateShareCode();
 
     // Derive active from status to ensure consistency
     const resolvedStatus = b.status ?? "draft";
     const resolvedActive = resolvedStatus === "published" ? 1 : 0;
+
+    const effectivePlan = await getEffectivePlan(clientId);
+
+    if (!b.purchase_id) {
+      // Enforce Camera Proctoring check for non-package tests
+      if (b.camera_required && !effectivePlan.features.includes("camera_proctoring")) {
+        return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan." });
+      }
+
+      // Enforce Monthly Exams Quota Limit (ignoring PPT exams)
+      if (effectivePlan.max_exams_per_month !== -1) {
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+        const countRes = await db.execute({
+          sql: `SELECT COUNT(*) as count FROM tests 
+                WHERE client_id = ? 
+                AND strftime('%Y-%m', created_at) = ?
+                AND id NOT IN (SELECT test_id FROM test_billing)`,
+          args: [clientId, currentMonth]
+        });
+        const examsCreatedThisMonth = Number((countRes.rows[0] as any).count || 0);
+        if (examsCreatedThisMonth >= effectivePlan.max_exams_per_month) {
+          return res.status(403).json({ error: `Quota Exceeded: Your organization monthly limit of ${effectivePlan.max_exams_per_month} exam papers has been reached.` });
+        }
+      }
+    }
 
     await db.execute({
       sql: `INSERT INTO tests
@@ -227,8 +236,15 @@ export default async function handler(req: Request, res: Response) {
       ],
     });
 
-    // Increment exams monthly usage metrics
-    await incrementClientUsage(clientId, "exams_created");
+    if (b.purchase_id) {
+      const assigned = await assignPackageToTest(clientId, b.purchase_id, id);
+      if (!assigned) {
+        await db.execute({ sql: "DELETE FROM tests WHERE id = ?", args: [id] });
+        return res.status(400).json({ error: "Invalid or already used assessment package selected." });
+      }
+    } else {
+      await incrementClientUsage(clientId, "exams_created");
+    }
 
     const { rows } = await db.execute({ sql: "SELECT * FROM tests WHERE id = ?", args: [id] });
     return res.status(201).json(rowBools(rows[0] as any, BOOL_FIELDS));
@@ -265,23 +281,33 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: "Access Denied: Your organization has been suspended." });
     }
 
-    // Enforce Camera Proctoring License check on update toggling
-    if (req.body.camera_required) {
-      const proctoringAllowed = await isFeatureEnabled(callerClientId, "camera_proctoring");
-      if (!proctoringAllowed) {
-        return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan." });
+    const testCheck = await db.execute({
+      sql: "SELECT client_id, read_only FROM tests WHERE id = ? LIMIT 1",
+      args: [String(id)]
+    });
+    if (testCheck.rows.length === 0) return res.status(404).json({ error: "Test not found" });
+    const currentTest = testCheck.rows[0] as any;
+
+    if (Number(currentTest.read_only) === 1) {
+      const harmlessFields = ["test_name", "allow_review", "status", "active", "public_link_enabled", "allow_guests", "folder_id", "show_results_after_submission", "allow_report_download", "result_status"];
+      const requestedKeys = Object.keys(req.body);
+      const invalidKeys = requestedKeys.filter(k => !harmlessFields.includes(k));
+      if (invalidKeys.length > 0) {
+        return res.status(403).json({ error: `Block: Modifying structural settings (${invalidKeys.join(", ")}) is prohibited on read-only assessments.` });
       }
     }
 
-    // Client Admin Isolation Check
     if (isClientAdmin && !isSuper) {
-      const { rows: testRows } = await db.execute({
-        sql: "SELECT client_id FROM tests WHERE id = ?",
-        args: [String(id)],
-      });
-      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
-      if (testRows[0].client_id !== callerClientId) {
+      if (currentTest.client_id !== callerClientId) {
         return res.status(403).json({ error: "Permission denied" });
+      }
+    }
+
+    // Enforce Camera Proctoring License check on update toggling
+    if (req.body.camera_required) {
+      const proctoringAllowed = await validatePackageFeatures(String(id), "camera_proctoring");
+      if (!proctoringAllowed) {
+        return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan or package." });
       }
     }
 

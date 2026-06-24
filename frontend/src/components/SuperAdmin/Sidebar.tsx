@@ -11,6 +11,7 @@ import {
   Settings,
   CreditCard,
   FileText,
+  Ticket,
 } from "lucide-react";
 
 interface SuperAdminSidebarProps {
@@ -72,7 +73,21 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
       label: "Subscriptions",
       path: "/superadmin/subscriptions",
       icon: CreditCard,
-      id: "super-nav-btn-subscriptions"
+      id: "super-nav-btn-subscriptions",
+      subTabs: [
+        { label: "Active Plans", path: "/superadmin/subscriptions", id: "super-nav-btn-subscriptions-plans" },
+        { label: "Requests", path: "/superadmin/subscription-requests", id: "super-nav-btn-subscriptions-requests" },
+      ]
+    },
+    {
+      label: "Pay Per Test",
+      path: "/superadmin/packages",
+      icon: Ticket,
+      id: "super-nav-btn-packages",
+      subTabs: [
+        { label: "Catalog", path: "/superadmin/packages", id: "super-nav-btn-packages-catalog" },
+        { label: "Requests", path: "/superadmin/packages-requests", id: "super-nav-btn-packages-requests" },
+      ]
     },
     {
       label: "Audit Logs",
@@ -138,21 +153,47 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.label || location.pathname === item.path || (item.path !== "/superadmin" && location.pathname.startsWith(item.path));
+              const isGroupActive = activeTab === item.label
+                || location.pathname === item.path
+                || (item.path !== "/superadmin" && location.pathname.startsWith(item.path))
+                || (item.subTabs && item.subTabs.some(st => location.pathname === st.path));
               return (
-                <button
-                  key={item.label}
-                  id={item.id}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-black uppercase tracking-wider rounded-none transition-all border-l-2 ${
-                    isActive
-                      ? "bg-slate-900 text-red-400 border-red-500"
-                      : "text-slate-400 border-transparent hover:text-slate-100 hover:bg-slate-900/30"
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? "text-red-400" : "text-slate-600"}`} />
-                  {item.label}
-                </button>
+                <div key={item.label}>
+                  <button
+                    id={item.id}
+                    onClick={() => navigate(item.path)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-black uppercase tracking-wider rounded-none transition-all border-l-2 ${
+                      isGroupActive
+                        ? "bg-slate-900 text-red-400 border-red-500"
+                        : "text-slate-400 border-transparent hover:text-slate-100 hover:bg-slate-900/30"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 transition-colors ${isGroupActive ? "text-red-400" : "text-slate-600"}`} />
+                    {item.label}
+                  </button>
+                  {/* Sub-tabs */}
+                  {item.subTabs && isGroupActive && (
+                    <div className="ml-7 mt-0.5 space-y-0.5 border-l border-slate-800 pl-3">
+                      {item.subTabs.map((sub) => {
+                        const isSubActive = location.pathname === sub.path;
+                        return (
+                          <button
+                            key={sub.path}
+                            id={sub.id}
+                            onClick={() => navigate(sub.path)}
+                            className={`w-full text-left px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-none transition-all ${
+                              isSubActive
+                                ? "text-red-400 bg-slate-900/50"
+                                : "text-slate-500 hover:text-slate-200 hover:bg-slate-900/20"
+                            }`}
+                          >
+                            {sub.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

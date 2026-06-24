@@ -4,6 +4,7 @@ import "dotenv/config";
 import path from "path";
 import { authMiddleware } from "./middleware/auth.js";
 import { rateLimit } from "express-rate-limit";
+import { migrationPromise } from "./db/db.js";
 
 // Import API route handlers from new routes folder
 import clientsHandler from "./routes/clients.js";
@@ -26,6 +27,8 @@ import proctoringHandler from "./routes/proctoring.js";
 import settingsHandler from "./routes/settings.js";
 import subscriptionsHandler from "./routes/subscriptions.js";
 import auditLogsHandler from "./routes/audit-logs.js";
+import packagesHandler from "./routes/packages.js";
+import subscriptionRequestsHandler from "./routes/subscription-requests.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -96,6 +99,12 @@ app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use("/static", express.static(path.join(process.cwd(), "public")));
 
+// Wait for migrations to finish before processing requests
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  await migrationPromise;
+  next();
+});
+
 // Apply Firebase Auth verification middleware globally
 app.use(authMiddleware);
 
@@ -128,9 +137,11 @@ app.all("/api/stats", statsHandler);
 app.all("/api/create-user", createUserHandler);
 app.all("/api/proctoring/events", proctoringHandler);
 app.all("/api/settings*", settingsHandler);
+app.all("/api/packages*", packagesHandler);
 app.all("/api/superadmin/subscriptions/:client_id", subscriptionsHandler);
 app.all("/api/superadmin/subscriptions", subscriptionsHandler);
 app.all("/api/superadmin/audit-logs", auditLogsHandler);
+app.all("/api/subscription-requests", subscriptionRequestsHandler);
 
 // RPC / Custom endpoints
 app.all("/api/rpc/clone-test", cloneTestHandler);

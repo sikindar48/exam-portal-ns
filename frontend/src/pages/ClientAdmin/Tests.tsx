@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { testsApi, testFoldersApi, rpc, clientsApi } from "@/services/api/client";
+import { testsApi, testFoldersApi, rpc, clientsApi, packagesApi } from "@/services/api/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";
@@ -83,9 +83,11 @@ export default function TestsManagement() {
     allow_report_download: false,
     result_status: "draft",
     camera_required: false,
+    purchase_id: "",
   });
 
   const [features, setFeatures] = useState<string[]>([]);
+  const [purchases, setPurchases] = useState<any[]>([]);
 
   const { toast } = useToast();
   const { clientId, loading: authLoading } = useAuth();
@@ -96,8 +98,16 @@ export default function TestsManagement() {
       fetchTests();
       fetchFolders();
       fetchClientFeatures();
+      fetchPurchases();
     }
   }, [clientId, authLoading]);
+
+  const fetchPurchases = async () => {
+    const { data, error } = await packagesApi.listPurchases(clientId!);
+    if (!error && data) {
+      setPurchases((data as any[]).filter(p => p.status === "available"));
+    }
+  };
 
   const fetchClientFeatures = async () => {
     const { data, error } = await clientsApi.get(clientId!);
@@ -148,6 +158,7 @@ export default function TestsManagement() {
       scheduled_end: toUTCISOString(formData.scheduled_end),
       client_id: clientId,
       folder_id: openFolderId === "uncategorized" ? null : openFolderId,
+      purchase_id: formData.purchase_id || null,
     };
 
     if (editingTest) {
@@ -263,6 +274,7 @@ export default function TestsManagement() {
       allow_report_download: (test as any).allow_report_download === 1,
       result_status: (test as any).result_status || "draft",
       camera_required: !!(test as any).camera_required,
+      purchase_id: (test as any).purchase_id || "",
     });
     setIsDialogOpen(true);
   };
@@ -285,6 +297,7 @@ export default function TestsManagement() {
       allow_report_download: false,
       result_status: "draft",
       camera_required: false,
+      purchase_id: "",
     });
     setEditingTest(null);
   };
@@ -347,6 +360,7 @@ export default function TestsManagement() {
           editingTest={editingTest}
           folders={folders}
           features={features}
+          purchases={purchases}
         />
 
         <TestFolderDialogs 

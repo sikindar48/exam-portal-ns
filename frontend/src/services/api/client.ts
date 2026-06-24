@@ -276,6 +276,47 @@ export const createUser = (body: {
   role: "clientadmin" | "student";
 }) => apiFetch("/create-user", { method: "POST", body: JSON.stringify(body) });
 
+// ── Packages & Purchases ──────────────────────────────────────────────────────
+
+export const packagesApi = {
+  listAvailable: () => apiFetch("/packages"),
+  listPurchases: (clientId?: string) => apiFetch(`/packages?type=purchases${clientId ? `&client_id=${clientId}` : ""}`),
+  purchase: (client_id: string, package_id: string, custom_max_candidates?: number | null, custom_max_questions?: number | null) =>
+    apiFetch("/packages/purchase", {
+      method: "POST",
+      body: JSON.stringify({ client_id, package_id, custom_max_candidates, custom_max_questions }),
+    }),
+  updatePurchase: (purchase_id: string, custom_max_candidates?: number | null, custom_max_questions?: number | null, status?: string | null) =>
+    apiFetch("/packages/purchase", {
+      method: "PATCH",
+      body: JSON.stringify({ purchase_id, custom_max_candidates, custom_max_questions, status }),
+    }),
+  deletePurchase: (purchase_id: string) =>
+    apiFetch("/packages/purchase", {
+      method: "DELETE",
+      body: JSON.stringify({ purchase_id }),
+    }),
+  updatePackage: (body: any) =>
+    apiFetch("/packages", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+};
+
+export const subscriptionRequestsApi = {
+  list: () => apiFetch<any[]>("/subscription-requests"),
+  requestUpgrade: (planId: string) =>
+    apiFetch("/subscription-requests", {
+      method: "POST",
+      body: JSON.stringify({ plan_id: planId })
+    }),
+  action: (requestId: string, action: "approve" | "reject") =>
+    apiFetch("/subscription-requests", {
+      method: "PATCH",
+      body: JSON.stringify({ request_id: requestId, action })
+    })
+};
+
 // ── Proctoring ────────────────────────────────────────────────────────────────
 
 export const proctoringApi = {

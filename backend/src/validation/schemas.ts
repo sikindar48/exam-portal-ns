@@ -24,6 +24,7 @@ export const testCreateSchema = z.object({
   folder_id: z.string().nullable().optional(),
   share_code: z.string().max(20).optional(),
   camera_required: booleanCoercible.optional(),
+  purchase_id: z.string().optional(),
 });
 
 export const testUpdateSchema = testCreateSchema.partial();

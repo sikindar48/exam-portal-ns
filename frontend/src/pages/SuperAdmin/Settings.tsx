@@ -172,8 +172,8 @@ export default function SuperAdminSettings() {
 
       <div className="flex-1 flex flex-col min-h-screen">
         <ClientAdminHeader
-          title="System Configurations"
-          subtitle="Manage Global Settings, Platform Branding, Maintenance & Security Credentials"
+          title="Settings"
+          subtitle="Global configuration & security"
           showBackButton={true}
           backPath="/superadmin"
         />
@@ -189,7 +189,7 @@ export default function SuperAdminSettings() {
                 Platform Branding
               </CardTitle>
               <CardDescription className="text-xs">
-                Upload a logo to display in the top-left of the Super Admin sidebar. Max 500KB (PNG, SVG, JPG).
+                Upload a logo for the sidebar. Max 500KB.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -287,7 +287,7 @@ export default function SuperAdminSettings() {
 
                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-2 flex items-center gap-1">
                       <Info className="h-3 w-3 shrink-0" />
-                      Appears in the Super Admin sidebar header. Stored securely as base64 or loaded from the URL.
+                      Shown in sidebar. Stored as base64 or loaded from URL.
                     </p>
                   </div>
                 </div>
@@ -298,8 +298,8 @@ export default function SuperAdminSettings() {
           {/* ── Section 2: Maintenance & Banner ── */}
           <Card className="rounded-none border-slate-200 dark:border-slate-800 shadow-md">
             <CardHeader className="border-b border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/50">
-              <CardTitle className="text-sm font-black uppercase tracking-widest">Platform Operational Controls</CardTitle>
-              <CardDescription className="text-xs">System-wide maintenance states and announcement controls.</CardDescription>
+              <CardTitle className="text-sm font-black uppercase tracking-widest">Platform Controls</CardTitle>
+              <CardDescription className="text-xs">Maintenance & announcement settings.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSaveSettings} className="space-y-6">
@@ -312,7 +312,7 @@ export default function SuperAdminSettings() {
                       Maintenance Mode
                     </Label>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider leading-relaxed">
-                      If active, students cannot start or submit attempt sessions. All admin panels remain active.
+                      Blocks student attempts. Admin panels stay active.
                     </p>
                   </div>
                   <Switch
@@ -341,9 +341,9 @@ export default function SuperAdminSettings() {
                 {/* Registration Switch */}
                 <div className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
                   <div className="space-y-1">
-                    <Label htmlFor="reg-mode" className="text-xs font-black uppercase tracking-widest">Self-Service Registration</Label>
+                    <Label htmlFor="reg-mode" className="text-xs font-black uppercase tracking-widest">Registration</Label>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                      Allow new users to sign up and join organizations directly.
+                      Allow users to self-register.
                     </p>
                   </div>
                   <Switch
@@ -360,7 +360,7 @@ export default function SuperAdminSettings() {
                     className="h-11 px-6 bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px] rounded-none"
                   >
                     <Save className="mr-2 h-4 w-4" />
-                    {loading ? "SAVING CHANGES..." : "SAVE GLOBAL CONFIGURATION"}
+                    {loading ? "SAVING..." : "SAVE SETTINGS"}
                   </Button>
                 </div>
               </form>
@@ -372,9 +372,9 @@ export default function SuperAdminSettings() {
             <CardHeader className="border-b border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/50">
               <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                 <Key className="h-4 w-4 text-blue-600" />
-                Administrative Credentials Management
+                Password Reset
               </CardTitle>
-              <CardDescription className="text-xs">Forcibly reset password for any tenant administrator or student account.</CardDescription>
+              <CardDescription className="text-xs">Reset password for any user account.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleResetPassword} className="space-y-4">

@@ -4,6 +4,7 @@ import { requireUser } from "../auth/auth.js";
 import { getUserClientId, hasRole, isGuestStudent } from "../services/roles.js";
 import { randomUUID } from "crypto";
 import { attemptCreateSchema } from "../validation/schemas.js";
+import { validateCandidateCapacity } from "../services/billing.js";
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -371,9 +372,6 @@ export default async function handler(req: Request, res: Response) {
     });
     if (subStatus.length > 0) {
       const status = subStatus[0].status;
-      if (status === "expired") {
-        return res.status(403).json({ error: "Access Denied: The hosting organization subscription has expired." });
-      }
       if (status === "suspended") {
         return res.status(403).json({ error: "Access Denied: The hosting organization subscription has been suspended." });
       }
@@ -405,27 +403,12 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // 3. Enforce max_students_per_exam limit
-    const { getClientLimits, incrementClientUsage } = await import("../services/limits.js");
-    const limits = await getClientLimits(testClientId);
-    if (limits.max_students_per_exam !== -1) {
-      const { rows: attemptCountRows } = await db.execute({
-        sql: "SELECT COUNT(DISTINCT student_id) as count FROM attempts WHERE test_id = ?",
-        args: [test_id],
-      });
-      const currentStudents = Number((attemptCountRows[0] as any).count || 0);
-
-      // Check if student already has an attempt (if resuming or has previous attempts for this test, don't block them)
-      const { rows: studentAttempts } = await db.execute({
-        sql: "SELECT COUNT(*) as count FROM attempts WHERE student_id = ? AND test_id = ?",
-        args: [resolvedStudentId, test_id],
-      });
-      const hasAttempt = Number((studentAttempts[0] as any).count || 0) > 0;
-
-      if (!hasAttempt && currentStudents >= limits.max_students_per_exam) {
-        return res.status(403).json({ error: `Quota Exceeded: The maximum limit of ${limits.max_students_per_exam} candidates for this exam has been reached.` });
-      }
+    // Check candidate capacity / Pay Per Test limits
+    const isAllowed = await validateCandidateCapacity(test_id);
+    if (!isAllowed) {
+      return res.status(403).json({ error: "Capacity Reached: The candidate capacity for this test has been reached or the test is marked completed." });
     }
+
 
     const id = randomUUID();
     const attempt_token = randomUUID();
@@ -436,6 +419,7 @@ export default async function handler(req: Request, res: Response) {
     });
 
     // 4. Increment attempts usage
+    const { incrementClientUsage } = await import("../services/limits.js");
     await incrementClientUsage(testClientId, "attempts_created");
 
     const { rows } = await db.execute({ sql: "SELECT * FROM attempts WHERE id = ?", args: [id] });

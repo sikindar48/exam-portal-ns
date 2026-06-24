@@ -4,6 +4,7 @@ import { requireUser } from "../auth/auth.js";
 import { randomUUID } from "crypto";
 import { hasRole, getUserClientId } from "../services/roles.js";
 import { mapQuestionRow } from "./questions.js";
+import { validateQuestionLimit } from "../services/billing.js";
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -159,11 +160,15 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { rows: testRows } = await db.execute({
-      sql: "SELECT client_id FROM tests WHERE id = ?",
+      sql: "SELECT client_id, read_only FROM tests WHERE id = ?",
       args: [test_id as string],
     });
     if (!testRows.length) return res.status(404).json({ error: "Test not found" });
-    const testClientId = (testRows[0] as any).client_id;
+    const test = testRows[0] as any;
+    const testClientId = test.client_id;
+    if (test.read_only === 1) {
+      return res.status(403).json({ error: "Block: Structural updates are prohibited on read-only assessments." });
+    }
 
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
@@ -184,17 +189,14 @@ export default async function handler(req: Request, res: Response) {
     const body = Array.isArray(req.body) ? req.body : [req.body];
 
     // Enforce max_questions_per_exam limit
-    const { getClientLimits } = await import("../services/limits.js");
-    const limits = await getClientLimits(testClientId);
-    if (limits.max_questions_per_exam !== -1) {
-      const { rows: currentQCountRows } = await db.execute({
-        sql: "SELECT COUNT(*) as count FROM test_questions WHERE test_id = ?",
-        args: [test_id as string],
-      });
-      const currentCount = Number((currentQCountRows[0] as any).count || 0);
-      if (currentCount + body.length > limits.max_questions_per_exam) {
-        return res.status(403).json({ error: `Quota Exceeded: The maximum limit of ${limits.max_questions_per_exam} questions per exam has been reached.` });
-      }
+    const { rows: currentQCountRows } = await db.execute({
+      sql: "SELECT COUNT(*) as count FROM test_questions WHERE test_id = ?",
+      args: [test_id as string],
+    });
+    const currentCount = Number((currentQCountRows[0] as any).count || 0);
+    const isAllowed = await validateQuestionLimit(test_id as string, currentCount + body.length);
+    if (!isAllowed) {
+      return res.status(403).json({ error: "Quota Exceeded: The maximum limit of questions for this exam has been reached." });
     }
 
     const stmts = body.map((row: any) => ({
@@ -218,11 +220,15 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { rows: testRows } = await db.execute({
-      sql: "SELECT client_id FROM tests WHERE id = ?",
+      sql: "SELECT client_id, read_only FROM tests WHERE id = ?",
       args: [test_id as string],
     });
     if (!testRows.length) return res.status(404).json({ error: "Test not found" });
-    const testClientId = (testRows[0] as any).client_id;
+    const test = testRows[0] as any;
+    const testClientId = test.client_id;
+    if (test.read_only === 1) {
+      return res.status(403).json({ error: "Block: Structural updates are prohibited on read-only assessments." });
+    }
 
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
@@ -243,12 +249,9 @@ export default async function handler(req: Request, res: Response) {
     const questions: any[] = req.body;
 
     // Enforce max_questions_per_exam limit
-    const { getClientLimits } = await import("../services/limits.js");
-    const limits = await getClientLimits(testClientId);
-    if (limits.max_questions_per_exam !== -1) {
-      if (questions.length > limits.max_questions_per_exam) {
-        return res.status(403).json({ error: `Quota Exceeded: The maximum limit of ${limits.max_questions_per_exam} questions per exam has been reached.` });
-      }
+    const isAllowed = await validateQuestionLimit(test_id as string, questions.length);
+    if (!isAllowed) {
+      return res.status(403).json({ error: "Quota Exceeded: The maximum limit of questions for this exam has been reached." });
     }
 
     // Step 1: upsert each question into the questions table
@@ -261,8 +264,8 @@ export default async function handler(req: Request, res: Response) {
               VALUES (?,
                 (SELECT client_id FROM tests WHERE id = ?),
                 ?,?,?,?,?,?,?,datetime('now'))`,
-        args: [q.id, test_id, q.question_text, q.option_a, q.option_b, q.option_c,
-               q.option_d, q.correct_answer, q.marks ?? 1],
+        args: [q.id, test_id, q.question_text, q.option_a ?? null, q.option_b ?? null, q.option_c ?? null,
+               q.option_d ?? null, q.correct_answer ?? null, q.marks ?? 1],
       }));
 
     // New questions (temp_ ids): insert into questions first
@@ -278,8 +281,8 @@ export default async function handler(req: Request, res: Response) {
               VALUES (?,
                 (SELECT client_id FROM tests WHERE id = ?),
                 ?,?,?,?,?,?,?)`,
-        args: [newId, test_id, q.question_text, q.option_a, q.option_b,
-               q.option_c, q.option_d, q.correct_answer, q.marks ?? 1],
+        args: [newId, test_id, q.question_text, q.option_a ?? null, q.option_b ?? null,
+               q.option_c ?? null, q.option_d ?? null, q.correct_answer ?? null, q.marks ?? 1],
       };
     });
 
@@ -315,11 +318,15 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { rows: testRows } = await db.execute({
-      sql: "SELECT client_id FROM tests WHERE id = ?",
+      sql: "SELECT client_id, read_only FROM tests WHERE id = ?",
       args: [test_id as string],
     });
     if (!testRows.length) return res.status(404).json({ error: "Test not found" });
-    const testClientId = (testRows[0] as any).client_id;
+    const test = testRows[0] as any;
+    const testClientId = test.client_id;
+    if (test.read_only === 1) {
+      return res.status(403).json({ error: "Block: Structural updates are prohibited on read-only assessments." });
+    }
 
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
