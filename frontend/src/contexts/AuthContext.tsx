@@ -46,23 +46,28 @@ const ROLE_PRIORITY: AppRole[] = ["superadmin", "clientadmin", "student"];
 
 const CACHE_KEY_ROLE = "kiro_cached_role";
 const CACHE_KEY_CLIENT = "kiro_cached_client_id";
+const CACHE_KEY_UID = "kiro_cached_uid";
 
-function readCache(): { role: AppRole | null; clientId: string | null } {
+function readCache(): { role: AppRole | null; clientId: string | null; uid: string | null } {
   return {
     role: (localStorage.getItem(CACHE_KEY_ROLE) as AppRole | null) ?? null,
     clientId: localStorage.getItem(CACHE_KEY_CLIENT) ?? null,
+    uid: localStorage.getItem(CACHE_KEY_UID) ?? null,
   };
 }
 
-function writeCache(role: AppRole, clientId: string | null) {
+function writeCache(role: AppRole, clientId: string | null, uid: string | null) {
   localStorage.setItem(CACHE_KEY_ROLE, role);
   if (clientId) localStorage.setItem(CACHE_KEY_CLIENT, clientId);
   else localStorage.removeItem(CACHE_KEY_CLIENT);
+  if (uid) localStorage.setItem(CACHE_KEY_UID, uid);
+  else localStorage.removeItem(CACHE_KEY_UID);
 }
 
 function clearCache() {
   localStorage.removeItem(CACHE_KEY_ROLE);
   localStorage.removeItem(CACHE_KEY_CLIENT);
+  localStorage.removeItem(CACHE_KEY_UID);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -79,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [clientId, setClientId] = useState<string | null>(cache.clientId);
 
   const applyRole = useCallback(
-    (data: { role: string; client_id: string | null }[]) => {
+    (data: { role: string; client_id: string | null }[], uid: string) => {
       if (!data || data.length === 0) {
         clearCache();
         setRole(null);
@@ -93,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )[0];
       const r = best.role as AppRole;
       const c = best.client_id ?? null;
-      writeCache(r, c);
+      writeCache(r, c, uid);
       setRole(r);
       setClientId(c);
     },
@@ -105,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = await firebaseUser.getIdToken();
         const res = await apiClient("/api/user-roles", { token });
-        applyRole(res ?? []);
+        applyRole(res ?? [], firebaseUser.uid);
       } catch (err) {
         console.error("fetchUserRole error:", err);
       }
@@ -151,7 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(firebaseUser);
 
         if (firebaseUser) {
-          if (cache.role === null) {
+          const cacheMatches = cache.uid === firebaseUser.uid;
+          if (cache.role === null || !cacheMatches) {
             await fetchUserRole(firebaseUser);
             setLoading(false);
           } else {
@@ -177,7 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       if (!auth) throw new Error("Firebase not initialized");
-      await signInWithEmailAndPassword(auth, email, password);
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
+      await fetchUserRole(firebaseUser);
       return { error: null };
     } catch (err: any) {
       console.error("Sign in error:", err);
@@ -218,6 +225,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           client_id: clientId ?? null,
         },
       });
+
+      // Update state and cache immediately to prevent race conditions with routing redirects
+      writeCache("student", clientId ?? null, newUser.uid);
+      setRole("student");
+      setClientId(clientId ?? null);
 
       return { error: null };
     } catch (err: any) {

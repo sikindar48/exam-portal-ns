@@ -11,6 +11,7 @@ interface UseProctoringOptions {
 export function useProctoring({ enabled, stream, attemptId, testId }: UseProctoringOptions) {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [activeViolation, setActiveViolation] = useState<string | null>(null);
 
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const detectorRef = useRef<any>(null);
@@ -142,7 +143,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
               // If face missing for more than 3 continuous seconds, trigger violation
               if (absentDurationMs >= 3000) {
                 const isFirst = activeViolationRef.current !== "NO_FACE";
-                if (isFirst) activeViolationRef.current = "NO_FACE";
+                if (isFirst) {
+                  activeViolationRef.current = "NO_FACE";
+                  setActiveViolation("NO_FACE");
+                }
 
                 triggerViolation("NO_FACE", 1.0, {
                   faceCount: 0,
@@ -156,7 +160,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
 
             if (faceCount > 1) {
               const isFirst = activeViolationRef.current !== "MULTIPLE_FACES";
-              if (isFirst) activeViolationRef.current = "MULTIPLE_FACES";
+              if (isFirst) {
+                activeViolationRef.current = "MULTIPLE_FACES";
+                setActiveViolation("MULTIPLE_FACES");
+              }
 
               triggerViolation("MULTIPLE_FACES", 1.0, {
                 faceCount,
@@ -164,7 +171,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
               }, isFirst);
             } else {
               // Normal state: 1 face
-              activeViolationRef.current = null;
+              if (activeViolationRef.current !== null) {
+                activeViolationRef.current = null;
+                setActiveViolation(null);
+              }
             }
           }
         });
@@ -179,6 +189,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
           // Check if camera tracks are still active
           const videoTrack = stream.getVideoTracks()[0];
           if (!videoTrack || videoTrack.readyState === "ended" || !videoTrack.enabled || videoTrack.muted) {
+            if (activeViolationRef.current !== "CAMERA_DISCONNECTED") {
+              activeViolationRef.current = "CAMERA_DISCONNECTED";
+              setActiveViolation("CAMERA_DISCONNECTED");
+            }
             triggerViolation("CAMERA_DISCONNECTED", 1.0);
             return;
           }
@@ -200,6 +214,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
 
     // Listen for manual track changes (disconnections)
     const handleTrackEndedOrMuted = () => {
+      if (activeViolationRef.current !== "CAMERA_DISCONNECTED") {
+        activeViolationRef.current = "CAMERA_DISCONNECTED";
+        setActiveViolation("CAMERA_DISCONNECTED");
+      }
       triggerViolation("CAMERA_DISCONNECTED", 2.5);
     };
 
@@ -208,6 +226,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasVideoDevice = devices.some(device => device.kind === "videoinput");
         if (!hasVideoDevice) {
+          if (activeViolationRef.current !== "CAMERA_DISCONNECTED") {
+            activeViolationRef.current = "CAMERA_DISCONNECTED";
+            setActiveViolation("CAMERA_DISCONNECTED");
+          }
           triggerViolation("CAMERA_DISCONNECTED", 1.5);
         }
       } catch (err) {
@@ -234,8 +256,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         track.removeEventListener("ended", handleTrackEndedOrMuted);
         track.removeEventListener("mute", handleTrackEndedOrMuted);
       });
+      activeViolationRef.current = null;
+      setActiveViolation(null);
     };
   }, [enabled, stream, attemptId, testId]);
 
-  return { modelLoaded, initError };
+  return { modelLoaded, initError, activeViolation };
 }

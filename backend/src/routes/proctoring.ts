@@ -32,7 +32,7 @@ export default async function handler(req: Request, res: Response) {
 
   // ── GET /api/proctoring/events ─────────────────────────────────────────────
   if (req.method === "GET") {
-    const { attempt_id, page, limit, test_id, client_id, event_type, severity, start_date, end_date } = req.query;
+    const { attempt_id, page, limit, test_id, client_id, event_type, severity, start_date, end_date, date, start_time, end_time, search } = req.query;
     if (!attempt_id) {
       if (!isAdmin) {
         return res.status(403).json({ error: "Permission denied" });
@@ -85,6 +85,21 @@ export default async function handler(req: Request, res: Response) {
       if (end_date) {
         conditions.push(`pe.created_at <= ?`);
         args.push(end_date as string);
+      }
+
+      if (search) {
+        conditions.push(`(p.name LIKE ? OR p.email LIKE ?)`);
+        args.push(`%${search}%`, `%${search}%`);
+      }
+
+      if (date) {
+        conditions.push(`date(pe.created_at) = ?`);
+        args.push(date as string);
+      }
+
+      if (start_time && end_time) {
+        conditions.push(`time(pe.created_at) BETWEEN ? AND ?`);
+        args.push(start_time as string, end_time as string);
       }
 
       if (conditions.length > 0) {
@@ -283,19 +298,22 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // 3. Check feature gating if this is a camera event
+    const { validatePackageFeatures } = await import("../services/billing.js");
     const isCameraEvent = ["NO_FACE", "MULTIPLE_FACES", "CAMERA_DISCONNECTED", "CAMERA_PERMISSION_DENIED"].includes(event_type);
     if (isCameraEvent) {
-      const cameraAllowed = await isFeatureEnabled(attempt.client_id, "camera_proctoring");
+      const cameraAllowed = await validatePackageFeatures(test_id, "camera_proctoring");
       if (!cameraAllowed) {
-        return res.status(403).json({ error: "Camera proctoring is not enabled on this subscription plan" });
+        return res.status(403).json({ error: "Camera proctoring is not enabled on this subscription plan or package" });
       }
     }
 
     const isBasicProctoringEvent = ["TAB_SWITCH", "WINDOW_BLUR", "FULLSCREEN_EXIT"].includes(event_type);
     if (isBasicProctoringEvent) {
-      const proctoringAllowed = await isFeatureEnabled(attempt.client_id, "advanced_proctoring");
+      const proctoringAllowed = await validatePackageFeatures(test_id, "advanced_proctoring")
+        || await validatePackageFeatures(test_id, "basic_proctoring")
+        || await validatePackageFeatures(test_id, "camera_proctoring");
       if (!proctoringAllowed) {
-        return res.status(403).json({ error: "Advanced proctoring is not enabled on this subscription plan" });
+        return res.status(403).json({ error: "Advanced proctoring is not enabled on this subscription plan or package" });
       }
     }
 

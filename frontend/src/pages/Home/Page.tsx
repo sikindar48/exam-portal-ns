@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   GraduationCap,
   Shield,
@@ -16,6 +17,8 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  Menu,
+  X,
 } from "lucide-react";
 import { Footer } from "@/components/Brand/Footer";
 import { ExamEngineMockup } from "./components/ExamEngineMockup";
@@ -24,9 +27,17 @@ import { StudentPortalMockup } from "./components/StudentPortalMockup";
 
 export default function Page() {
   const navigate = useNavigate();
+  const { user, role } = useAuth();
   const [activeTab, setActiveTab] = useState<"engine" | "dashboard" | "student">("engine");
   const [examOption, setExamOption] = useState<number | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const ROLE_ROUTES = {
+    superadmin: "/superadmin",
+    clientadmin: "/client-admin",
+    student: "/student",
+  } as const;
 
   const features = [
     {
@@ -111,7 +122,7 @@ export default function Page() {
               <h1 className="text-base font-bold text-slate-900 dark:text-white leading-none">
                 NS Exam Portal
               </h1>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 tracking-wider uppercase mt-0.5">
+              <p className="hidden sm:block text-[10px] text-slate-500 dark:text-slate-400 tracking-wider uppercase mt-0.5">
                 by NS Software Solutions
               </p>
             </div>
@@ -125,22 +136,68 @@ export default function Page() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/auth")}
-              className="hidden sm:inline-flex text-sm"
+            {user && !user.isAnonymous && role ? (
+              <Button
+                onClick={() => navigate(ROLE_ROUTES[role])}
+                className="hidden sm:inline-flex bg-blue-600 hover:bg-blue-700 text-white text-sm"
+              >
+                Go to Dashboard
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate("/auth")}
+                  className="hidden sm:inline-flex text-sm"
+                >
+                  Sign In
+                </Button>
+                <Button
+                  onClick={() => navigate("/auth")}
+                  className="hidden sm:inline-flex bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                >
+                  Get Started
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              </>
+            )}
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-1.5 rounded-lg md:hidden text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+              aria-label="Toggle menu"
             >
-              Sign In
-            </Button>
-            <Button
-              onClick={() => navigate("/auth")}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
-            >
-              Get Started
-              <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Button>
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <nav className="md:hidden border-t border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-4 flex flex-col gap-3 text-sm font-semibold shadow-inner animate-in slide-in-from-top duration-200">
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-blue-600 dark:hover:text-blue-400 border-b border-slate-100 dark:border-slate-900">Features</a>
+            <a href="#preview" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-blue-600 dark:hover:text-blue-400 border-b border-slate-100 dark:border-slate-900">Preview</a>
+            <a href="#stats" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-blue-600 dark:hover:text-blue-400 border-b border-slate-100 dark:border-slate-900">Stats</a>
+            <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-blue-600 dark:hover:text-blue-400 border-b border-slate-100 dark:border-slate-900">FAQ</a>
+            {user && !user.isAnonymous && role ? (
+              <button
+                onClick={() => { setMobileMenuOpen(false); navigate(ROLE_ROUTES[role]); }}
+                className="py-2 text-left text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <button
+                onClick={() => { setMobileMenuOpen(false); navigate("/auth"); }}
+                className="py-2 text-left text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Sign In / Register
+              </button>
+            )}
+          </nav>
+        )}
       </header>
 
       {/* Hero */}
@@ -165,14 +222,25 @@ export default function Page() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <Button
-              size="lg"
-              onClick={() => navigate("/auth")}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 w-full sm:w-auto"
-            >
-              Start Creating Exams
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            {user && !user.isAnonymous && role ? (
+              <Button
+                size="lg"
+                onClick={() => navigate(ROLE_ROUTES[role])}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 w-full sm:w-auto"
+              >
+                Go to Dashboard
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                onClick={() => navigate("/auth")}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 w-full sm:w-auto"
+              >
+                Start Creating Exams
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="lg"
               variant="outline"
@@ -186,8 +254,8 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Portal Preview Tabs */}
-      <section id="preview" className="py-16 px-6 bg-slate-100 dark:bg-slate-900/30 border-y border-slate-200 dark:border-slate-800">
+      {/* Portal Preview Tabs - Hidden on Mobile, Desktop Only */}
+      <section id="preview" className="hidden md:block py-16 px-6 bg-slate-100 dark:bg-slate-900/30 border-y border-slate-200 dark:border-slate-800">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
@@ -203,9 +271,9 @@ export default function Page() {
             {(["engine", "dashboard", "student"] as const).map((tab) => {
               const labels = { engine: "Exam Engine", dashboard: "Instructor", student: "Student" };
               const icons = {
-                engine: <Laptop className="h-3.5 w-3.5" />,
-                dashboard: <Users className="h-3.5 w-3.5" />,
-                student: <GraduationCap className="h-3.5 w-3.5" />,
+                engine: <Laptop className="hidden sm:inline h-3.5 w-3.5" />,
+                dashboard: <Users className="hidden sm:inline h-3.5 w-3.5" />,
+                student: <GraduationCap className="hidden sm:inline h-3.5 w-3.5" />,
               };
               return (
                 <button
@@ -224,16 +292,18 @@ export default function Page() {
             })}
           </div>
 
-          {/* Mockup window */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden max-w-5xl mx-auto min-h-[520px] relative shadow-md">
-            <div className={activeTab === "engine" ? "relative z-10" : "opacity-0 pointer-events-none absolute inset-0 z-0"}>
-              <ExamEngineMockup examOption={examOption} setExamOption={setExamOption} />
-            </div>
-            <div className={activeTab === "dashboard" ? "relative z-10" : "opacity-0 pointer-events-none absolute inset-0 z-0"}>
-              <InstructorPanelMockup />
-            </div>
-            <div className={activeTab === "student" ? "relative z-10" : "opacity-0 pointer-events-none absolute inset-0 z-0"}>
-              <StudentPortalMockup />
+          {/* Mockup window - swipable and scrollable on mobile */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-w-5xl mx-auto shadow-md scrollbar-thin">
+            <div className="min-w-[768px] md:min-w-0 min-h-[520px] relative">
+              <div className={activeTab === "engine" ? "relative z-10" : "opacity-0 pointer-events-none absolute inset-0 z-0"}>
+                <ExamEngineMockup examOption={examOption} setExamOption={setExamOption} />
+              </div>
+              <div className={activeTab === "dashboard" ? "relative z-10" : "opacity-0 pointer-events-none absolute inset-0 z-0"}>
+                <InstructorPanelMockup />
+              </div>
+              <div className={activeTab === "student" ? "relative z-10" : "opacity-0 pointer-events-none absolute inset-0 z-0"}>
+                <StudentPortalMockup />
+              </div>
             </div>
           </div>
         </div>

@@ -75,26 +75,28 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
   });
 
   useEffect(() => {
-    async function fetchOrgBranding() {
+    async function fetchOrgBranding(force = false) {
       if (!clientId) return;
       
       // Return early if memory cache matches current clientId
-      if (cachedBranding && cachedBranding.clientId === clientId) {
+      if (!force && cachedBranding && cachedBranding.clientId === clientId) {
         return;
       }
       
       const sessionKey = `org_branding_${clientId}`;
-      const sessionData = sessionStorage.getItem(sessionKey);
-      if (sessionData) {
-        try {
-          const parsed = JSON.parse(sessionData);
-          cachedBranding = { clientId, name: parsed.name, logoUrl: parsed.logoUrl, features: parsed.features || [] };
-          setOrgName(parsed.name);
-          setLogoUrl(parsed.logoUrl);
-          setFeatures(parsed.features || []);
-          return;
-        } catch {
-          // ignore invalid session cache, will re-fetch from API
+      if (!force) {
+        const sessionData = sessionStorage.getItem(sessionKey);
+        if (sessionData) {
+          try {
+            const parsed = JSON.parse(sessionData);
+            cachedBranding = { clientId, name: parsed.name, logoUrl: parsed.logoUrl, features: parsed.features || [] };
+            setOrgName(parsed.name);
+            setLogoUrl(parsed.logoUrl);
+            setFeatures(parsed.features || []);
+            return;
+          } catch {
+            // ignore invalid session cache, will re-fetch from API
+          }
         }
       }
 
@@ -115,6 +117,15 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       }
     }
     fetchOrgBranding();
+
+    const handleUpdate = () => {
+      fetchOrgBranding(true);
+    };
+
+    window.addEventListener("orgBrandingUpdated", handleUpdate);
+    return () => {
+      window.removeEventListener("orgBrandingUpdated", handleUpdate);
+    };
   }, [clientId]);
 
   const navItems = [

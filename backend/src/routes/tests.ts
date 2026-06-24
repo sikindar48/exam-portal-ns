@@ -195,7 +195,8 @@ export default async function handler(req: Request, res: Response) {
 
     if (!b.purchase_id) {
       // Enforce Camera Proctoring check for non-package tests
-      if (b.camera_required && !effectivePlan.features.includes("camera_proctoring")) {
+      const cameraAllowed = await isFeatureEnabled(clientId, "camera_proctoring");
+      if (b.camera_required && !cameraAllowed) {
         return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan." });
       }
 
@@ -304,7 +305,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Enforce Camera Proctoring License check on update toggling
-    if (req.body.camera_required) {
+    if (req.body.camera_required && Number(currentTest.camera_required) !== 1) {
       const proctoringAllowed = await validatePackageFeatures(String(id), "camera_proctoring");
       if (!proctoringAllowed) {
         return res.status(403).json({ error: "Access Denied: Camera Proctoring feature is not enabled for your organization plan or package." });

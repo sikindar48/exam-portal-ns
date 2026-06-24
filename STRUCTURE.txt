@@ -31,18 +31,22 @@ exam-portal-ns/
 │   │   └── package.json            ← Backend dependencies & dev scripts
 │
 │   ├── config/                     ← Configuration files (legacy/reference)
-├── 📚 DOCUMENTATION & CONFIG
-│   ├── docs/                       ← Project documentation
-│   │   ├── architecture-db-schema.md
-│   │   ├── features-flow.md
-│   │   ├── implementation-status.md
-│   │   ├── supabase/               ← Database setup SQL & reference config
-│   │   │   ├── complete-setup.sql  ← Initial DB schema
-│   │   │   ├── turso-schema.sql    ← Turso schema
-│   │   │   └── config.toml         ← Supabase reference config
+├── 📚 DOCUMENTATION (Production-Grade)
+│   ├── Documentation/               ← Complete technical documentation
+│   │   ├── README.md               ← Master index & navigation hub
+│   │   ├── ARCHITECTURE.md         ← System architecture & design patterns
+│   │   ├── DATABASE_SCHEMA.md      ← Database schema with ERD & relationships
+│   │   ├── SECURITY_AND_EXAM_INTEGRITY.md ← Security controls & compliance
+│   │   ├── Features-Flow.md        ← Role-based workflows & features
+│   │   ├── CHANGELOG.md            ← Version history & roadmap
+│   │   ├── API_REFERENCE.md        ← Complete API endpoint catalog
+│   │   ├── ERROR_CODES.md          ← Error reference & troubleshooting
+│   │   ├── PERFORMANCE_GUIDE.md    ← Optimization & scaling guidance
+│   │   ├── MONITORING_AND_OPERATIONS.md ← Health, logging, backup, incidents
+│   │   └── TROUBLESHOOTING.md      ← Setup issues & solutions
 │   │
 │   ├── config/                     ← Configuration files
-│   │   └── vercel.json             ← Vercel config
+│   │   └── vercel.json             ← Vercel config (legacy reference)
 │
 ├── 🛠️ UTILITIES & SCRIPTS
 │   ├── scripts/                    ← Helper scripts

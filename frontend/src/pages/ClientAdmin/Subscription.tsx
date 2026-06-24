@@ -353,6 +353,7 @@ export default function Subscription() {
                 </Button>
               </div>
             </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

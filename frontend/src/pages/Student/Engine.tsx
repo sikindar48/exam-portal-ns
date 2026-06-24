@@ -293,6 +293,8 @@ export default function Engine() {
         || el.mozRequestFullScreen
         || el.msRequestFullscreen;
       if (req) await req.call(el);
+      setShowFullscreenWarning(false);
+      setIsFullscreen(true);
     } catch (err) {
       console.warn("Fullscreen error:", err);
       setShowFullscreenWarning(false);
@@ -673,79 +675,70 @@ export default function Engine() {
     }
   }, [loading, showInstructions, timeLeft, currentSection, attemptId, handleSectionTimeout]);
 
-  // Visibility and Fullscreen Warning
+  const lastExitTimeRef = useRef<number>(0);
+
+  // Unified Security Violation Handlers (Fullscreen, Visibility, Focus/Blur)
   useEffect(() => {
     if (showInstructions || loading) return;
-    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
+    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring") || !!test?.camera_required;
     if (!proctoringEnabled) return;
+
+    const triggerExitViolation = (type: "FULLSCREEN_EXIT" | "TAB_SWITCH" | "WINDOW_BLUR") => {
+      const now = Date.now();
+      // Ignore duplicate events within 1.5s (e.g. switching tabs triggers blur, visibility, and fullscreenchange)
+      if (now - lastExitTimeRef.current < 1500) return;
+      lastExitTimeRef.current = now;
+
+      setFullscreenExitCount(prev => {
+        const next = prev + 1;
+
+        proctoringApi.logEvent({
+          attempt_id: attemptId,
+          test_id: testId!,
+          event_type: type,
+          duration_seconds: 0
+        }).catch(console.error);
+
+        if (next >= 3) {
+          handleSubmit(true);
+        } else {
+          setShowFullscreenWarning(true);
+          triggerAlert();
+        }
+        return next;
+      });
+    };
 
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setIsFullscreen(false);
-        setFullscreenExitCount(prev => {
-          const next = prev + 1;
-          
-          proctoringApi.logEvent({
-            attempt_id: attemptId,
-            test_id: testId!,
-            event_type: "FULLSCREEN_EXIT",
-            duration_seconds: 0
-          }).catch(console.error);
-
-          if (next >= 3) handleSubmit(true);
-          else { setShowFullscreenWarning(true); triggerAlert(); }
-          return next;
-        });
-      } else { setIsFullscreen(true); setShowFullscreenWarning(false); }
+        triggerExitViolation("FULLSCREEN_EXIT");
+      } else {
+        setIsFullscreen(true);
+        setShowFullscreenWarning(false);
+      }
     };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [handleSubmit, triggerAlert, attemptId, testId, test, showInstructions, loading]);
-
-  useEffect(() => {
-    if (showInstructions || loading) return;
-    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
-    if (!proctoringEnabled) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        setFullscreenExitCount(prev => {
-          const next = prev + 1;
-
-          proctoringApi.logEvent({
-            attempt_id: attemptId,
-            test_id: testId!,
-            event_type: "TAB_SWITCH",
-            duration_seconds: 0
-          }).catch(console.error);
-
-          if (next >= 3) handleSubmit(true);
-          else { setShowFullscreenWarning(true); triggerAlert(); }
-          return next;
-        });
+        triggerExitViolation("TAB_SWITCH");
       }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [handleSubmit, triggerAlert, showInstructions, loading, attemptId, testId, test]);
-
-  // Window Blur Listener
-  useEffect(() => {
-    if (showInstructions || loading) return;
-    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
-    if (!proctoringEnabled) return;
 
     const handleBlur = () => {
-      proctoringApi.logEvent({
-        attempt_id: attemptId,
-        test_id: testId!,
-        event_type: "WINDOW_BLUR",
-        duration_seconds: 0
-      }).catch(console.error);
+      triggerExitViolation("WINDOW_BLUR");
     };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
-    return () => window.removeEventListener("blur", handleBlur);
-  }, [showInstructions, loading, attemptId, testId, test]);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [handleSubmit, triggerAlert, attemptId, testId, test, showInstructions, loading]);
 
   // Cleanup camera tracks on unmount
   useEffect(() => {
@@ -757,7 +750,7 @@ export default function Engine() {
   }, [cameraStream]);
 
   // Camera Proctoring Hook initialization
-  useProctoring({
+  const { activeViolation } = useProctoring({
     enabled: !!(test?.camera_required && !showInstructions && cameraStream),
     stream: cameraStream,
     attemptId,
@@ -767,7 +760,7 @@ export default function Engine() {
   // Secure Browsing
   useEffect(() => {
     if (!loading && !showInstructions) {
-      const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring");
+      const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring") || !!test?.camera_required;
       if (!proctoringEnabled) return;
 
       const preventDefault = (e: Event) => e.preventDefault();
@@ -1080,6 +1073,34 @@ export default function Engine() {
               >
                 Return to Fullscreen
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeViolation && activeViolation !== "CAMERA_DISCONNECTED" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-md mx-4 bg-white dark:bg-slate-900 border-2 border-red-500 dark:border-red-600 rounded-none overflow-hidden shadow-2xl">
+            <div className="bg-red-600 px-6 py-4 flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-white animate-pulse" />
+              <div>
+                <h3 className="text-white font-black uppercase tracking-wider text-sm">Proctoring Warning</h3>
+                <p className="text-red-100 text-[10px] uppercase font-bold tracking-widest">Action Required</p>
+              </div>
+            </div>
+            <div className="px-6 py-6 space-y-4 text-center">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
+                {activeViolation === "NO_FACE"
+                  ? "No face detected in the camera feed. Please position your face clearly in front of the camera."
+                  : activeViolation === "MULTIPLE_FACES"
+                    ? "Multiple faces detected. Please ensure you are alone in front of the camera."
+                    : "Camera feed issue detected. Please check your webcam."}
+              </p>
+              <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50">
+                <p className="text-[10px] text-red-600 dark:text-red-400 font-black uppercase tracking-widest leading-normal">
+                  Continuous violations will result in automatic test submission.
+                </p>
+              </div>
             </div>
           </div>
         </div>

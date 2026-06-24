@@ -54,6 +54,8 @@ export default function ClientSettings() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      sessionStorage.removeItem(`org_branding_${clientId}`);
+      window.dispatchEvent(new Event("orgBrandingUpdated"));
       toast({ title: "Success", description: "Organization details updated successfully" });
     }
     setLoading(false);

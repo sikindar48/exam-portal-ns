@@ -21,6 +21,14 @@ import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
 import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
 import { useAuth } from "@/contexts/AuthContext";
 
+const parseSQLiteDate = (dateStr: string | null | undefined): Date | null => {
+  if (!dateStr) return null;
+  if (!dateStr.includes("Z") && !dateStr.includes("T")) {
+    return new Date(dateStr.replace(" ", "T") + "Z");
+  }
+  return new Date(dateStr);
+};
+
 export default function Results() {
   const { testId } = useParams();
   const navigate = useNavigate();
@@ -155,10 +163,14 @@ export default function Results() {
         return nameY.localeCompare(nameX);
       }
       if (sortBy === "date-desc") {
-        return new Date(y.submitted_at).getTime() - new Date(x.submitted_at).getTime();
+        const dateY = parseSQLiteDate(y.submitted_at);
+        const dateX = parseSQLiteDate(x.submitted_at);
+        return (dateY?.getTime() || 0) - (dateX?.getTime() || 0);
       }
       if (sortBy === "date-asc") {
-        return new Date(x.submitted_at).getTime() - new Date(y.submitted_at).getTime();
+        const dateX = parseSQLiteDate(x.submitted_at);
+        const dateY = parseSQLiteDate(y.submitted_at);
+        return (dateX?.getTime() || 0) - (dateY?.getTime() || 0);
       }
       return 0;
     });
@@ -241,7 +253,7 @@ export default function Results() {
         r.score,
         r.total_marks,
         formatTime(r.time_taken),
-        new Date(r.submitted_at).toLocaleString()
+        parseSQLiteDate(r.submitted_at)?.toLocaleString() || "N/A"
       ].join(","))
     ].join("\n");
 
@@ -532,7 +544,7 @@ export default function Results() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest py-4">
-                              {new Date(r.submitted_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              {parseSQLiteDate(r.submitted_at)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </TableCell>
                             <TableCell className="text-right pr-6 py-4">
                               <Button
@@ -563,7 +575,7 @@ export default function Results() {
               <DialogDescription className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                 <span>Candidate: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt?.profiles?.name || "N/A"}</strong></span>
                 <span>Score: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt?.score}/{selectedAttempt?.total_marks}</strong></span>
-                <span>Submitted: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt && new Date(selectedAttempt.submitted_at).toLocaleString()}</strong></span>
+                <span>Submitted: <strong className="text-slate-700 dark:text-slate-200">{selectedAttempt && parseSQLiteDate(selectedAttempt.submitted_at)?.toLocaleString()}</strong></span>
               </DialogDescription>
             </DialogHeader>
 

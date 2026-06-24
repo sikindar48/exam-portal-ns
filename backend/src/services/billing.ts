@@ -274,6 +274,6 @@ export async function validatePackageFeatures(testId: string, feature: string): 
   if (testInfo.rows.length === 0) return false;
   
   const clientId = String(testInfo.rows[0].client_id);
-  const plan = await getEffectivePlan(clientId);
-  return plan.features.includes(feature);
+  const { isFeatureEnabled } = await import("./features.js");
+  return isFeatureEnabled(clientId, feature);
 }

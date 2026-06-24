@@ -26,15 +26,11 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Real students with no org assignment → redirect to join
-    // (Anonymous users are handled by AuthContext — never reaches this)
-    if (!authLoading && user && !user.isAnonymous && !clientId) {
-      navigate("/join");
-      return;
-    }
-    if (user && !user.isAnonymous && clientId) {
+    // Real students with no org assignment are allowed to view the dashboard (no auto-redirect)
+    if (user && !user.isAnonymous) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, clientId, authLoading]);
 
   const fetchData = async () => {
@@ -42,7 +38,7 @@ export default function StudentDashboard() {
 
     try {
       const [testsResult, attemptsResult] = await Promise.all([
-        testsApi.list({ client_id: clientId }),
+        clientId ? testsApi.list({ client_id: clientId }) : Promise.resolve({ data: [], error: null }),
         attemptsApi.list({ student_id: user?.uid, status: "submitted" }),
       ]);
 
@@ -149,6 +145,20 @@ export default function StudentDashboard() {
             {loading ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 dark:bg-slate-900 animate-pulse rounded-none" />)}
+              </div>
+            ) : !clientId ? (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center max-w-2xl mx-auto my-4">
+                <ClipboardList className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-tight mb-2">No Organization Assigned</h3>
+                <p className="text-xs text-slate-500 mb-6 uppercase tracking-wider leading-relaxed">
+                  You are not assigned to any organization. If you have an exam invitation code, please join the session below.
+                </p>
+                <Button
+                  onClick={() => navigate("/join")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest px-8 rounded-none h-11"
+                >
+                  Join a Test Session
+                </Button>
               </div>
             ) : tests.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center">

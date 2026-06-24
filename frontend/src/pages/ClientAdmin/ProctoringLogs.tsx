@@ -29,6 +29,7 @@ import {
 export default function ProctoringLogs() {
   const { clientId, loading: authLoading } = useAuth();
   const [features, setFeatures] = useState<string[]>([]);
+  const [featuresLoading, setFeaturesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -37,13 +38,22 @@ export default function ProctoringLogs() {
   const [selectedEvidence, setSelectedEvidence] = useState<any | null>(null);
   const [tests, setTests] = useState<any[]>([]);
   const [selectedTestId, setSelectedTestId] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+  const [filterStartTime, setFilterStartTime] = useState("");
+  const [filterEndTime, setFilterEndTime] = useState("");
 
   const { toast } = useToast();
   const navigate = useNavigate();
   const limit = 10;
 
   const fetchFeatures = async () => {
-    if (!clientId) return;
+    if (!clientId) {
+      setFeaturesLoading(false);
+      return;
+    }
+    setFeaturesLoading(true);
     try {
       const { data } = await clientsApi.get(clientId);
       if (data && (data as any).features) {
@@ -51,6 +61,8 @@ export default function ProctoringLogs() {
       }
     } catch (err) {
       console.error("Failed to fetch features", err);
+    } finally {
+      setFeaturesLoading(false);
     }
   };
 
@@ -61,6 +73,19 @@ export default function ProctoringLogs() {
     }
   }, [clientId, authLoading]);
 
+  // Search debouncer
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchDebounced(search);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Reset page on filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedTestId, selectedSeverity, searchDebounced, filterDate, filterStartTime, filterEndTime]);
+
   useEffect(() => {
     if (selectedTestId && features.includes("camera_proctoring")) {
       fetchLogs();
@@ -69,7 +94,7 @@ export default function ProctoringLogs() {
       setTotalPages(1);
       setLoading(false);
     }
-  }, [selectedTestId, page, features]);
+  }, [selectedTestId, page, features, selectedSeverity, searchDebounced, filterDate, filterStartTime, filterEndTime]);
 
   const fetchTests = async () => {
     try {
@@ -90,13 +115,22 @@ export default function ProctoringLogs() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await proctoringApi.listAllEvents(page, limit, selectedTestId);
+      const { data, error } = await proctoringApi.listAllEvents({
+        page,
+        limit,
+        test_id: selectedTestId || undefined,
+        severity: selectedSeverity !== "ALL" ? selectedSeverity : undefined,
+        search: searchDebounced || undefined,
+        date: filterDate || undefined,
+        start_time: filterStartTime ? `${filterStartTime}:00` : undefined,
+        end_time: filterEndTime ? `${filterEndTime}:00` : undefined,
+      });
       if (error) {
         toast({
           title: "Error",
           description: "Failed to fetch proctoring logs",
           variant: "destructive",
-        });
+          });
       } else if (data) {
         setEvents(data.events || []);
         if (data.pagination) {
@@ -149,10 +183,8 @@ export default function ProctoringLogs() {
       ?.replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const filteredEvents = events.filter((e) => {
-    if (selectedSeverity === "ALL") return true;
-    return e.severity?.toUpperCase() === selectedSeverity.toUpperCase();
-  });
+  // events is already filtered server-side
+  const filteredEvents = events;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
@@ -167,41 +199,104 @@ export default function ProctoringLogs() {
         />
 
         <main className="flex-1 overflow-y-auto relative">
-          <div className={!authLoading && !features.includes("camera_proctoring") ? "filter blur-sm select-none pointer-events-none transition-all duration-300" : ""}>
+          <div className={!authLoading && !featuresLoading && !features.includes("camera_proctoring") ? "filter blur-sm select-none pointer-events-none transition-all duration-300" : ""}>
             <div className="container max-w-7xl mx-auto p-8 space-y-10">
 
               {/* Controls Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
-                <div className="flex-1 space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Select Exam Paper</label>
-                  <select
-                    value={selectedTestId}
-                    onChange={(e) => setSelectedTestId(e.target.value)}
-                    className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="">-- Select an Exam --</option>
-                    {tests.map(t => (
-                      <option key={t.id} value={t.id}>{t.test_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Severity Filter</label>
-                  <div className="flex gap-1">
-                    {(["ALL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => (
-                      <button
-                        key={sev}
-                        onClick={() => setSelectedSeverity(sev)}
-                        className={`h-10 px-4 text-[10px] font-black uppercase tracking-widest border transition-all ${
-                          selectedSeverity === sev
-                            ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent"
-                            : "bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
-                        }`}
-                      >
-                        {sev}
-                      </button>
-                    ))}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Select Exam Paper</label>
+                    <select
+                      value={selectedTestId}
+                      onChange={(e) => setSelectedTestId(e.target.value)}
+                      className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">-- Select an Exam --</option>
+                      {tests.map(t => (
+                        <option key={t.id} value={t.id}>{t.test_name}</option>
+                      ))}
+                    </select>
                   </div>
+                  
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Search Candidate (Name/Email)</label>
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Candidate name or email..."
+                      className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Date Filter</label>
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 w-full">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Start Time</label>
+                      <input
+                        type="time"
+                        value={filterStartTime}
+                        onChange={(e) => setFilterStartTime(e.target.value)}
+                        className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">End Time</label>
+                      <input
+                        type="time"
+                        value={filterEndTime}
+                        onChange={(e) => setFilterEndTime(e.target.value)}
+                        className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Severity Filter</label>
+                    <div className="flex gap-1">
+                      {(["ALL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => (
+                        <button
+                          key={sev}
+                          onClick={() => setSelectedSeverity(sev)}
+                          className={`h-8 px-4 text-[9px] font-black uppercase tracking-widest border transition-all ${
+                            selectedSeverity === sev
+                              ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent"
+                              : "bg-transparent border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                          }`}
+                        >
+                          {sev}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(search || filterDate || filterStartTime || filterEndTime || selectedSeverity !== "ALL") && (
+                    <Button
+                      onClick={() => {
+                        setSearch("");
+                        setFilterDate("");
+                        setFilterStartTime("");
+                        setFilterEndTime("");
+                        setSelectedSeverity("ALL");
+                      }}
+                      variant="outline"
+                      className="h-8 rounded-none border-slate-200 dark:border-slate-800 font-black uppercase tracking-widest text-[9px] text-slate-500 hover:text-red-650 self-end"
+                    >
+                      Clear All Filters
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -328,7 +423,7 @@ export default function ProctoringLogs() {
             </div>
           </div>
 
-          {!authLoading && !features.includes("camera_proctoring") && (
+          {!authLoading && !featuresLoading && !features.includes("camera_proctoring") && (
             <div className="absolute inset-0 z-10 flex items-center justify-center p-6 bg-slate-50/40 dark:bg-slate-950/40 backdrop-blur-[1px]">
               <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-none shadow-2xl text-center space-y-6">
                 <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
