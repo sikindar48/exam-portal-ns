@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/integrations/firebase/client';
+import { apiClient } from '@/services/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,13 +21,14 @@ export default function Forgot() {
 
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email, {
-        url: `${window.location.origin}/auth`,
+      await apiClient('/api/auth/forgot-password', {
+        method: 'POST',
+        body: { email: email.trim() },
       });
       setSent(true);
       toast({ title: 'Email Sent', description: 'Check your inbox for the reset link.' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to send reset link.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

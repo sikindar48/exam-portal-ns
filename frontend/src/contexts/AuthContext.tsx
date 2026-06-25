@@ -183,6 +183,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       if (!auth) throw new Error("Firebase not initialized");
+      // Clear stale cache/roles to prevent redirect flicker during login
+      setRole(null);
+      setClientId(null);
+      clearCache();
+
       const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
       await fetchUserRole(firebaseUser);
       return { error: null };
@@ -251,6 +256,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async (clientId?: string) => {
     try {
       if (!auth) throw new Error("Firebase not initialized");
+      // Clear stale cache/roles to prevent redirect flicker during login
+      setRole(null);
+      setClientId(null);
+      clearCache();
+
       const provider = new GoogleAuthProvider();
       const { user: googleUser } = await signInWithPopup(auth, provider);
       const token = await googleUser.getIdToken();

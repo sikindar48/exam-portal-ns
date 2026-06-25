@@ -76,9 +76,9 @@ export function Protected({
   // No session and no cached role → go to login
   if (!user && !role) return <Navigate to="/auth" replace />;
 
-  // Wrong role → redirect to their own dashboard
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to={ROLE_ROUTES[role] ?? "/auth"} replace />;
+  // Wrong or missing role → redirect to their own dashboard or login page
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
+    return <Navigate to={role ? (ROLE_ROUTES[role] ?? "/auth") : "/auth"} replace />;
   }
 
   return <>{children}</>;

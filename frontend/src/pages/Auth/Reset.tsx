@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
-import { auth } from '@/integrations/firebase/client';
+import { apiClient } from '@/services/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,8 +16,8 @@ export default function Reset() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Firebase sends oobCode as a query param: /reset-password?oobCode=...
-  const oobCode = new URLSearchParams(window.location.search).get('oobCode');
+  // Our custom mail sends token as a query param: /reset-password?token=...
+  const token = new URLSearchParams(window.location.search).get('token');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,26 +32,28 @@ export default function Reset() {
       return;
     }
 
-    if (!oobCode) {
+    if (!token) {
       toast({ title: 'Error', description: 'Invalid or expired reset link.', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
     try {
-      await verifyPasswordResetCode(auth, oobCode);
-      await confirmPasswordReset(auth, oobCode, password);
+      await apiClient('/api/auth/reset-password', {
+        method: 'POST',
+        body: { token, password },
+      });
       setSuccess(true);
       toast({ title: 'Success', description: 'Password updated successfully!' });
       setTimeout(() => navigate('/auth'), 3000);
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to reset password.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  if (!oobCode && !success) {
+  if (!token && !success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted p-4">
         <Card className="w-full max-w-md">

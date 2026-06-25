@@ -578,8 +578,8 @@ export default function Engine() {
   }, [testId, user, isGuest, guestName, navigate, toast]);
 
   useEffect(() => {
-    if ((user || isGuest) && testId) initializeTest();
-  }, [initializeTest, user, isGuest, testId]);
+    if (user && testId) initializeTest();
+  }, [initializeTest, user, testId]);
 
   // Sync Section remaining time
   useEffect(() => {

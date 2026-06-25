@@ -239,13 +239,6 @@ export default function Subscription() {
                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5">Inactive</span>
                           )}
                         </div>
-
-                        <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 rounded-none flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                          <p className="text-[10px] leading-relaxed text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wide">
-                            Modular features are administered globally by your platform provider.
-                          </p>
-                        </div>
                       </>
                     )}
                   </div>

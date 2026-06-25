@@ -29,6 +29,7 @@ import subscriptionsHandler from "./routes/subscriptions.js";
 import auditLogsHandler from "./routes/audit-logs.js";
 import packagesHandler from "./routes/packages.js";
 import subscriptionRequestsHandler from "./routes/subscription-requests.js";
+import authRoutesHandler from "./routes/auth.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -79,6 +80,7 @@ const corsOptions = {
     const isAllowed =
       allowedOrigins.includes(origin) ||
       origin.endsWith(".firebaseapp.com") ||
+      origin.endsWith(".web.app") ||
       origin.endsWith(".pages.dev") || // Support Cloudflare Pages preview/prod deploys
       origin.endsWith(".googleapis.com");
 
@@ -89,7 +91,7 @@ const corsOptions = {
     }
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-attempt-token"],
   credentials: true,
 };
 
@@ -142,6 +144,8 @@ app.all("/api/superadmin/subscriptions/:client_id", subscriptionsHandler);
 app.all("/api/superadmin/subscriptions", subscriptionsHandler);
 app.all("/api/superadmin/audit-logs", auditLogsHandler);
 app.all("/api/subscription-requests", subscriptionRequestsHandler);
+app.all("/api/auth/forgot-password", authRoutesHandler);
+app.all("/api/auth/reset-password", authRoutesHandler);
 
 // RPC / Custom endpoints
 app.all("/api/rpc/clone-test", cloneTestHandler);

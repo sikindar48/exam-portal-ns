@@ -475,6 +475,15 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       }
     }
 
+    // Custom password reset tokens table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        email TEXT PRIMARY KEY,
+        token TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+    `);
+
     console.log("Database migrations ran successfully.");
   } catch (err) {
     console.error("Database migrations failed:", err);
