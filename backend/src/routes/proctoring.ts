@@ -135,7 +135,9 @@ export default async function handler(req: Request, res: Response) {
               }
             } else {
               if (process.env.NODE_ENV !== "production") {
-                imageUrl = `/static/mock-images/${row.storage_path}`;
+                const host = req.get("host") || "localhost:8081";
+                const protocol = req.protocol || "http";
+                imageUrl = `${protocol}://${host}/static/mock-images/${row.storage_path}`;
               }
             }
           }
@@ -230,7 +232,9 @@ export default async function handler(req: Request, res: Response) {
             if (process.env.NODE_ENV === "production") {
               imageUrl = null;
             } else {
-              imageUrl = `/static/mock-images/${row.storage_path}`;
+              const host = req.get("host") || "localhost:8081";
+              const protocol = req.protocol || "http";
+              imageUrl = `${protocol}://${host}/static/mock-images/${row.storage_path}`;
             }
           }
         }
