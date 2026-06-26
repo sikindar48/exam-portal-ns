@@ -41,27 +41,26 @@ export function Header({
 
   return (
     <>
-      <header className="z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900 px-4 md:px-6 text-white gap-2">
+      <header className="z-30 flex h-14 md:h-16 shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900 px-3 md:px-6 text-white gap-2">
         {/* Left: branding */}
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
-          <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
+          <div className="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
             {orgLogoUrl ? (
               <img src={orgLogoUrl} alt={orgName} className="h-full w-full object-cover" />
             ) : (
-              <LayoutGrid className="h-5 w-5 text-slate-400" />
+              <LayoutGrid className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="text-xs md:text-sm font-bold uppercase tracking-wider text-white leading-tight truncate max-w-[140px] sm:max-w-xs md:max-w-md">{testName}</h1>
+            <h1 className="text-xs md:text-sm font-bold uppercase tracking-wider text-white leading-tight truncate max-w-[85px] xs:max-w-[140px] sm:max-w-xs md:max-w-md">{testName}</h1>
             <p className="text-[8px] md:text-[10px] uppercase tracking-widest text-slate-500 font-medium truncate">
-              {orgName ? `${orgName} · ` : ""}Secure Examination{attemptNumber ? ` · Attempt ${attemptNumber}` : ""}
-              {attemptsAllowed ? ` of ${attemptsAllowed}` : ""}
+              {orgName ? `${orgName} · ` : ""}Secure Exam{attemptNumber ? ` · Att ${attemptNumber}` : ""}
             </p>
           </div>
         </div>
 
         {/* Right: timer + info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 md:gap-3">
           {sectionName && (
             <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-wider rounded">
               Section: {sectionName}
@@ -69,18 +68,26 @@ export function Header({
           )}
 
           {sectionTimeLeft !== null && sectionTimeLeft !== undefined && (
-            <div className={`flex items-center gap-2 border px-3 py-1.5 ${sectionTimeLeft < 60 ? "border-orange-500/50 bg-orange-500/10" : "border-blue-500/30 bg-blue-500/10"}`}>
-              <Clock className={`h-4 w-4 ${sectionTimeLeft < 60 ? "text-orange-400 animate-pulse" : "text-blue-400"}`} />
-              <span className={`font-mono text-base font-bold tabular-nums ${sectionTimeLeft < 60 ? "text-orange-400 animate-pulse" : "text-blue-400"}`}>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-full border shadow-sm transition-all duration-300 ${
+              sectionTimeLeft < 60 
+                ? "border-orange-500/40 bg-orange-500/15 text-orange-400 animate-pulse" 
+                : "border-blue-500/20 bg-blue-500/5 text-blue-400"
+            }`}>
+              <Clock className={`h-3.5 w-3.5 md:h-4 md:w-4 ${sectionTimeLeft < 60 ? "text-orange-400 animate-pulse" : "text-blue-400"}`} />
+              <span className={`font-mono text-xs md:text-sm font-bold tracking-wide tabular-nums ${sectionTimeLeft < 60 ? "text-orange-400" : "text-blue-400"}`}>
                 {formatTime(sectionTimeLeft)}
               </span>
             </div>
           )}
 
           {/* Timer */}
-          <div className={`flex items-center gap-2 border px-4 py-1.5 ${timeLeft < 300 ? "border-red-500/50 bg-red-500/10" : "border-slate-700 bg-slate-800"}`}>
-            <Clock className={`h-4 w-4 ${timeLeft < 300 ? "text-red-400 animate-pulse" : "text-slate-400"}`} />
-            <span className={`font-mono text-lg font-bold tabular-nums ${timeLeft < 300 ? "text-red-400" : "text-white"}`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1 md:px-4 md:py-1.5 rounded-full border shadow-md transition-all duration-300 ${
+            timeLeft < 300 
+              ? "border-red-500/40 bg-red-500/15 text-red-400 animate-pulse shadow-red-500/5" 
+              : "border-slate-700 bg-slate-800/80 text-emerald-400 shadow-slate-950/20"
+          }`}>
+            <Clock className={`h-3.5 w-3.5 md:h-4 md:w-4 ${timeLeft < 300 ? "text-red-400" : "text-emerald-400"}`} />
+            <span className={`font-mono text-xs md:text-sm font-bold tracking-wider tabular-nums ${timeLeft < 300 ? "text-red-400" : "text-emerald-400"}`}>
               {formatTime(timeLeft)}
             </span>
           </div>
@@ -89,7 +96,7 @@ export function Header({
           <button
             onClick={() => setShowInfo(true)}
             title="View Instructions"
-            className="flex h-9 w-9 items-center justify-center border border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white transition-colors"
+            className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center border border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white transition-colors"
           >
             <Info className="h-4 w-4" />
           </button>
@@ -98,13 +105,13 @@ export function Header({
           <button
             onClick={() => setIsSidebarOpen?.(!isSidebarOpen)}
             title="Toggle Question Palette"
-            className="flex md:hidden h-9 w-9 items-center justify-center border border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white transition-colors"
+            className="flex md:hidden h-8 w-8 md:h-9 md:w-9 items-center justify-center border border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-white transition-colors"
           >
             <Menu className="h-4 w-4" />
           </button>
 
           {/* Theme Toggle */}
-          <div className="border-l border-slate-700 pl-3 ml-1">
+          <div className="hidden xs:block border-l border-slate-700 pl-2 md:pl-3 ml-0.5 md:ml-1">
             <Toggle />
           </div>
         </div>

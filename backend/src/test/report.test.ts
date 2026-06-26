@@ -33,11 +33,19 @@ async function seedTestData() {
   await db.execute("DELETE FROM questions");
   await db.execute("DELETE FROM test_questions");
   await db.execute("DELETE FROM attempt_answers");
+  await db.execute("DELETE FROM client_subscriptions");
+  await db.execute("DELETE FROM client_features");
 
   // Seed Client
   await db.execute({
     sql: "INSERT INTO clients (id, name, active_status) VALUES (?, ?, ?)",
     args: ["client-1", "Client One", 1]
+  });
+
+  // Seed Active Subscription to enable xlsx_export
+  await db.execute({
+    sql: "INSERT INTO client_subscriptions (client_id, plan_id, start_date, expiry_date, status, renewal_status) VALUES (?, 'enterprise', '2026-01-01', '2030-12-31', 'active', 'manual')",
+    args: ["client-1"]
   });
 
   // Seed Admin & Student Profiles

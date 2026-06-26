@@ -680,7 +680,11 @@ export default function Engine() {
   // Unified Security Violation Handlers (Fullscreen, Visibility, Focus/Blur)
   useEffect(() => {
     if (showInstructions || loading) return;
-    const proctoringEnabled = !!test?.clients?.features?.includes("advanced_proctoring") || !!test?.camera_required;
+    const proctoringEnabled = 
+      !!test?.clients?.features?.includes("advanced_proctoring") || 
+      !!test?.clients?.features?.includes("basic_proctoring") || 
+      !!test?.clients?.features?.includes("camera_proctoring") || 
+      !!test?.camera_required;
     if (!proctoringEnabled) return;
 
     const triggerExitViolation = (type: "FULLSCREEN_EXIT" | "TAB_SWITCH" | "WINDOW_BLUR") => {
@@ -726,17 +730,31 @@ export default function Engine() {
     };
 
     const handleBlur = () => {
-      triggerExitViolation("WINDOW_BLUR");
+      // Delay blur detection slightly to verify it isn't a tab switch
+      setTimeout(() => {
+        if (document.visibilityState !== "hidden") {
+          triggerExitViolation("WINDOW_BLUR");
+        }
+      }, 200);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key && /^F[1-9]$|^F1[0-2]$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
 
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
     };
   }, [handleSubmit, triggerAlert, attemptId, testId, test, showInstructions, loading]);
 
@@ -1022,6 +1040,8 @@ export default function Engine() {
                 handleAnswer(id, null as any);
               }
             }}
+            onSubmit={() => handleSubmit(false)}
+            disableSubmit={currentQuestionIndex !== questions.length - 1}
           />
         </main>
 
@@ -1112,7 +1132,7 @@ export default function Engine() {
           <AlertDialogHeader className="pt-4">
             <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">Final Submission</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500">
-              You have answered {answeredCount} out of {questions.length} questions. {unansweredCount > 0 ? `${unansweredCount} questions are unanswered.` : 'All questions have been answered.'} Are you sure you want to finish the test? You cannot change your answers after submission.
+              Answered: {answeredCount}/{questions.length}. {unansweredCount > 0 ? `Unanswered: ${unansweredCount}.` : 'All answered.'} Submit test? This is final.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pb-4">

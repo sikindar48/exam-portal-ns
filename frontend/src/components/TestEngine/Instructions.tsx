@@ -68,6 +68,17 @@ export function Instructions({
   const [requestingCamera, setRequestingCamera] = useState(false);
   const startedRef = useRef(false);
 
+  // Responsive step controls for mobile screens
+  const [step, setStep] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (!startedRef.current && cameraStream) {
@@ -86,10 +97,11 @@ export function Instructions({
             video: { width: 320, height: 240, facingMode: "user" }
           });
           setCameraStream(s);
-        } catch (err: any) {
+        } catch (err) {
           console.error("Camera access error:", err);
+          const errorName = err instanceof Error ? err.name : "";
           setCameraError(
-            err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+            errorName === "NotAllowedError" || errorName === "PermissionDeniedError"
               ? "Permission Denied: Please enable camera access in your browser settings to take this exam."
               : "Camera Error: Could not start the webcam. Please ensure it is connected and not in use by another app."
           );
@@ -125,6 +137,8 @@ export function Instructions({
     acc + s.questions.reduce((qAcc, q) => qAcc + (q.marks || 1), 0), 0
   );
 
+  const rulesToShow = isMobile ? RULES.filter(r => !r.startsWith("Clear Response:")) : RULES;
+
   return (
     <div className="flex min-h-screen md:h-screen flex-col bg-white dark:bg-slate-950 font-sans selection:bg-blue-100">
 
@@ -150,7 +164,9 @@ export function Instructions({
         
         <div className="flex items-center justify-between w-full md:w-auto gap-6">
           <div className="text-right">
-            <h1 className="text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Instructions</h1>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
+              Instructions {isMobile && `(Step ${step} of 2)`}
+            </h1>
           </div>
           <div className="border-l border-slate-200 dark:border-slate-700 h-8 pl-6 flex items-center">
             <Toggle />
@@ -162,7 +178,7 @@ export function Instructions({
       <main className="flex flex-col md:flex-row flex-1 overflow-visible md:overflow-hidden">
         
         {/* Left: Detailed Instructions */}
-        <div className="flex-1 p-4 md:p-8 md:border-r border-b md:border-b-0 border-slate-200 dark:border-slate-800 overflow-visible md:overflow-y-auto">
+        <div className={`flex-1 p-4 md:p-8 md:border-r border-b md:border-b-0 border-slate-200 dark:border-slate-800 overflow-visible md:overflow-y-auto ${isMobile && step !== 1 ? "hidden" : "block"}`}>
           <section className="max-w-4xl mx-auto space-y-8">
             {cameraRequired && (
               <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 flex gap-3 items-start rounded-sm">
@@ -179,7 +195,7 @@ export function Instructions({
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 border-b pb-2">General Instructions:</h2>
               <div className="space-y-4">
-                {RULES.map((rule, i) => (
+                {rulesToShow.map((rule, i) => (
                   <div key={i} className="flex gap-4">
                     <span className="text-sm font-bold text-slate-400 tabular-nums">{i + 1}.</span>
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{rule}</p>
@@ -187,71 +203,77 @@ export function Instructions({
                 ))}
               </div>
             </div>
-
-            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-end justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Examination Summary</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Structure & Duration Breakdown</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Total Duration</p>
-                  <p className="text-sm font-bold text-blue-600">{duration} Minutes</p>
-                </div>
-              </div>
-              
-              <div className="border border-slate-200 dark:border-slate-800 overflow-hidden rounded-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                      <th className="px-4 py-2 border-r border-slate-200 dark:border-slate-800 font-bold">Section Name</th>
-                      <th className="px-4 py-2 border-r border-slate-200 dark:border-slate-800 text-center font-bold">Qns</th>
-                      <th className="px-4 py-2 text-center font-bold">Marks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    {sections.map((s) => {
-                      const sMarks = s.questions.reduce((acc, q) => acc + (q.marks || 1), 0);
-                      return (
-                        <tr key={s.id} className="text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                          <td className="px-4 py-2 border-r border-slate-200 dark:border-slate-800 font-medium">{s.name}</td>
-                          <td className="px-4 py-2 border-r border-slate-200 dark:border-slate-800 text-center">{s.questions.length}</td>
-                          <td className="px-4 py-2 text-center font-bold text-slate-800 dark:text-white">{sMarks}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="font-bold bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800">
-                      <td className="px-4 py-2 border-r border-slate-200 dark:border-slate-800">Grand Total</td>
-                      <td className="px-4 py-2 border-r border-slate-200 dark:border-slate-800 text-center">{questionCount}</td>
-                      <td className="px-4 py-2 text-center">{totalMarks}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {negativeMarking && (
-                <div className="mt-4 flex items-center gap-2 px-1">
-                  <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                  <p className="text-[10px] font-bold text-red-600 uppercase tracking-tight">
-                    Negative marking active: {negativeMarks} marks will be deducted for each incorrect response.
-                  </p>
-                </div>
-              )}
-            </div>
           </section>
         </div>
 
+        {/* Left: Exam Summary for Mobile (renders in Step 2) */}
+        {isMobile && step === 2 && (
+          <div className="flex-1 p-4 overflow-y-auto">
+            <section className="max-w-4xl mx-auto space-y-6">
+              <div>
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Examination Summary</h3>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Duration</p>
+                    <p className="text-xs font-bold text-blue-600">{duration} Min</p>
+                  </div>
+                </div>
+                
+                <div className="border border-slate-200 dark:border-slate-800 overflow-hidden rounded-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                        <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-bold">Section</th>
+                        <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center font-bold">Qns</th>
+                        <th className="px-3 py-1.5 text-center font-bold">Marks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs">
+                      {sections.map((s) => {
+                        const sMarks = s.questions.reduce((acc, q) => acc + (q.marks || 1), 0);
+                        return (
+                          <tr key={s.id} className="text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                            <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-medium">{s.name}</td>
+                            <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{s.questions.length}</td>
+                            <td className="px-3 py-1.5 text-center font-bold text-slate-800 dark:text-white">{sMarks}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="font-bold bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800">
+                        <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800">Total</td>
+                        <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{questionCount}</td>
+                        <td className="px-3 py-1.5 text-center">{totalMarks}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {negativeMarking && (
+                  <div className="mt-3 flex items-center gap-2 px-1">
+                    <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                    <p className="text-[9px] font-bold text-red-600 uppercase tracking-tight">
+                      Negative marking active: {negativeMarks} marks deducted.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
         {/* Right: Candidate & Legend */}
-        <div className="w-full md:w-80 shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900/50 overflow-visible md:overflow-y-auto">
-          <div className="p-6 space-y-8">
+        <div className={`w-full md:w-80 shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900/50 overflow-visible md:overflow-y-auto ${isMobile && step !== 2 ? "hidden" : "block"}`}>
+          <div className="p-6 space-y-6">
             {/* Candidate Name Only (No Dummy ID) */}
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Candidate Name</p>
-              <p className="text-base font-bold text-slate-900 dark:text-white truncate">{studentName || "Student"}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Candidate Name</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{studentName || "Student"}</p>
             </div>
 
-            {/* Symbols Legend */}
-            <div>
+            {/* Symbols Legend - Hidden on Mobile */}
+            <div className="hidden md:block">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Question Status</p>
               <div className="grid gap-2">
                 {LEGEND.map(({ color, label }) => (
@@ -264,6 +286,59 @@ export function Instructions({
                 ))}
               </div>
             </div>
+
+            {/* Exam Summary (Desktop only) */}
+            {!isMobile && (
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Exam Summary</h3>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Total Duration</p>
+                    <p className="text-xs font-bold text-blue-600">{duration} Min</p>
+                  </div>
+                </div>
+                
+                <div className="border border-slate-200 dark:border-slate-800 overflow-hidden rounded-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                        <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-bold">Section</th>
+                        <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center font-bold">Qns</th>
+                        <th className="px-3 py-1.5 text-center font-bold">Marks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs">
+                      {sections.map((s) => {
+                        const sMarks = s.questions.reduce((acc, q) => acc + (q.marks || 1), 0);
+                        return (
+                          <tr key={s.id} className="text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                            <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-medium">{s.name}</td>
+                            <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{s.questions.length}</td>
+                            <td className="px-3 py-1.5 text-center font-bold text-slate-800 dark:text-white">{sMarks}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="font-bold bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800">
+                        <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800">Total</td>
+                        <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{questionCount}</td>
+                        <td className="px-3 py-1.5 text-center">{totalMarks}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {negativeMarking && (
+                  <div className="mt-3 flex items-center gap-2 px-1">
+                    <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                    <p className="text-[9px] font-bold text-red-600 uppercase tracking-tight">
+                      Negative marking active: {negativeMarks} marks deducted.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* System Readiness Checks */}
             <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
@@ -295,8 +370,9 @@ export function Instructions({
               </div>
             </div>
 
+            {/* Webcam Feed Verification - Hidden on Mobile */}
             {cameraRequired && (
-              <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
+              <div className="hidden md:block pt-6 border-t border-slate-200 dark:border-slate-800">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Webcam Feed Verification</p>
                 <div className="relative aspect-video w-full bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden flex items-center justify-center">
                   {cameraStream ? (
@@ -332,32 +408,87 @@ export function Instructions({
 
       {/* Footer / Agreement */}
       <footer className="flex shrink-0 h-auto flex-col md:flex-row items-center justify-between p-4 md:px-8 gap-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="flex items-start md:items-center gap-3">
-          <Checkbox 
-            id="agree" 
-            checked={agreed} 
-            onCheckedChange={(val) => setAgreed(val === true)}
-            className="h-5 w-5 rounded-none border-slate-300 mt-1 md:mt-0"
-          />
-          <label htmlFor="agree" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
-            I have read and understood the instructions. I agree that in case of any disqualification, the decision of the authority will be final.
-          </label>
-        </div>
-        <Button
-          onClick={() => {
-            if (cameraRequired && !cameraStream) return;
-            startedRef.current = true;
-            onStart(cameraStream);
-          }}
-          disabled={!agreed || (cameraRequired && !cameraStream)}
-          className={`w-full md:w-auto h-11 px-10 rounded-none font-bold uppercase tracking-widest transition-all ${
-            agreed && (!cameraRequired || cameraStream)
-              ? "bg-blue-600 hover:bg-blue-700 text-white" 
-              : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-          }`}
-        >
-          Begin Test
-        </Button>
+        {!isMobile ? (
+          /* Desktop Footer Layout */
+          <>
+            <div className="flex items-start md:items-center gap-3">
+              <Checkbox 
+                id="agree" 
+                checked={agreed} 
+                onCheckedChange={(val) => setAgreed(val === true)}
+                className="h-5 w-5 rounded-none border-slate-300 mt-1 md:mt-0"
+              />
+              <label htmlFor="agree" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                I have read and understood the instructions. I agree that in case of any disqualification, the decision of the authority will be final.
+              </label>
+            </div>
+            <Button
+              onClick={() => {
+                if (cameraRequired && !cameraStream) return;
+                startedRef.current = true;
+                onStart(cameraStream);
+              }}
+              disabled={!agreed || (cameraRequired && !cameraStream)}
+              className={`w-full md:w-auto h-11 px-10 rounded-none font-bold uppercase tracking-widest transition-all ${
+                agreed && (!cameraRequired || cameraStream)
+                  ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                  : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+              }`}
+            >
+              Begin Test
+            </Button>
+          </>
+        ) : (
+          /* Mobile Footer Step-by-Step Layout */
+          <div className="w-full">
+            {step === 1 ? (
+              <Button
+                onClick={() => setStep(2)}
+                className="w-full h-11 rounded-none font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Next
+              </Button>
+            ) : (
+              <div className="flex flex-col w-full gap-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox 
+                    id="agree" 
+                    checked={agreed} 
+                    onCheckedChange={(val) => setAgreed(val === true)}
+                    className="h-5 w-5 rounded-none border-slate-300 mt-1"
+                  />
+                  <label htmlFor="agree" className="text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                    I have read and understood the instructions. I agree that in case of any disqualification, the decision of the authority will be final.
+                  </label>
+                </div>
+                <div className="flex gap-4 w-full">
+                  <Button
+                    onClick={() => setStep(1)}
+                    variant="outline"
+                    className="flex-1 h-11 rounded-none font-bold uppercase tracking-widest border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (cameraRequired && !cameraStream) return;
+                      startedRef.current = true;
+                      onStart(cameraStream);
+                    }}
+                    disabled={!agreed || (cameraRequired && !cameraStream)}
+                    className={`flex-1 h-11 rounded-none font-bold uppercase tracking-widest transition-all ${
+                      agreed && (!cameraRequired || cameraStream)
+                        ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                        : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                    }`}
+                  >
+                    Begin Test
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </footer>
 
     </div>

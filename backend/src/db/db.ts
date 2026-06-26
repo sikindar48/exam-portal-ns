@@ -494,8 +494,11 @@ export function getDb() {
   if (!client) {
     const url = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL || process.env.VITE_TURSO_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_TOKEN || process.env.VITE_TURSO_TOKEN;
-    if (!url || !authToken) throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN env vars");
-    client = createClient({ url, authToken });
+    const isLocal = url && url.startsWith("file:");
+    if (!url || (!isLocal && !authToken)) {
+      throw new Error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN env vars");
+    }
+    client = isLocal ? createClient({ url }) : createClient({ url, authToken });
     
     // Enable SQLite foreign key constraint enforcement
     client.execute("PRAGMA foreign_keys = ON;").catch((err) => {

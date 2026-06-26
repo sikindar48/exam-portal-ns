@@ -12,9 +12,9 @@ const SEVERITY_MAPPING: Record<string, { severity: string; score: number }> = {
   TAB_SWITCH: { severity: "LOW", score: 1 },
   WINDOW_BLUR: { severity: "LOW", score: 1 },
   FULLSCREEN_EXIT: { severity: "MEDIUM", score: 2 },
-  NO_FACE: { severity: "MEDIUM", score: 3 },
+  NO_FACE: { severity: "HIGH", score: 5 },
   MULTIPLE_FACES: { severity: "HIGH", score: 5 },
-  CAMERA_DISCONNECTED: { severity: "HIGH", score: 5 },
+  CAMERA_DISCONNECTED: { severity: "LOW", score: 1 },
   CAMERA_PERMISSION_DENIED: { severity: "HIGH", score: 5 },
 };
 

@@ -17,6 +17,7 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
   const detectorRef = useRef<any>(null);
   const intervalIdRef = useRef<any>(null);
   const faceAbsentStartRef = useRef<number | null>(null);
+  const multipleFacesStartRef = useRef<number | null>(null);
   const isViolationLoggingRef = useRef<Record<string, boolean>>({});
 
   // Helper to load external scripts dynamically
@@ -68,7 +69,7 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
     try {
       let imagePayload = null;
       // Capture snapshots only for specific camera violations and when explicitly instructed
-      if (sendImage && ["NO_FACE", "MULTIPLE_FACES", "CAMERA_DISCONNECTED"].includes(eventType)) {
+      if (sendImage && ["NO_FACE", "MULTIPLE_FACES"].includes(eventType)) {
         imagePayload = captureSnapshot();
       }
 
@@ -135,13 +136,16 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
           const faceCount = detections.length;
 
           if (faceCount === 0) {
+            // Reset multiple faces timer
+            multipleFacesStartRef.current = null;
+
             // Start absence timer if not already set
             if (faceAbsentStartRef.current === null) {
               faceAbsentStartRef.current = Date.now();
             } else {
               const absentDurationMs = Date.now() - faceAbsentStartRef.current;
-              // If face missing for more than 3 continuous seconds, trigger violation
-              if (absentDurationMs >= 3000) {
+              // If face missing for more than 1.5 continuous seconds, trigger violation
+              if (absentDurationMs >= 1500) {
                 const isFirst = activeViolationRef.current !== "NO_FACE";
                 if (isFirst) {
                   activeViolationRef.current = "NO_FACE";
@@ -159,18 +163,28 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
             faceAbsentStartRef.current = null;
 
             if (faceCount > 1) {
-              const isFirst = activeViolationRef.current !== "MULTIPLE_FACES";
-              if (isFirst) {
-                activeViolationRef.current = "MULTIPLE_FACES";
-                setActiveViolation("MULTIPLE_FACES");
-              }
+              // Start multiple faces timer if not already set
+              if (multipleFacesStartRef.current === null) {
+                multipleFacesStartRef.current = Date.now();
+              } else {
+                const multipleDurationMs = Date.now() - multipleFacesStartRef.current;
+                // If multiple faces detected for more than 1.5 continuous seconds, trigger violation
+                if (multipleDurationMs >= 1500) {
+                  const isFirst = activeViolationRef.current !== "MULTIPLE_FACES";
+                  if (isFirst) {
+                    activeViolationRef.current = "MULTIPLE_FACES";
+                    setActiveViolation("MULTIPLE_FACES");
+                  }
 
-              triggerViolation("MULTIPLE_FACES", 1.0, {
-                faceCount,
-                confidence: detections[0]?.score?.[0] || detections[0]?.score || 0.9,
-              }, isFirst);
+                  triggerViolation("MULTIPLE_FACES", 1.0, {
+                    faceCount,
+                    confidence: detections[0]?.score?.[0] || detections[0]?.score || 0.9,
+                  }, isFirst);
+                }
+              }
             } else {
               // Normal state: 1 face
+              multipleFacesStartRef.current = null;
               if (activeViolationRef.current !== null) {
                 activeViolationRef.current = null;
                 setActiveViolation(null);

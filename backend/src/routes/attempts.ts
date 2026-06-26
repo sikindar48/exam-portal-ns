@@ -375,6 +375,9 @@ export default async function handler(req: Request, res: Response) {
       if (status === "suspended") {
         return res.status(403).json({ error: "Access Denied: The hosting organization subscription has been suspended." });
       }
+      if (status === "expired") {
+        return res.status(403).json({ error: "Access Denied: The hosting organization subscription has expired." });
+      }
     }
 
     // Guest resumption is managed securely via student_id checks.

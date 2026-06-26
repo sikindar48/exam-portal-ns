@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Toggle } from "@/components/Theme/Toggle";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { apiClient } from "@/services/api/client";
 import {
   LayoutDashboard,
   Building,
@@ -39,12 +40,14 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
 
   // Also fetch from API on mount to hydrate (in case localStorage is stale)
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
+    apiClient("/settings")
       .then((data) => {
-        if (data?.platform_logo) {
-          setPlatformLogo(data.platform_logo);
-          localStorage.setItem("platform_logo", data.platform_logo);
+        const logo = data?.platform_logo || "";
+        setPlatformLogo(logo);
+        if (logo) {
+          localStorage.setItem("platform_logo", logo);
+        } else {
+          localStorage.removeItem("platform_logo");
         }
       })
       .catch(() => {/* Ignore: settings may not be available */});
