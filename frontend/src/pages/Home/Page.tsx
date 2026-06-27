@@ -44,6 +44,7 @@ import { Footer } from "@/components/Brand/Footer";
 import { ExamEngineMockup } from "./components/ExamEngineMockup";
 import { InstructorPanelMockup } from "./components/InstructorPanelMockup";
 import { StudentPortalMockup } from "./components/StudentPortalMockup";
+import { Toggle } from "@/components/Theme/Toggle";
 
 export default function Page() {
   const navigate = useNavigate();
@@ -135,6 +136,7 @@ export default function Page() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <Toggle />
             {user && !user.isAnonymous && role ? (
               <Button
                 onClick={() => navigate(ROLE_ROUTES[role])}
@@ -240,17 +242,6 @@ export default function Page() {
             >
               Get Started Free
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => {
-                const element = document.getElementById("pricing");
-                element?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="font-black uppercase text-xs tracking-wider rounded-none px-8 py-6 w-full sm:w-auto border-slate-800 hover:bg-slate-900 text-slate-300 hover:text-white"
-            >
-              View Pricing
             </Button>
             <Button
               size="lg"
