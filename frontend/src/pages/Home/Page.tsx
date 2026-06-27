@@ -131,6 +131,7 @@ export default function Page() {
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
             <a href="#why-choose" className="hover:text-white transition-colors">Why Choose Us</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+            <a href="/join" className="text-blue-400 hover:text-blue-300 transition-colors">Join Test</a>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -179,6 +180,7 @@ export default function Page() {
             <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-white border-b border-slate-900/50">Pricing</a>
             <a href="#why-choose" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-white border-b border-slate-900/50">Why Choose Us</a>
             <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-white border-b border-slate-900/50">FAQ</a>
+            <a href="/join" onClick={() => setMobileMenuOpen(false)} className="py-2 text-blue-400 hover:text-blue-300 border-b border-slate-900/50">Join Test</a>
             {user && !user.isAnonymous && role ? (
               <button
                 onClick={() => { setMobileMenuOpen(false); navigate(ROLE_ROUTES[role]); }}
@@ -257,7 +259,7 @@ export default function Page() {
               className="font-black uppercase text-xs tracking-wider rounded-none px-8 py-6 w-full sm:w-auto border-slate-800 hover:bg-slate-900 text-slate-300 hover:text-white"
             >
               <Laptop className="mr-2 h-4 w-4 text-indigo-500" />
-              Book Demo
+              Join Test Session
             </Button>
           </div>
 
