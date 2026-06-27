@@ -52,9 +52,10 @@ const PLANS = [
     price: "Custom",
     billing: "Contact sales",
     features: [
-      "Unlimited Exams & Student Enrollment",
-      "Unlimited Questions per Exam",
-      "Camera Proctoring Lite & Custom Branding",
+      "Up to 100 Exams per Month",
+      "Up to 300 Questions per Exam",
+      "Up to 500 Students per Exam",
+      "Advanced Security (Camera + Browser Lock)",
       "Everything in Growth",
     ]
   }

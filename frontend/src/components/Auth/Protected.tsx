@@ -27,6 +27,7 @@ export function Protected({
 
   useEffect(() => {
     async function checkSuspension() {
+      if (loading) return;
       if (!clientId || role === "superadmin") {
         setIsSuspended(false);
         return;
@@ -44,7 +45,7 @@ export function Protected({
       }
     }
     checkSuspension();
-  }, [clientId, role]);
+  }, [clientId, role, loading]);
 
   // Only shown on first-ever visit (no cache) while we fetch role from Supabase or check suspension
   if (loading || isSuspended === null) {

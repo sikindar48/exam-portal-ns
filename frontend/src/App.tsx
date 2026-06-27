@@ -64,7 +64,7 @@ const LoadingSpinner = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <Provider defaultTheme="system" storageKey="exam-portal-theme">
+    <Provider defaultTheme="light" storageKey="exam-portal-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />

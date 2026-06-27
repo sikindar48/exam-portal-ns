@@ -26,7 +26,13 @@ export default async function handler(req: Request, res: Response) {
           if (isClientAdmin) {
             const targetClientId = await getUserClientId(id as string);
             if (targetClientId !== callerClientId) {
-              return res.status(403).json({ error: "Access denied" });
+              const { rows: roleRows } = await db.execute({
+                sql: "SELECT COUNT(*) as count FROM user_roles WHERE user_id = ? AND client_id = ?",
+                args: [id as string, callerClientId],
+              });
+              if ((roleRows[0] as any).count === 0) {
+                return res.status(403).json({ error: "Access denied" });
+              }
             }
           } else {
             return res.status(403).json({ error: "Access denied" });
@@ -46,8 +52,12 @@ export default async function handler(req: Request, res: Response) {
         if (isClientAdmin) {
           const placeholders = idList.map(() => "?").join(",");
           const { rows } = await db.execute({
-            sql: `SELECT COUNT(*) as count FROM profiles WHERE id IN (${placeholders}) AND client_id != ?`,
-            args: [...idList, callerClientId],
+            sql: `SELECT COUNT(*) as count FROM profiles WHERE id IN (${placeholders}) 
+                  AND client_id != ? 
+                  AND id NOT IN (
+                    SELECT user_id FROM user_roles WHERE client_id = ?
+                  )`,
+            args: [...idList, callerClientId, callerClientId],
           });
           if ((rows[0] as any).count > 0) {
             return res.status(403).json({ error: "Access denied" });
@@ -134,7 +144,13 @@ export default async function handler(req: Request, res: Response) {
         });
         const targetClientId = rows[0]?.client_id;
         if (!callerClientId || targetClientId !== callerClientId) {
-          return res.status(403).json({ error: "Cannot modify this profile" });
+          const { rows: roleRows } = await db.execute({
+            sql: "SELECT COUNT(*) as count FROM user_roles WHERE user_id = ? AND client_id = ?",
+            args: [profileId, callerClientId],
+          });
+          if ((roleRows[0] as any).count === 0) {
+            return res.status(403).json({ error: "Cannot modify this profile" });
+          }
         }
       } else {
         const { rows } = await db.execute({
@@ -180,7 +196,7 @@ export default async function handler(req: Request, res: Response) {
             ON CONFLICT(id) DO UPDATE SET
               name = excluded.name,
               email = excluded.email,
-              client_id = excluded.client_id,
+              client_id = COALESCE(client_id, excluded.client_id),
               updated_at = datetime('now')`,
       args: [profileId, name, email, client_id ?? null],
     });
@@ -205,7 +221,13 @@ export default async function handler(req: Request, res: Response) {
       const callerClientId = await getUserClientId(user.id);
       const targetClientId = await getUserClientId(id as string);
       if (!callerClientId || callerClientId !== targetClientId) {
-        return res.status(403).json({ error: "Permission denied" });
+        const { rows: roleRows } = await db.execute({
+          sql: "SELECT COUNT(*) as count FROM user_roles WHERE user_id = ? AND client_id = ?",
+          args: [id as string, callerClientId],
+        });
+        if ((roleRows[0] as any).count === 0) {
+          return res.status(403).json({ error: "Permission denied" });
+        }
       }
     }
 

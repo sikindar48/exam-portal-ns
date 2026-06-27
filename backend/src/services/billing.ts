@@ -36,9 +36,9 @@ export const PLAN_LIMITS_MAP: Record<string, Omit<PlanLimits, "plan">> = {
     features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_proctoring", "shuffle"]
   },
   enterprise: {
-    max_exams_per_month: -1,
-    max_questions_per_exam: -1,
-    max_students_per_exam: -1,
+    max_exams_per_month: 100,
+    max_questions_per_exam: 300,
+    max_students_per_exam: 500,
     features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_proctoring", "camera_proctoring", "shuffle"]
   }
 };

@@ -305,7 +305,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         ('free', 'Free Plan', 3, 20, 50),
         ('starter', 'Starter Plan', 25, 100, 100),
         ('growth', 'Growth Plan', 50, 250, 200),
-        ('enterprise', 'Enterprise Plan', -1, -1, -1)
+        ('enterprise', 'Enterprise Plan', 100, 500, 300)
     `);
 
     // Sync plan feature mappings with plans documentation

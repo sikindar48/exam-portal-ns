@@ -309,9 +309,22 @@ export default function AuthPage() {
                 <div>
                   <Label htmlFor="org" className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Organization</Label>
                   <Select value={selectedClient} onValueChange={setSelectedClient}>
-                    <SelectTrigger id="org" className="h-10 text-sm"><SelectValue placeholder="Select organization"/></SelectTrigger>
+                    <SelectTrigger id="org" className="h-10 text-sm">
+                      <SelectValue placeholder="Select organization"/>
+                    </SelectTrigger>
                     <SelectContent>
-                      {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <div className="flex items-center gap-2">
+                            {c.logo_url ? (
+                              <img src={c.logo_url} alt="" className="h-5 w-5 rounded object-contain bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0" />
+                            ) : (
+                              <div className="h-5 w-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[9px] font-black uppercase shrink-0">{c.name.charAt(0)}</div>
+                            )}
+                            <span>{c.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
