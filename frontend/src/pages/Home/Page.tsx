@@ -447,12 +447,12 @@ export default function Page() {
             <Card className="flex flex-col justify-between border border-slate-900 bg-slate-950 rounded-none p-6 shadow-xl relative hover:border-slate-800 transition-all duration-300">
               <div>
                 <Badge className="bg-slate-900 text-slate-400 border border-slate-800 mb-4 font-black uppercase tracking-wider text-[9px] rounded-none px-2.5 py-1">
-                  On-Demand Credits
+                  One-Time Packages
                 </Badge>
                 <CardTitle className="text-xl font-black uppercase tracking-tight text-white mb-2">Pay Per Test</CardTitle>
                 <div className="my-6">
-                  <span className="text-4xl font-extrabold text-white">Credit-Based</span>
-                  <span className="text-slate-500 text-xs font-semibold"> / Per Exam</span>
+                  <span className="text-4xl font-extrabold text-white">Single-Use</span>
+                  <span className="text-slate-500 text-xs font-semibold"> / Per Test</span>
                 </div>
                 <CardDescription className="text-slate-400 text-xs leading-relaxed border-t border-slate-900 pt-4 mb-6">
                   Perfect for recruitment drives, one-time placement assessments, and training institutes.
@@ -461,7 +461,7 @@ export default function Page() {
                 <ul className="space-y-3.5 text-xs text-slate-300">
                   <li className="flex items-center gap-2.5">
                     <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
-                    <span>Buy individual test packages on demand</span>
+                    <span>Buy single-use test packages on demand</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
