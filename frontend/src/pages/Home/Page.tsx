@@ -423,7 +423,7 @@ export default function Page() {
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="h-4.5 w-4.5 text-blue-400 shrink-0" />
-                    <span>Up to **Unlimited** Exams &amp; Questions</span>
+                    <span>Up to <strong>Unlimited</strong> Exams &amp; Questions</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="h-4.5 w-4.5 text-blue-400 shrink-0" />
@@ -465,7 +465,7 @@ export default function Page() {
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
-                    <span>Caps scale up to **500 Candidates** &amp; **200 Questions**</span>
+                    <span>Caps scale up to <strong className="font-extrabold text-white">500 Candidates</strong> &amp; <strong className="font-extrabold text-white">200 Questions</strong></span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
