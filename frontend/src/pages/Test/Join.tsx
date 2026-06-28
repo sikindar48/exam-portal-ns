@@ -271,7 +271,7 @@ export default function Join() {
                         <Timer className="h-3.5 w-3.5" />
                         <span className="text-[9px] font-black uppercase tracking-wider">Duration</span>
                       </div>
-                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">{test.timer} Min</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">{test?.timer} Min</p>
                     </div>
 
                     <div className="space-y-1">
@@ -280,7 +280,7 @@ export default function Join() {
                         <span className="text-[9px] font-black uppercase tracking-wider">Attempt Limit</span>
                       </div>
                       <p className="text-sm font-black text-slate-800 dark:text-slate-200">
-                        {test.attempts_allowed === null ? "Unlimited" : test.attempts_allowed === 1 ? "1 Attempt" : `${test.attempts_allowed} Attempts`}
+                        {test?.attempts_allowed === null ? "Unlimited" : test?.attempts_allowed === 1 ? "1 Attempt" : `${test?.attempts_allowed} Attempts`}
                       </p>
                     </div>
                   </div>
@@ -311,7 +311,7 @@ export default function Join() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {test.allow_guests ? (
+                      {test?.allow_guests ? (
                         <Button
                           onClick={handleJoin}
                           className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold h-11 text-xs uppercase tracking-widest shadow-lg shadow-green-500/10 hover:shadow-green-500/20 transition-all duration-300"
@@ -334,7 +334,7 @@ export default function Join() {
                         </p>
                         <Button
                           variant="outline"
-                          onClick={() => navigate(`/auth?redirect=/join/${test.share_code}`)}
+                          onClick={() => navigate(`/auth?redirect=/join/${test?.share_code}`)}
                           className="w-full border-slate-200 dark:border-slate-800 text-xs font-bold uppercase tracking-wider h-11 hover:bg-slate-50 dark:hover:bg-slate-950"
                         >
                           <LogIn className="mr-2 h-4 w-4 shrink-0" />
