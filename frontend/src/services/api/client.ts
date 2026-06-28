@@ -267,6 +267,27 @@ export const rpc = {
     }),
 };
 
+// ── Feedbacks ─────────────────────────────────────────────────────────────────
+
+export const feedbacksApi = {
+  submit: (body: {
+    attempt_id: string;
+    fast_smooth: number;
+    easy_to_use: number;
+    strong_security: number;
+    faced_errors: number;
+    good_design: number;
+    feedback_text?: string;
+  }, attemptToken?: string) =>
+    apiFetch("/attempts/feedback", {
+      method: "POST",
+      headers: attemptToken ? { "x-attempt-token": attemptToken } : undefined,
+      body: JSON.stringify(body),
+    }),
+  list: (params: { page?: number; limit?: number; candidate_type?: string; search_query?: string } = {}) =>
+    apiFetch(`/attempts/feedback${qs(params)}`),
+};
+
 // ── Create User ──────────────────────────────────────────────────────────────
 
 export const createUser = (body: {
@@ -328,7 +349,11 @@ export const proctoringApi = {
     duration_seconds?: number;
     image_payload?: string | null;
     metadata?: any;
-  }) => apiFetch("/proctoring/events", { method: "POST", body: JSON.stringify(body) }),
+  }, attemptToken?: string) => apiFetch("/proctoring/events", { 
+    method: "POST", 
+    headers: attemptToken ? { "x-attempt-token": attemptToken } : undefined,
+    body: JSON.stringify(body) 
+  }),
   listEvents: (attempt_id: string) => apiFetch<{ events: any[]; total_risk_score: number }>(`/proctoring/events?attempt_id=${attempt_id}`),
   listAllEvents: (params: {
     page?: number;

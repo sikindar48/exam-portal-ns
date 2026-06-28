@@ -80,7 +80,12 @@ export default function ClientAdminDashboard() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "-";
-    const date = new Date(dateStr);
+    let date;
+    if (!dateStr.includes("Z") && !dateStr.includes("T")) {
+      date = new Date(dateStr.replace(" ", "T") + "Z");
+    } else {
+      date = new Date(dateStr);
+    }
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -205,7 +210,9 @@ export default function ClientAdminDashboard() {
                               )}
                             </TableCell>
                             <TableCell className="py-3 text-right text-slate-500 font-mono text-[10px]">
-                              {formatDate(attempt.started_at)}
+                              {attempt.status === "submitted" 
+                                ? formatDate(attempt.submitted_at) 
+                                : `${formatDate(attempt.started_at)} (Started)`}
                             </TableCell>
                           </TableRow>
                         ))}

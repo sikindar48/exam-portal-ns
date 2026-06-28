@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <title>Advanced Proctoring Calibration Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+    }
+  </style>
+</head>
+<body class="h-full text-slate-100 flex flex-col antialiased font-sans">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/60 backdrop-blur-md px-6 py-4 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="h-8 w-8 bg-blue-600 rounded-none flex items-center justify-center font-black text-white tracking-widest text-sm">
+        NS
+      </div>
+      <div>
+        <h1 class="text-sm font-black uppercase tracking-[0.2em] text-white">Proctoring Calibration Portal</h1>
+        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Real-time MediaPipe Tasks Vision API Calibration</p>
+      </div>
+    </div>
+    <span class="text-[9px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 uppercase tracking-widest">
+      Active Calibration Session (v2)
+    </span>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 flex overflow-hidden">
+    
+    <!-- Left Sidebar: Camera & Status -->
+    <div class="w-[380px] border-r border-slate-800 bg-slate-950/40 p-6 flex flex-col justify-between overflow-y-auto shrink-0">
+      <div class="space-y-6">
+        <div>
+          <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Live Feed Preview</h2>
+          <div class="relative aspect-video bg-slate-900 border border-slate-800 rounded-none overflow-hidden">
+            <video id="webcam" class="w-full h-full object-cover scale-x-[-1]" autoplay muted playsinline></video>
+            <div id="loadingOverlay" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-center p-4">
+              <div class="animate-spin rounded-full h-8 w-8 border-2 border-t-blue-500 border-slate-800 mb-3"></div>
+              <p id="loadingText" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Tasks Vision WASM...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Central Status Display -->
+        <div class="space-y-3">
+          <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Engine Status</h2>
+          <div id="statusBox" class="p-5 border bg-slate-900/50 flex flex-col items-center justify-center text-center transition-all duration-300 border-slate-800">
+            <div id="statusIcon" class="h-10 w-10 bg-slate-800 rounded-full flex items-center justify-center mb-3">
+              <i data-lucide="shield" class="h-5 w-5 text-slate-400"></i>
+            </div>
+            <h3 id="statusTitle" class="text-xs font-black uppercase tracking-widest text-slate-300">Normal State</h3>
+            <p id="statusDesc" class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">No violations detected</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-slate-800">
+        <p class="text-[8px] text-slate-500 font-bold uppercase tracking-widest text-center leading-normal">
+          Perform tests: speak, look away, turn head, raise hands or show a phone in camera view.
+        </p>
+      </div>
+    </div>
+
+    <!-- Center Content: Telemetry & Interactive Feedback Panel -->
+    <div class="flex-1 p-8 flex flex-col gap-6 overflow-y-auto">
+      
+      <!-- Top Row: Interactive Calibration Validation -->
+      <div id="calibrationBox" class="bg-slate-950/80 border border-slate-800 p-6 shadow-xl relative hidden">
+        <div class="absolute top-0 left-0 w-1 h-full bg-blue-500" id="calibrationIndicator"></div>
+        <div class="flex justify-between items-start gap-4">
+          <div class="space-y-1">
+            <span class="text-[9px] font-black bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 uppercase tracking-widest">Calibration Feedback</span>
+            <h3 id="calibrationTitle" class="text-sm font-black uppercase tracking-tight text-white pt-1.5">Is the warning correct?</h3>
+            <p class="text-[10px] text-slate-400">Confirm if the current proctoring alert matches your action.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="window.submitFeedback(true)" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5">
+              <i data-lucide="check" class="h-3.5 w-3.5"></i> Yes, Correct
+            </button>
+            <button onclick="window.submitFeedback(false)" class="px-5 py-2 bg-red-650 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5">
+              <i data-lucide="x" class="h-3.5 w-3.5"></i> No, Incorrect
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Dashboard Grid -->
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        
+        <!-- Face Detection Specs -->
+        <div class="bg-slate-950/40 border border-slate-800 p-5 space-y-4">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Face Detection</h3>
+          <div class="grid grid-cols-2 gap-3 text-[10px]">
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Face Count</p>
+              <p id="valFaceCount" class="text-base font-black text-white mt-1">0</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Confidence</p>
+              <p id="valFaceConfidence" class="text-base font-black text-white mt-1">0.00</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Face Mesh: Mouth Specs -->
+        <div class="bg-slate-950/40 border border-slate-800 p-5 space-y-4">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Mouth Mechanics</h3>
+          <div class="grid grid-cols-2 gap-3 text-[10px]">
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Mouth Ratio</p>
+              <p id="valMouthRatio" class="text-base font-black text-white mt-1">0.000</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">State</p>
+              <p id="valMouthState" class="text-base font-black text-slate-400 mt-1 uppercase tracking-wider font-semibold">Closed</p>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div class="h-1 bg-slate-900 overflow-hidden">
+            <div id="mouthProgress" class="h-full bg-blue-500 transition-all" style="width: 0%"></div>
+          </div>
+        </div>
+
+
+        <!-- Head Pose Specs -->
+        <div class="bg-slate-950/40 border border-slate-800 p-5 space-y-4">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Head Rotation</h3>
+          <div class="grid grid-cols-2 gap-3 text-[10px]">
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Yaw (Sideways)</p>
+              <p id="valYaw" class="text-base font-black text-white mt-1">0.00</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Pitch (Tilt)</p>
+              <p id="valPitch" class="text-base font-black text-white mt-1">0.00</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hands Detection Specs -->
+        <div class="bg-slate-950/40 border border-slate-800 p-5 space-y-4">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Hands & Device Info</h3>
+          <div class="grid grid-cols-2 gap-3 text-[10px]">
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Hands Tracked</p>
+              <p id="valHandsCount" class="text-base font-black text-white mt-1">0</p>
+            </div>
+            <div>
+              <p class="text-slate-500 font-bold uppercase tracking-widest">Hand Raised State</p>
+              <p id="valHandRaised" class="text-base font-black text-slate-400 mt-1 uppercase tracking-wider font-semibold">No</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feedback Stats Scoreboard -->
+      <div class="bg-slate-950/40 border border-slate-800 p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calibration Feedback Scoreboard</h3>
+          <button onclick="window.clearScoreboard()" class="text-[8px] font-black uppercase text-slate-500 hover:text-white transition-colors">Clear Stats</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-[10px] border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-500">
+                <th class="py-2 uppercase tracking-widest font-bold">Violation Event Type</th>
+                <th class="py-2 text-center uppercase tracking-widest font-bold">Correct Detections (Yes)</th>
+                <th class="py-2 text-center uppercase tracking-widest font-bold">False Alarms (No)</th>
+                <th class="py-2 text-right uppercase tracking-widest font-bold">Accuracy Rate</th>
+              </tr>
+            </thead>
+            <tbody id="scoreboardBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      FaceDetector,
+      FaceLandmarker,
+      HandLandmarker
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/vision_bundle.mjs";
+
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Violation Event Configs
+    const VIOLATIONS = [
+      "NO_FACE",
+      "MULTIPLE_FACES",
+      "HEAD_TURNED",
+      "TALKING_DETECTED",
+      "DEVICE_DETECTED"
+    ];
+
+    // Scoreboard Metrics
+    let scores = JSON.parse(localStorage.getItem("calibration_scores")) || {};
+    VIOLATIONS.forEach(v => {
+      if (!scores[v]) scores[v] = { yes: 0, no: 0 };
+    });
+
+    window.saveScores = function() {
+      localStorage.setItem("calibration_scores", JSON.stringify(scores));
+      window.renderScoreboard();
+    }
+
+    window.clearScoreboard = function() {
+      VIOLATIONS.forEach(v => {
+        scores[v] = { yes: 0, no: 0 };
+      });
+      window.saveScores();
+    }
+
+    window.renderScoreboard = function() {
+      const body = document.getElementById("scoreboardBody");
+      body.innerHTML = "";
+      
+      VIOLATIONS.forEach(v => {
+        const item = scores[v];
+        const total = item.yes + item.no;
+        const rate = total === 0 ? "N/A" : ((item.yes / total) * 100).toFixed(0) + "%";
+        
+        const row = document.createElement("tr");
+        row.className = "border-b border-slate-850 hover:bg-slate-900/35";
+        row.innerHTML = `
+          <td class="py-3 font-semibold uppercase text-slate-350 tracking-wider">${v.replace(/_/g, " ")}</td>
+          <td class="py-3 text-center text-emerald-400 font-bold">${item.yes}</td>
+          <td class="py-3 text-center text-red-400 font-bold">${item.no}</td>
+          <td class="py-3 text-right font-mono font-bold text-slate-300">${rate}</td>
+        `;
+        body.appendChild(row);
+      });
+    }
+
+    // Active Violation Tracker
+    let currentActiveViolation = null;
+
+    function setStatus(type, title, desc, severity) {
+      const box = document.getElementById("statusBox");
+      const icon = document.getElementById("statusIcon");
+      const titleEl = document.getElementById("statusTitle");
+      const descEl = document.getElementById("statusDesc");
+      const calBox = document.getElementById("calibrationBox");
+      const calTitle = document.getElementById("calibrationTitle");
+      const calIndicator = document.getElementById("calibrationIndicator");
+
+      // Reset
+      box.className = "p-5 border bg-slate-900/50 flex flex-col items-center justify-center text-center transition-all duration-300 ";
+      icon.innerHTML = "";
+
+      if (type === "NORMAL") {
+        box.classList.add("border-slate-800");
+        icon.className = "h-10 w-10 bg-slate-800 rounded-full flex items-center justify-center mb-3";
+        icon.innerHTML = `<i data-lucide="shield" class="h-5 w-5 text-slate-400"></i>`;
+        titleEl.textContent = "Normal State";
+        titleEl.className = "text-xs font-black uppercase tracking-widest text-slate-300";
+        descEl.textContent = "No violations detected";
+        currentActiveViolation = null;
+        calBox.classList.add("hidden");
+      } else {
+        currentActiveViolation = type;
+        calBox.classList.remove("hidden");
+        calTitle.textContent = `Warning: ${title}`;
+
+        if (severity === "HIGH") {
+          box.classList.add("border-red-500/50", "bg-red-950/10");
+          icon.className = "h-10 w-10 bg-red-500/10 border border-red-500/25 rounded-full flex items-center justify-center mb-3 animate-pulse";
+          icon.innerHTML = `<i data-lucide="alert-triangle" class="h-5 w-5 text-red-500"></i>`;
+          titleEl.textContent = title;
+          titleEl.className = "text-xs font-black uppercase tracking-widest text-red-500";
+          descEl.textContent = desc;
+          calIndicator.className = "absolute top-0 left-0 w-1 h-full bg-red-500";
+        } else {
+          box.classList.add("border-amber-500/50", "bg-amber-950/10");
+          icon.className = "h-10 w-10 bg-amber-500/10 border border-amber-500/25 rounded-full flex items-center justify-center mb-3 animate-pulse";
+          icon.innerHTML = `<i data-lucide="alert-triangle" class="h-5 w-5 text-amber-500"></i>`;
+          titleEl.textContent = title;
+          titleEl.className = "text-xs font-black uppercase tracking-widest text-amber-500";
+          descEl.textContent = desc;
+          calIndicator.className = "absolute top-0 left-0 w-1 h-full bg-amber-500";
+        }
+      }
+      lucide.createIcons();
+    }
+
+    window.submitFeedback = function(isCorrect) {
+      if (!currentActiveViolation) return;
+      if (isCorrect) {
+        scores[currentActiveViolation].yes++;
+      } else {
+        scores[currentActiveViolation].no++;
+      }
+      window.saveScores();
+      document.getElementById("calibrationBox").classList.add("hidden");
+    }
+
+    // Video Elements
+    const video = document.getElementById("webcam");
+
+    // Timers
+    let faceAbsentStart = null;
+    let multipleFacesStart = null;
+    let talkingStart = null;
+    let headTurnStart = null;
+    let deviceStart = null;
+
+     let activeViolationsMap = {};
+
+    function updateCalibrationState() {
+      let highest = null;
+      if (activeViolationsMap["DEVICE_DETECTED"]) highest = "DEVICE_DETECTED";
+      else if (activeViolationsMap["MULTIPLE_FACES"]) highest = "MULTIPLE_FACES";
+      else if (activeViolationsMap["NO_FACE"]) highest = "NO_FACE";
+      else if (activeViolationsMap["HEAD_TURNED"]) highest = "HEAD_TURNED";
+      else if (activeViolationsMap["TALKING_DETECTED"]) highest = "TALKING_DETECTED";
+
+      if (highest === null) {
+        setStatus("NORMAL");
+      } else if (highest === "NO_FACE") {
+        setStatus("NO_FACE", "No Face Detected", "Please position your face clearly in front of the camera.", "HIGH");
+      } else if (highest === "MULTIPLE_FACES") {
+        setStatus("MULTIPLE_FACES", "Multiple Faces", "Please ensure you are alone in front of the camera.", "HIGH");
+      } else if (highest === "HEAD_TURNED") {
+        setStatus("HEAD_TURNED", "Head Turned", "Please face forward directly towards the camera.", "MEDIUM");
+      } else if (highest === "TALKING_DETECTED") {
+        setStatus("TALKING_DETECTED", "Speaking Detected", "Please remain quiet during the test session.", "MEDIUM");
+      } else if (highest === "DEVICE_DETECTED") {
+        setStatus("DEVICE_DETECTED", "Device/Hand Alert", "Please keep your hands away from your face or phone.", "HIGH");
+      }
+    }
+
+    async function initWebcamAndModels() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+        video.srcObject = stream;
+        
+        document.getElementById("loadingText").textContent = "Loading WebAssembly Models (GCS)...";
+
+        // Load Tasks Vision Resolver
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+        );
+
+        // Load Face Detector
+        const faceDetector = await FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO"
+        });
+
+        // Load Face Landmarker
+        const faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          outputFaceBlendshapes: false,
+          outputFacialTransformationMatrixes: false
+        });
+
+        // Load Hand Landmarker
+        const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numHands: 2
+        });
+
+        document.getElementById("loadingOverlay").classList.add("hidden");
+
+        // Main Inference Evaluation Loop (Runs every 1.0 second)
+        setInterval(() => {
+          if (!video.srcObject) return;
+
+          const now = performance.now();
+
+          // 1. Run Synchronous Detections
+          const fdResult = faceDetector.detectForVideo(video, now);
+          const fmResult = faceLandmarker.detectForVideo(video, now);
+          const handsResult = handLandmarker.detectForVideo(video, now);
+
+          // 2. Evaluate Face Detections
+          const detections = fdResult.detections || [];
+          const faceCount = detections.length;
+
+          document.getElementById("valFaceCount").textContent = faceCount;
+          document.getElementById("valFaceConfidence").textContent = faceCount > 0 ? detections[0].categories[0].score.toFixed(2) : "0.00";
+
+          // Extract coordinates for hands detection mapping
+          let nose = null;
+          let forehead = null;
+          let chin = null;
+          let leftCheek = null;
+          let rightCheek = null;
+
+          if (fmResult.faceLandmarks?.[0]) {
+            const lm = fmResult.faceLandmarks[0];
+            nose = lm[1];
+            forehead = lm[10];
+            chin = lm[152];
+            leftCheek = lm[234];
+            rightCheek = lm[454];
+          }
+
+          if (faceCount === 0) {
+            multipleFacesStart = null;
+            activeViolationsMap["MULTIPLE_FACES"] = false;
+
+            if (faceAbsentStart === null) {
+              faceAbsentStart = Date.now();
+            } else if (Date.now() - faceAbsentStart >= 800) {
+              activeViolationsMap["NO_FACE"] = true;
+            }
+          } else {
+            faceAbsentStart = null;
+            activeViolationsMap["NO_FACE"] = false;
+
+            if (faceCount > 1) {
+              if (multipleFacesStart === null) {
+                multipleFacesStart = Date.now();
+              } else if (Date.now() - multipleFacesStart >= 800) {
+                activeViolationsMap["MULTIPLE_FACES"] = true;
+              }
+            } else {
+              multipleFacesStart = null;
+              activeViolationsMap["MULTIPLE_FACES"] = false;
+            }
+          }
+
+          // 3. Evaluate Face Mesh Ratios
+          if (faceCount === 1 && fmResult.faceLandmarks?.[0]) {
+            const lm = fmResult.faceLandmarks[0];
+
+            // Mouth check
+            const upperLip = lm[13];
+            const lowerLip = lm[14];
+            if (upperLip && lowerLip && forehead && chin) {
+              const mouthDist = Math.sqrt(Math.pow(upperLip.x - lowerLip.x, 2) + Math.pow(upperLip.y - lowerLip.y, 2));
+              const faceHeight = Math.sqrt(Math.pow(forehead.x - chin.x, 2) + Math.pow(forehead.y - chin.y, 2));
+              const mouthRatio = mouthDist / faceHeight;
+
+              document.getElementById("valMouthRatio").textContent = mouthRatio.toFixed(3);
+              document.getElementById("valMouthState").textContent = mouthRatio > 0.07 ? "OPEN" : "CLOSED";
+              document.getElementById("valMouthState").className = mouthRatio > 0.07 ? "text-red-500 font-bold mt-1" : "text-slate-400 font-semibold mt-1";
+              document.getElementById("mouthProgress").style.width = Math.min(100, (mouthRatio / 0.15) * 100) + "%";
+
+              if (mouthRatio > 0.07) {
+                if (talkingStart === null) {
+                  talkingStart = Date.now();
+                } else if (Date.now() - talkingStart >= 1500) {
+                  activeViolationsMap["TALKING_DETECTED"] = true;
+                }
+              } else {
+                talkingStart = null;
+                activeViolationsMap["TALKING_DETECTED"] = false;
+              }
+            }
+
+
+
+            // Head turned check
+            if (nose && chin && leftCheek && rightCheek && forehead) {
+              const dNoseLeft = Math.sqrt(Math.pow(nose.x - leftCheek.x, 2) + Math.pow(nose.y - leftCheek.y, 2));
+              const dNoseRight = Math.sqrt(Math.pow(nose.x - rightCheek.x, 2) + Math.pow(nose.y - rightCheek.y, 2));
+              const yawRatio = dNoseLeft / (dNoseLeft + dNoseRight);
+
+              const dNoseForehead = Math.sqrt(Math.pow(nose.x - forehead.x, 2) + Math.pow(nose.y - forehead.y, 2));
+              const dNoseChin = Math.sqrt(Math.pow(nose.x - chin.x, 2) + Math.pow(nose.y - chin.y, 2));
+              const pitchRatio = dNoseForehead / (dNoseForehead + dNoseChin);
+
+              document.getElementById("valYaw").textContent = yawRatio.toFixed(2);
+              document.getElementById("valPitch").textContent = pitchRatio.toFixed(2);
+
+              if (yawRatio < 0.33 || yawRatio > 0.67 || pitchRatio < 0.33 || pitchRatio > 0.67) {
+                if (headTurnStart === null) {
+                  headTurnStart = Date.now();
+                } else if (Date.now() - headTurnStart >= 1500) {
+                  activeViolationsMap["HEAD_TURNED"] = true;
+                }
+              } else {
+                headTurnStart = null;
+                activeViolationsMap["HEAD_TURNED"] = false;
+              }
+            }
+          } else {
+            // Reset mesh tracking variables
+            talkingStart = null;
+            headTurnStart = null;
+            activeViolationsMap["TALKING_DETECTED"] = false;
+            activeViolationsMap["HEAD_TURNED"] = false;
+          }
+
+          // 4. Evaluate Hands
+          const multiHandLandmarks = handsResult.landmarks || [];
+          document.getElementById("valHandsCount").textContent = multiHandLandmarks.length;
+
+          if (multiHandLandmarks.length > 0 && nose) {
+            const handRaised = multiHandLandmarks.some((hand) => {
+              return hand.some((point) => point.y < 0.72) || hand.some((point) => {
+                const dist = Math.sqrt(Math.pow(point.x - nose.x, 2) + Math.pow(point.y - nose.y, 2));
+                return dist < 0.22;
+              });
+            });
+
+            document.getElementById("valHandRaised").textContent = handRaised ? "RAISED / DETECTED" : "LOWERED";
+            document.getElementById("valHandRaised").className = handRaised ? "text-red-500 font-bold mt-1" : "text-slate-400 font-semibold mt-1";
+
+            if (handRaised) {
+              if (deviceStart === null) {
+                deviceStart = Date.now();
+              } else if (Date.now() - deviceStart >= 1500) {
+                activeViolationsMap["DEVICE_DETECTED"] = true;
+              }
+            } else {
+              deviceStart = null;
+              activeViolationsMap["DEVICE_DETECTED"] = false;
+            }
+          } else {
+            deviceStart = null;
+            activeViolationsMap["DEVICE_DETECTED"] = false;
+            document.getElementById("valHandRaised").textContent = "NO";
+            document.getElementById("valHandRaised").className = "text-slate-400 font-semibold mt-1";
+          }
+
+          // 5. Update Status Dashboard
+          updateCalibrationState();
+
+        }, 1000);
+
+      } catch (err) {
+        console.error("Initialization error:", err);
+        document.getElementById("loadingOverlay").innerHTML = `
+          <p class="text-red-500 font-bold uppercase text-[10px]">WASM Model Load Failed</p>
+          <p class="text-[9px] text-slate-500 uppercase mt-1">${err.message}</p>
+        `;
+      }
+    }
+
+    // Load Calibration
+    window.renderScoreboard();
+    initWebcamAndModels();
+  </script>
+</body>
+</html>

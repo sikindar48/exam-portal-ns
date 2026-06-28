@@ -704,7 +704,7 @@ export default function Engine() {
           test_id: testId!,
           event_type: type,
           duration_seconds: 0
-        }).catch(console.error);
+        }, attemptToken || undefined).catch(console.error);
 
         if (next >= 3) {
           handleSubmit(true);
@@ -776,6 +776,7 @@ export default function Engine() {
     stream: cameraStream,
     attemptId,
     testId: testId!,
+    attemptToken: attemptToken || undefined,
   });
 
   // Secure Browsing
@@ -1118,7 +1119,13 @@ export default function Engine() {
                   ? "No face detected in the camera feed. Please position your face clearly in front of the camera."
                   : activeViolation === "MULTIPLE_FACES"
                     ? "Multiple faces detected. Please ensure you are alone in front of the camera."
-                    : "Camera feed issue detected. Please check your webcam."}
+                    : activeViolation === "HEAD_TURNED"
+                      ? "Head rotation detected. Please face forward and look directly at the camera."
+                      : activeViolation === "TALKING_DETECTED"
+                        ? "Speaking or whispering detected. Please remain quiet during the exam."
+                        : activeViolation === "DEVICE_DETECTED"
+                          ? "Hand or device gesture detected. Please keep your hands visible and away from your face/phone."
+                          : "Camera feed issue detected. Please check your webcam."}
               </p>
               <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50">
                 <p className="text-[10px] text-red-600 dark:text-red-400 font-black uppercase tracking-widest leading-normal">

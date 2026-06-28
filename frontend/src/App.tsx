@@ -25,6 +25,7 @@ const SuperAdminSettings = lazy(() => import("./pages/SuperAdmin/Settings"));
 const SuperAdminSubscriptions = lazy(() => import("./pages/SuperAdmin/Subscriptions"));
 const SuperAdminAuditLogs = lazy(() => import("./pages/SuperAdmin/AuditLogs"));
 const SuperAdminClientSettings = lazy(() => import("./pages/SuperAdmin/ClientSettings"));
+const SuperAdminFeedbacks = lazy(() => import("./pages/SuperAdmin/Feedbacks"));
 const Suspended = lazy(() => import("./pages/Suspended"));
 
 // Client Admin Pages
@@ -159,6 +160,14 @@ const App = () => (
                   element={
                     <Protected allowedRoles={["superadmin"]}>
                       <SuperAdminAuditLogs />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/superadmin/feedbacks"
+                  element={
+                    <Protected allowedRoles={["superadmin"]}>
+                      <SuperAdminFeedbacks />
                     </Protected>
                   }
                 />

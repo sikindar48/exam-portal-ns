@@ -9,17 +9,20 @@ import { getApps } from "firebase-admin/app";
 
 // Severity and Score mappings
 const SEVERITY_MAPPING: Record<string, { severity: string; score: number }> = {
-  TAB_SWITCH: { severity: "LOW", score: 1 },
+  TAB_SWITCH: { severity: "MEDIUM", score: 2 },
   WINDOW_BLUR: { severity: "LOW", score: 1 },
   FULLSCREEN_EXIT: { severity: "MEDIUM", score: 2 },
   NO_FACE: { severity: "HIGH", score: 5 },
   MULTIPLE_FACES: { severity: "HIGH", score: 5 },
   CAMERA_DISCONNECTED: { severity: "LOW", score: 1 },
   CAMERA_PERMISSION_DENIED: { severity: "HIGH", score: 5 },
+  HEAD_TURNED: { severity: "MEDIUM", score: 2 },
+  TALKING_DETECTED: { severity: "MEDIUM", score: 2 },
+  DEVICE_DETECTED: { severity: "HIGH", score: 5 },
 };
 
 // Image storage required only for these events
-const UPLOAD_EVIDENCE_EVENTS = ["NO_FACE", "MULTIPLE_FACES", "CAMERA_DISCONNECTED"];
+const UPLOAD_EVIDENCE_EVENTS = ["NO_FACE", "MULTIPLE_FACES", "CAMERA_DISCONNECTED", "HEAD_TURNED", "TALKING_DETECTED", "DEVICE_DETECTED"];
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -303,7 +306,7 @@ export default async function handler(req: Request, res: Response) {
 
     // 3. Check feature gating if this is a camera event
     const { validatePackageFeatures } = await import("../services/billing.js");
-    const isCameraEvent = ["NO_FACE", "MULTIPLE_FACES", "CAMERA_DISCONNECTED", "CAMERA_PERMISSION_DENIED"].includes(event_type);
+    const isCameraEvent = ["NO_FACE", "MULTIPLE_FACES", "CAMERA_DISCONNECTED", "CAMERA_PERMISSION_DENIED", "HEAD_TURNED", "TALKING_DETECTED", "DEVICE_DETECTED"].includes(event_type);
     if (isCameraEvent) {
       const cameraAllowed = await validatePackageFeatures(test_id, "camera_proctoring");
       if (!cameraAllowed) {

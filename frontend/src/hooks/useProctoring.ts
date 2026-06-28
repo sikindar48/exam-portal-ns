@@ -6,9 +6,10 @@ interface UseProctoringOptions {
   stream: MediaStream | null;
   attemptId: string;
   testId: string;
+  attemptToken?: string;
 }
 
-export function useProctoring({ enabled, stream, attemptId, testId }: UseProctoringOptions) {
+export function useProctoring({ enabled, stream, attemptId, testId, attemptToken }: UseProctoringOptions) {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [activeViolation, setActiveViolation] = useState<string | null>(null);
@@ -16,63 +17,38 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const detectorRef = useRef<any>(null);
   const intervalIdRef = useRef<any>(null);
+
+  // Consecutive trigger timers
   const faceAbsentStartRef = useRef<number | null>(null);
   const multipleFacesStartRef = useRef<number | null>(null);
+
   const isViolationLoggingRef = useRef<Record<string, boolean>>({});
+  const activeViolationRef = useRef<string | null>(null);
 
-  // Helper to load external scripts dynamically
-  const loadScript = (src: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) {
-        resolve();
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = src;
-      script.crossOrigin = "anonymous";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load script ${src}`));
-      document.head.appendChild(script);
-    });
-  };
-
-  // Helper to capture a JPEG snapshot from the video stream and compress it to < 50KB
+  // Capture a compressed JPEG snapshot from the live video feed
   const captureSnapshot = (): string | null => {
-    if (!videoElRef.current || !stream) return null;
+    if (!videoElRef.current) return null;
     try {
       const canvas = document.createElement("canvas");
       canvas.width = 320;
       canvas.height = 240;
       const ctx = canvas.getContext("2d");
       if (!ctx) return null;
-
-      // Draw current video frame to canvas
       ctx.drawImage(videoElRef.current, 0, 0, canvas.width, canvas.height);
-
-      // Compress to JPEG with 0.6 quality (typically results in 15KB - 30KB)
       return canvas.toDataURL("image/jpeg", 0.6);
-    } catch (err) {
-      console.error("Failed to capture snapshot:", err);
+    } catch {
       return null;
     }
   };
 
-  const activeViolationRef = useRef<string | null>(null);
-
-  // Helper to POST events to backend with rate/duplicate protection
-  const triggerViolation = async (eventType: string, duration = 2.5, metadata?: any, sendImage = true) => {
-    // Avoid double posting in the exact same interval ticks if already uploading
+  // Post a violation event with 5-second per-type rate limiting
+  const triggerViolation = async (eventType: string, duration = 1.0, metadata?: any) => {
     const uniqueKey = `${eventType}_${Math.floor(Date.now() / 5000)}`;
     if (isViolationLoggingRef.current[uniqueKey]) return;
     isViolationLoggingRef.current[uniqueKey] = true;
 
     try {
-      let imagePayload = null;
-      // Capture snapshots only for specific camera violations and when explicitly instructed
-      if (sendImage && ["NO_FACE", "MULTIPLE_FACES"].includes(eventType)) {
-        imagePayload = captureSnapshot();
-      }
-
+      const imagePayload = eventType !== "CAMERA_DISCONNECTED" ? captureSnapshot() : null;
       await proctoringApi.logEvent({
         attempt_id: attemptId,
         test_id: testId,
@@ -80,11 +56,10 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         duration_seconds: duration,
         image_payload: imagePayload,
         metadata,
-      });
+      }, attemptToken);
     } catch (err) {
       console.error(`Failed to log proctoring event: ${eventType}`, err);
     } finally {
-      // Keep safety cooldown before permitting same event code logs
       setTimeout(() => {
         delete isViolationLoggingRef.current[uniqueKey];
       }, 5000);
@@ -96,19 +71,34 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
 
     let active = true;
 
+    const setViolation = (v: string | null) => {
+      if (!active) return;
+      if (activeViolationRef.current !== v) {
+        activeViolationRef.current = v;
+        setActiveViolation(v);
+      }
+    };
+
     const initDetector = async () => {
       try {
-        // Load MediaPipe Face Detection library dynamically from CDN
-        await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js");
+        // Load only @mediapipe/face_detection — no face_mesh, no hands (avoids WASM conflict)
+        await new Promise<void>((resolve, reject) => {
+          const src = "https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js";
+          if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+          const s = document.createElement("script");
+          s.src = src;
+          s.crossOrigin = "anonymous";
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error("Failed to load @mediapipe/face_detection"));
+          document.head.appendChild(s);
+        });
 
         if (!active) return;
 
-        const mpFaceDetection = (window as any).FaceDetection;
-        if (!mpFaceDetection) {
-          throw new Error("MediaPipe FaceDetection global not found after script load.");
-        }
+        const FaceDetection = (window as any).FaceDetection;
+        if (!FaceDetection) throw new Error("FaceDetection not found in window after script load.");
 
-        // Initialize video element
+        // Create a hidden video element fed by the proctoring stream
         const video = document.createElement("video");
         video.srcObject = stream;
         video.muted = true;
@@ -116,12 +106,11 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         video.width = 320;
         video.height = 240;
         await video.play();
-
         videoElRef.current = video;
 
-        // Create Detector instance
-        const detector = new mpFaceDetection({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`,
+        const detector = new FaceDetection({
+          locateFile: (file: string) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`,
         });
 
         detector.setOptions({
@@ -132,81 +121,47 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         detector.onResults((results: any) => {
           if (!active) return;
 
-          const detections = results.detections || [];
-          const faceCount = detections.length;
+          const faceCount = (results.detections || []).length;
 
           if (faceCount === 0) {
-            // Reset multiple faces timer
+            // Reset multiple-face timer
             multipleFacesStartRef.current = null;
 
-            // Start absence timer if not already set
             if (faceAbsentStartRef.current === null) {
               faceAbsentStartRef.current = Date.now();
-            } else {
-              const absentDurationMs = Date.now() - faceAbsentStartRef.current;
-              // If face missing for more than 1.5 continuous seconds, trigger violation
-              if (absentDurationMs >= 1500) {
-                const isFirst = activeViolationRef.current !== "NO_FACE";
-                if (isFirst) {
-                  activeViolationRef.current = "NO_FACE";
-                  setActiveViolation("NO_FACE");
-                }
-
-                triggerViolation("NO_FACE", 1.0, {
-                  faceCount: 0,
-                  absentDurationSeconds: absentDurationMs / 1000,
-                }, isFirst);
-              }
+            } else if (Date.now() - faceAbsentStartRef.current >= 800) {
+              setViolation("NO_FACE");
+              triggerViolation("NO_FACE", 1.0, { faceCount: 0 });
             }
-          } else {
-            // Face detected: reset absence timer
+          } else if (faceCount > 1) {
+            // Reset no-face timer
             faceAbsentStartRef.current = null;
 
-            if (faceCount > 1) {
-              // Start multiple faces timer if not already set
-              if (multipleFacesStartRef.current === null) {
-                multipleFacesStartRef.current = Date.now();
-              } else {
-                const multipleDurationMs = Date.now() - multipleFacesStartRef.current;
-                // If multiple faces detected for more than 1.5 continuous seconds, trigger violation
-                if (multipleDurationMs >= 1500) {
-                  const isFirst = activeViolationRef.current !== "MULTIPLE_FACES";
-                  if (isFirst) {
-                    activeViolationRef.current = "MULTIPLE_FACES";
-                    setActiveViolation("MULTIPLE_FACES");
-                  }
-
-                  triggerViolation("MULTIPLE_FACES", 1.0, {
-                    faceCount,
-                    confidence: detections[0]?.score?.[0] || detections[0]?.score || 0.9,
-                  }, isFirst);
-                }
-              }
-            } else {
-              // Normal state: 1 face
-              multipleFacesStartRef.current = null;
-              if (activeViolationRef.current !== null) {
-                activeViolationRef.current = null;
-                setActiveViolation(null);
-              }
+            if (multipleFacesStartRef.current === null) {
+              multipleFacesStartRef.current = Date.now();
+            } else if (Date.now() - multipleFacesStartRef.current >= 800) {
+              setViolation("MULTIPLE_FACES");
+              triggerViolation("MULTIPLE_FACES", 1.0, { faceCount });
             }
+          } else {
+            // Exactly one face — clear all violations
+            faceAbsentStartRef.current = null;
+            multipleFacesStartRef.current = null;
+            setViolation(null);
           }
         });
 
         detectorRef.current = detector;
         setModelLoaded(true);
 
-        // Periodically capture frames and pass to detector (every 1.0 second)
+        // Process a frame every 1 second
         intervalIdRef.current = setInterval(async () => {
-          if (!active || !videoElRef.current || !detectorRef.current) return;
+          if (!active || !videoElRef.current) return;
 
-          // Check if camera tracks are still active
-          const videoTrack = stream.getVideoTracks()[0];
-          if (!videoTrack || videoTrack.readyState === "ended" || !videoTrack.enabled || videoTrack.muted) {
-            if (activeViolationRef.current !== "CAMERA_DISCONNECTED") {
-              activeViolationRef.current = "CAMERA_DISCONNECTED";
-              setActiveViolation("CAMERA_DISCONNECTED");
-            }
+          // Camera health check
+          const track = stream.getVideoTracks()[0];
+          if (!track || track.readyState === "ended" || !track.enabled || track.muted) {
+            setViolation("CAMERA_DISCONNECTED");
             triggerViolation("CAMERA_DISCONNECTED", 1.0);
             return;
           }
@@ -214,48 +169,36 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
           try {
             await detectorRef.current.send({ image: videoElRef.current });
           } catch (err) {
-            console.error("MediaPipe inference error:", err);
+            console.error("Face detection inference error:", err);
           }
         }, 1000);
 
       } catch (err: any) {
-        console.error("Failed to initialize proctoring detector:", err);
+        console.error("Proctoring init failed:", err);
         setInitError(err.message || "Initialization failed");
       }
     };
 
     initDetector();
 
-    // Listen for manual track changes (disconnections)
-    const handleTrackEndedOrMuted = () => {
-      if (activeViolationRef.current !== "CAMERA_DISCONNECTED") {
-        activeViolationRef.current = "CAMERA_DISCONNECTED";
-        setActiveViolation("CAMERA_DISCONNECTED");
-      }
+    // Handle physical camera disconnection events
+    const handleTrackEnded = () => {
+      setViolation("CAMERA_DISCONNECTED");
       triggerViolation("CAMERA_DISCONNECTED", 2.5);
     };
 
     const handleDeviceChange = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const hasVideoDevice = devices.some(device => device.kind === "videoinput");
-        if (!hasVideoDevice) {
-          if (activeViolationRef.current !== "CAMERA_DISCONNECTED") {
-            activeViolationRef.current = "CAMERA_DISCONNECTED";
-            setActiveViolation("CAMERA_DISCONNECTED");
-          }
-          triggerViolation("CAMERA_DISCONNECTED", 1.5);
-        }
-      } catch (err) {
-        console.error("Error checking devices list:", err);
+      const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+      if (!devices.some(d => d.kind === "videoinput")) {
+        setViolation("CAMERA_DISCONNECTED");
+        triggerViolation("CAMERA_DISCONNECTED", 1.5);
       }
     };
 
     navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
-
-    stream.getVideoTracks().forEach((track) => {
-      track.addEventListener("ended", handleTrackEndedOrMuted);
-      track.addEventListener("mute", handleTrackEndedOrMuted);
+    stream.getVideoTracks().forEach(track => {
+      track.addEventListener("ended", handleTrackEnded);
+      track.addEventListener("mute", handleTrackEnded);
     });
 
     return () => {
@@ -265,10 +208,11 @@ export function useProctoring({ enabled, stream, attemptId, testId }: UseProctor
         videoElRef.current.pause();
         videoElRef.current.srcObject = null;
       }
+      try { detectorRef.current?.close(); } catch {}
       navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
-      stream.getVideoTracks().forEach((track) => {
-        track.removeEventListener("ended", handleTrackEndedOrMuted);
-        track.removeEventListener("mute", handleTrackEndedOrMuted);
+      stream.getVideoTracks().forEach(track => {
+        track.removeEventListener("ended", handleTrackEnded);
+        track.removeEventListener("mute", handleTrackEnded);
       });
       activeViolationRef.current = null;
       setActiveViolation(null);

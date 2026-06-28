@@ -13,6 +13,7 @@ import {
   CreditCard,
   FileText,
   Ticket,
+  MessageSquare,
 } from "lucide-react";
 
 interface SuperAdminSidebarProps {
@@ -91,6 +92,12 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
         { label: "Catalog", path: "/superadmin/packages", id: "super-nav-btn-packages-catalog" },
         { label: "Requests", path: "/superadmin/packages-requests", id: "super-nav-btn-packages-requests" },
       ]
+    },
+    {
+      label: "Feedbacks",
+      path: "/superadmin/feedbacks",
+      icon: MessageSquare,
+      id: "super-nav-btn-feedbacks"
     },
     {
       label: "Audit Logs",

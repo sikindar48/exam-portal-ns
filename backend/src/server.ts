@@ -41,6 +41,7 @@ import packagesHandler from "./routes/packages.js";
 import subscriptionRequestsHandler from "./routes/subscription-requests.js";
 import authRoutesHandler from "./routes/auth.js";
 import gcpStatsHandler from "./routes/gcp-stats.js";
+import attemptsFeedbackHandler from "./routes/attempts-feedback.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -137,6 +138,7 @@ if (process.env.DISABLE_RATE_LIMITER !== "true") {
 
 app.all("/api/clients", clientsHandler);
 app.all("/api/profiles", profilesHandler);
+app.all("/api/attempts/feedback", attemptsFeedbackHandler);
 app.all("/api/attempts", attemptsHandler);
 app.all("/api/attempt-answers", attemptAnswersHandler);
 app.all("/api/questions", questionsHandler);
