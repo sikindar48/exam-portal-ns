@@ -524,14 +524,14 @@ export default function Engine() {
           calculatedTimeLeft = Math.max(0, testData.timer * 60 - elapsedSecs);
 
           // If there are section-specific timers, calculate active section and lock expired sections
-          const hasSectionTimers = dbSections.some(s => s.duration_minutes !== null);
+          const hasSectionTimers = dbSections.some(s => s.duration_minutes !== null && s.duration_minutes > 0);
           if (hasSectionTimers && dbSections.length > 0) {
             let activeSecId = dbSections[0].id;
             
             // Loop through sections in position order
             for (let i = 0; i < dbSections.length; i++) {
               const sec = dbSections[i];
-              if (sec.duration_minutes !== null) {
+              if (sec.duration_minutes !== null && sec.duration_minutes > 0) {
                 const secDurationSecs = sec.duration_minutes * 60;
                 if (elapsedSecs >= secDurationSecs) {
                   // This section has fully expired! Lock it.
@@ -587,7 +587,7 @@ export default function Engine() {
   // Sync Section remaining time
   useEffect(() => {
     if (currentSection) {
-      if (currentSection.duration_minutes !== null) {
+      if (currentSection.duration_minutes !== null && currentSection.duration_minutes > 0) {
         const storageKey = `section_time_${attemptId}_${currentSection.id}`;
         const saved = localStorage.getItem(storageKey);
         if (saved) {
@@ -946,7 +946,7 @@ export default function Engine() {
                 <span>Section Marks</span>
                 <span className="text-white">{secMarks}</span>
               </li>
-              {currentSection.duration_minutes !== null && (
+              {currentSection.duration_minutes !== null && currentSection.duration_minutes > 0 && (
                 <li className="flex justify-between text-blue-400">
                   <span>Section Duration</span>
                   <span>{currentSection.duration_minutes} Minutes</span>
