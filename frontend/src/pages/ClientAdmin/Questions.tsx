@@ -25,6 +25,7 @@ interface Question {
   marks: number;
   folder_id: string | null;
   client_id: string;
+  question_type?: string;
 }
 
 interface Folder {
@@ -73,6 +74,7 @@ export default function QuestionsManagement() {
     correct_answer: "A",
     difficulty: "medium",
     marks: 1,
+    question_type: "mcq",
   });
 
   const { toast } = useToast();
@@ -245,6 +247,7 @@ export default function QuestionsManagement() {
       correct_answer: question.correct_answer,
       difficulty: question.difficulty || "medium",
       marks: question.marks || 1,
+      question_type: question.question_type || "mcq",
     });
     setIsDialogOpen(true);
   };
@@ -259,6 +262,7 @@ export default function QuestionsManagement() {
       correct_answer: "A",
       difficulty: "medium",
       marks: 1,
+      question_type: "mcq",
     });
     setEditingQuestion(null);
   };

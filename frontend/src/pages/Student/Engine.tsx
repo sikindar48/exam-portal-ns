@@ -433,6 +433,9 @@ export default function Engine() {
 
         if (s.shuffle_options === 1 || s.shuffle_options === true) {
           secQs = secQs.map(q => {
+            if (q.question_type === "true_false") {
+              return q;
+            }
             const opts = [
               { key: "A", val: q.option_a },
               { key: "B", val: q.option_b },
@@ -994,6 +997,7 @@ export default function Engine() {
         setIsSidebarOpen={setIsSidebarOpen}
         sectionTimeLeft={sectionTimeLeft}
         sectionName={currentSection?.name}
+        sections={sections}
       />
 
       <div className="flex flex-1 overflow-hidden">

@@ -95,7 +95,8 @@ export default function Builder() {
         correct_answer: tq.correct_answer || tq.questions?.correct_answer || "A",
         marks: tq.marks ?? tq.questions?.marks ?? 1,
         section_id: tq.section_id || null,
-        position: tq.position ?? 0
+        position: tq.position ?? 0,
+        question_type: tq.question_type || tq.questions?.question_type || "mcq"
       })) || [];
 
       const t = test as any;
@@ -135,6 +136,8 @@ export default function Builder() {
       correct_answer: "A",
       marks: 1,
       section_id: null,
+      position: testData.questions.length,
+      question_type: "mcq",
       temp_id: Date.now(),
     };
     setTestData((prev) => ({ ...prev, questions: [...prev.questions, newQuestion] }));
@@ -280,6 +283,7 @@ export default function Builder() {
           marks: q.marks,
           section_id: sectionId,
           position: index,
+          question_type: q.question_type || "mcq",
         };
       });
 

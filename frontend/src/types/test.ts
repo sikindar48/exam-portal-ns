@@ -10,6 +10,7 @@ export interface Question {
   section_id?: string | null;
   position?: number;
   temp_id?: number;
+  question_type?: "mcq" | "true_false" | "multi_select" | "fill_blank" | "subjective" | "coding";
 }
 
 export interface TestSection {

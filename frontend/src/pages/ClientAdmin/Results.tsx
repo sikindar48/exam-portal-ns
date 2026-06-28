@@ -207,6 +207,7 @@ export default function Results() {
             option_d: q.option_d,
             correct_answer: q.correct_answer,
             marks: q.marks,
+            question_type: q.question_type || "mcq",
             student_answer: ans?.selected_option || null,
             marked_for_review: ans?.marked_for_review || false,
           };
@@ -659,7 +660,16 @@ export default function Results() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                              {(["a", "b", "c", "d"] as const).map((opt) => {
+                              {(["a", "b", "c", "d"] as const).filter(opt => {
+                                if (q.question_type === "true_false" && (opt === "c" || opt === "d")) {
+                                  return false;
+                                }
+                                const optText = q[`option_${opt}`];
+                                if (optText === undefined || optText === null || optText.trim() === "") {
+                                  return false;
+                                }
+                                return true;
+                              }).map((opt) => {
                                 const optKey = `option_${opt}`;
                                 const optText = q[optKey];
                                 const optionLetter = opt.toUpperCase();

@@ -349,7 +349,15 @@ export default function Review() {
                               { key: "B", text: q.option_b },
                               { key: "C", text: q.option_c },
                               { key: "D", text: q.option_d },
-                            ].map((opt) => {
+                            ].filter((opt) => {
+                              if (q.question_type === "true_false" && (opt.key === "C" || opt.key === "D")) {
+                                return false;
+                              }
+                              if (opt.text === undefined || opt.text === null || opt.text.trim() === "") {
+                                return false;
+                              }
+                              return true;
+                            }).map((opt) => {
                               const isOptionSelected = selected === opt.key;
                               const isOptionCorrect = correct === opt.key;
 

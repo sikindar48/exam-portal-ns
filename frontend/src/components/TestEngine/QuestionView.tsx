@@ -8,6 +8,7 @@ interface Question {
   option_c: string;
   option_d: string;
   marks: number;
+  question_type?: string;
 }
 
 interface QuestionViewProps {
@@ -49,7 +50,16 @@ export function QuestionView({
         onValueChange={(val) => onAnswer(question.id, val)}
         className="space-y-2"
       >
-        {(["A", "B", "C", "D"] as const).map((opt) => {
+        {(["A", "B", "C", "D"] as const).filter(opt => {
+          if (question.question_type === "true_false" && (opt === "C" || opt === "D")) {
+            return false;
+          }
+          const optText = (question as any)[`option_${opt.toLowerCase()}`];
+          if (optText === undefined || optText === null || optText.trim() === "") {
+            return false;
+          }
+          return true;
+        }).map((opt) => {
           const optText = (question as any)[`option_${opt.toLowerCase()}`];
           const isSelected = answer === opt;
           return (

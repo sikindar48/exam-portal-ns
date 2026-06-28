@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Monitor, Info, HelpCircle, AlertTriangle, Wifi, ShieldCheck } from "lucide-react";
+import { Monitor, Info, HelpCircle, AlertTriangle, Wifi, ShieldCheck, Camera } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
 
 interface Question {
@@ -39,6 +39,15 @@ const RULES = [
   "Clear Response: Clears the selected option for the current question.",
 ];
 
+const MOBILE_RULES = [
+  "Timer: Remaining time is in the top-right.",
+  "Palette: Shows status of all questions.",
+  "Navigation: Tap numbers to jump.",
+  "Save & Next: Saves and moves forward.",
+  "Mark for Review: Marks question for later check.",
+  "Auto-Save: Answers are saved only on 'Save & Next'.",
+];
+
 const LEGEND = [
   { color: "bg-green-600", label: "Answered" },
   { color: "bg-purple-600", label: "Marked for Review" },
@@ -66,6 +75,7 @@ export function Instructions({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [requestingCamera, setRequestingCamera] = useState(false);
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
   const startedRef = useRef(false);
 
   // Responsive step controls for mobile screens
@@ -137,7 +147,7 @@ export function Instructions({
     acc + s.questions.reduce((qAcc, q) => qAcc + (q.marks || 1), 0), 0
   );
 
-  const rulesToShow = isMobile ? RULES.filter(r => !r.startsWith("Clear Response:")) : RULES;
+  const rulesToShow = isMobile ? MOBILE_RULES : RULES;
 
   return (
     <div className="flex min-h-screen md:h-screen flex-col bg-white dark:bg-slate-950 font-sans selection:bg-blue-100">
@@ -165,10 +175,63 @@ export function Instructions({
         <div className="flex items-center justify-between w-full md:w-auto gap-6">
           <div className="text-right">
             <h1 className="text-sm font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
-              Instructions {isMobile && `(Step ${step} of 2)`}
+              {isMobile && step === 2 ? "Summary" : "Instructions"}
             </h1>
           </div>
-          <div className="border-l border-slate-200 dark:border-slate-700 h-8 pl-6 flex items-center">
+          <div className="border-l border-slate-200 dark:border-slate-700 h-8 pl-6 flex items-center gap-4">
+            {cameraRequired && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowCameraPreview(!showCameraPreview)}
+                  className={`relative p-2 rounded-full border transition-all ${
+                    cameraStream 
+                      ? "border-green-500 text-green-600 bg-green-50/50 dark:bg-green-950/10 hover:bg-green-100 dark:hover:bg-green-950/30" 
+                      : "border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-650"
+                  }`}
+                  title="Webcam Preview"
+                >
+                  <Camera className="h-4 w-4" />
+                  {cameraStream && (
+                    <span className="absolute top-0.5 right-0.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                  )}
+                </button>
+
+                {showCameraPreview && (
+                  <div className="absolute right-0 top-10 z-50 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-xl space-y-3 rounded-none">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Webcam Feed Verification</p>
+                    <div className="relative aspect-video w-full bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden flex items-center justify-center">
+                      {cameraStream ? (
+                        <video
+                          ref={(el) => {
+                            if (el && cameraStream) el.srcObject = cameraStream;
+                          }}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="h-full w-full object-cover scale-x-[-1]"
+                        />
+                      ) : requestingCamera ? (
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider animate-pulse">Requesting webcam...</p>
+                      ) : (
+                        <div className="p-4 text-center">
+                          <AlertTriangle className="h-5 w-5 text-red-500 mx-auto mb-1.5" />
+                          <p className="text-[9px] text-red-500 font-bold uppercase tracking-tight">Webcam Required</p>
+                        </div>
+                      )}
+                    </div>
+                    {cameraError && (
+                      <p className="text-[9px] text-red-650 font-bold bg-red-50 dark:bg-red-950/20 p-2 border border-red-200 dark:border-red-800/30 leading-snug">
+                        {cameraError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <Toggle />
           </div>
         </div>
@@ -186,22 +249,85 @@ export function Instructions({
                 <div>
                   <p className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wide">Privacy & Monitoring Notice</p>
                   <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 leading-relaxed">
-                    This exam uses camera-based monitoring. No video recording is performed. No continuous image uploads are performed. Only violation snapshots may be stored for exam integrity purposes.
+                    This exam uses camera-based monitoring.
                   </p>
                 </div>
               </div>
             )}
 
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 border-b pb-2">General Instructions:</h2>
-              <div className="space-y-4">
-                {rulesToShow.map((rule, i) => (
-                  <div key={i} className="flex gap-4">
-                    <span className="text-sm font-bold text-slate-400 tabular-nums">{i + 1}.</span>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{rule}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* General Instructions column */}
+              <div className="lg:col-span-7 space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 border-b pb-2">General Instructions:</h2>
+                  <div className="space-y-4">
+                    {rulesToShow.map((rule, i) => (
+                      <div key={i} className="flex gap-4">
+                        <span className="text-sm font-bold text-slate-400 tabular-nums">{i + 1}.</span>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{rule}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {negativeMarking && (
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                    <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-tight">
+                      Negative marking active: {negativeMarks} marks deducted.
+                    </p>
+                  </div>
+                )}
               </div>
+
+              {/* Exam Summary column (Desktop only) */}
+              {!isMobile && (
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="flex items-end justify-between border-b pb-2 mb-6">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Exam Summary</h3>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Total Duration</p>
+                      <p className="text-xs font-bold text-blue-600">{duration} Min</p>
+                    </div>
+                  </div>
+                  
+                  <div className="border border-slate-200 dark:border-slate-800 overflow-hidden rounded-sm bg-white dark:bg-slate-900">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                          <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-bold">Section</th>
+                          <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center font-bold">Qns</th>
+                          <th className="px-3 py-1.5 text-center font-bold">Marks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs">
+                        {sections.map((s) => {
+                          const sMarks = s.questions.reduce((acc, q) => acc + (q.marks || 1), 0);
+                          return (
+                            <tr key={s.id} className="text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                              <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-medium">{s.name}</td>
+                              <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{s.questions.length}</td>
+                              <td className="px-3 py-1.5 text-center font-bold text-slate-800 dark:text-white">{sMarks}</td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="font-bold bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800">
+                          <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800">Total</td>
+                          <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{questionCount}</td>
+                          <td className="px-3 py-1.5 text-center">{totalMarks}</td>
+                        </tr>
+                        {negativeMarking && (
+                          <tr className="border-t border-slate-200 dark:border-slate-800">
+                            <td colSpan={3} className="px-3 py-2 text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50/20 dark:bg-red-950/10 text-center tracking-tight">
+                              Negative marking active: {negativeMarks} marks deducted.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -246,18 +372,16 @@ export function Instructions({
                         <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{questionCount}</td>
                         <td className="px-3 py-1.5 text-center">{totalMarks}</td>
                       </tr>
+                      {negativeMarking && (
+                        <tr className="border-t border-slate-200 dark:border-slate-800">
+                          <td colSpan={3} className="px-3 py-2 text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50/20 dark:bg-red-950/10 text-center tracking-tight">
+                            Negative marking active: {negativeMarks} marks deducted.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
-
-                {negativeMarking && (
-                  <div className="mt-3 flex items-center gap-2 px-1">
-                    <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                    <p className="text-[9px] font-bold text-red-600 uppercase tracking-tight">
-                      Negative marking active: {negativeMarks} marks deducted.
-                    </p>
-                  </div>
-                )}
               </div>
             </section>
           </div>
@@ -287,58 +411,7 @@ export function Instructions({
               </div>
             </div>
 
-            {/* Exam Summary (Desktop only) */}
-            {!isMobile && (
-              <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
-                <div className="flex items-end justify-between mb-4">
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Exam Summary</h3>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Total Duration</p>
-                    <p className="text-xs font-bold text-blue-600">{duration} Min</p>
-                  </div>
-                </div>
-                
-                <div className="border border-slate-200 dark:border-slate-800 overflow-hidden rounded-sm">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                        <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-bold">Section</th>
-                        <th className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center font-bold">Qns</th>
-                        <th className="px-3 py-1.5 text-center font-bold">Marks</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs">
-                      {sections.map((s) => {
-                        const sMarks = s.questions.reduce((acc, q) => acc + (q.marks || 1), 0);
-                        return (
-                          <tr key={s.id} className="text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                            <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 font-medium">{s.name}</td>
-                            <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{s.questions.length}</td>
-                            <td className="px-3 py-1.5 text-center font-bold text-slate-800 dark:text-white">{sMarks}</td>
-                          </tr>
-                        );
-                      })}
-                      <tr className="font-bold bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border-t border-slate-200 dark:border-slate-800">
-                        <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800">Total</td>
-                        <td className="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800 text-center">{questionCount}</td>
-                        <td className="px-3 py-1.5 text-center">{totalMarks}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
 
-                {negativeMarking && (
-                  <div className="mt-3 flex items-center gap-2 px-1">
-                    <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                    <p className="text-[9px] font-bold text-red-600 uppercase tracking-tight">
-                      Negative marking active: {negativeMarks} marks deducted.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* System Readiness Checks */}
             <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
@@ -370,37 +443,7 @@ export function Instructions({
               </div>
             </div>
 
-            {/* Webcam Feed Verification - Hidden on Mobile */}
-            {cameraRequired && (
-              <div className="hidden md:block pt-6 border-t border-slate-200 dark:border-slate-800">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Webcam Feed Verification</p>
-                <div className="relative aspect-video w-full bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden flex items-center justify-center">
-                  {cameraStream ? (
-                    <video
-                      ref={(el) => {
-                        if (el && cameraStream) el.srcObject = cameraStream;
-                      }}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="h-full w-full object-cover scale-x-[-1]"
-                    />
-                  ) : requestingCamera ? (
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider animate-pulse">Requesting webcam...</p>
-                  ) : (
-                    <div className="p-4 text-center">
-                      <AlertTriangle className="h-6 w-6 text-red-500 mx-auto mb-2" />
-                      <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Webcam Required</p>
-                    </div>
-                  )}
-                </div>
-                {cameraError && (
-                  <p className="text-[10px] text-red-600 font-semibold mt-2 bg-red-50 dark:bg-red-950/20 p-2 border border-red-200 dark:border-red-800/30">
-                    {cameraError}
-                  </p>
-                )}
-              </div>
-            )}
+
 
           </div>
         </div>

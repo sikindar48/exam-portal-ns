@@ -17,6 +17,7 @@ interface Question {
   marks: number;
   difficulty: string;
   folder_id: string | null;
+  question_type?: string;
 }
 
 interface Folder {

@@ -34,6 +34,36 @@ export function QuestionDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Question Type</Label>
+              <Select
+                value={formData.question_type || "mcq"}
+                onValueChange={(val) => {
+                  const update: any = { question_type: val };
+                  if (val === "true_false") {
+                    update.option_a = "True";
+                    update.option_b = "False";
+                    update.option_c = "";
+                    update.option_d = "";
+                    if (formData.correct_answer === "C" || formData.correct_answer === "D") {
+                      update.correct_answer = "A";
+                    }
+                  }
+                  setFormData({ ...formData, ...update });
+                }}
+              >
+                <SelectTrigger className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-black">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-none">
+                  <SelectItem value="mcq" className="font-bold">MCQ</SelectItem>
+                  <SelectItem value="true_false" className="font-bold">TRUE / FALSE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="question_text" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Question Content</Label>
             <Textarea
@@ -47,18 +77,24 @@ export function QuestionDialog({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(["a", "b", "c", "d"] as const).map((opt) => (
-              <div key={opt} className="space-y-2 group">
-                <Label htmlFor={`option_${opt}`} className="text-[10px] font-black uppercase tracking-widest text-slate-400">Option {opt.toUpperCase()}</Label>
-                <Input
-                  id={`option_${opt}`}
-                  value={formData[`option_${opt}`]}
-                  onChange={(e) => setFormData({ ...formData, [`option_${opt}`]: e.target.value })}
-                  className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold group-hover:border-blue-400 transition-all"
-                  required
-                />
-              </div>
-            ))}
+            {(["a", "b", "c", "d"] as const).map((opt) => {
+              if (formData.question_type === "true_false" && (opt === "c" || opt === "d")) {
+                return null;
+              }
+              return (
+                <div key={opt} className="space-y-2 group">
+                  <Label htmlFor={`option_${opt}`} className="text-[10px] font-black uppercase tracking-widest text-slate-400">Option {opt.toUpperCase()}</Label>
+                  <Input
+                    id={`option_${opt}`}
+                    value={formData[`option_${opt}`]}
+                    onChange={(e) => setFormData({ ...formData, [`option_${opt}`]: e.target.value })}
+                    disabled={formData.question_type === "true_false"}
+                    className="h-11 rounded-none border-slate-200 dark:border-slate-800 font-bold group-hover:border-blue-400 transition-all"
+                    required
+                  />
+                </div>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -72,9 +108,14 @@ export function QuestionDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-none">
-                  {["A", "B", "C", "D"].map((opt) => (
-                    <SelectItem key={opt} value={opt} className="font-black">{opt}</SelectItem>
-                  ))}
+                  <SelectItem value="A" className="font-black">A {formData.question_type === "true_false" && "(True)"}</SelectItem>
+                  <SelectItem value="B" className="font-black">B {formData.question_type === "true_false" && "(False)"}</SelectItem>
+                  {formData.question_type !== "true_false" && (
+                    <>
+                      <SelectItem value="C" className="font-black">C</SelectItem>
+                      <SelectItem value="D" className="font-black">D</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
