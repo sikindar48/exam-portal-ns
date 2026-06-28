@@ -4,7 +4,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$SHORT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$_SHORT_SHA'
       - '-t'
       - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:latest'
       - '-f'
@@ -15,7 +15,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$SHORT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$_SHORT_SHA'
 
   # Step 3: Deploy using gcloud
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -23,7 +23,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'exam-portal-api'
-      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$SHORT_SHA'
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$_SHORT_SHA'
       - '--platform=managed'
       - '--region=$_REGION'
       - '--allow-unauthenticated'
@@ -33,11 +33,12 @@ steps:
       - 'TURSO_AUTH_TOKEN'
 
 images:
-  - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$SHORT_SHA'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$_SHORT_SHA'
   - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:latest'
 
 substitutions:
   _REGION: 'asia-south1'
+  _SHORT_SHA: 'latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY
