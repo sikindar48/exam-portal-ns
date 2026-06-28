@@ -441,7 +441,7 @@ export default function SuperAdminSubscriptions() {
                     setStatus("active");
                   }
                 }}
-                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
+                className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
               >
                 <option value="free">Free Plan (₹0 - 3 Exams, 20 Students, 50 Qs)</option>
                 <option value="starter">Starter Plan (₹1,999/mo - 25 Exams, 100 Students, 100 Qs)</option>
@@ -453,12 +453,7 @@ export default function SuperAdminSubscriptions() {
             {/* Dynamic Plan Preview Card */}
             {planId && (
               <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Plan Quotas</span>
-                  <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                    {planId === "free" ? "₹0 / FOREVER" : planId === "starter" ? "₹1,999 / MO" : planId === "growth" ? "₹3,999 / MO" : "CUSTOM PRICING"}
-                  </span>
-                </div>
+                
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
                     <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Exams/Mo</span>
@@ -524,7 +519,7 @@ export default function SuperAdminSubscriptions() {
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>AI Camera Proctoring</span>
+                      <span>Camera Proctoring</span>
                       {planId === "growth" || planId === "enterprise" ? (
                         <span className="text-purple-600 dark:text-purple-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
                       ) : (
@@ -542,7 +537,7 @@ export default function SuperAdminSubscriptions() {
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold px-3 outline-none rounded-none focus:border-red-500"
+                className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold px-3 outline-none rounded-none focus:border-red-500"
                 required
               />
             </div>
@@ -552,7 +547,7 @@ export default function SuperAdminSubscriptions() {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
+                className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
               >
                 <option value="active">Active</option>
                 {planId !== "free" && <option value="trial">Trial</option>}
