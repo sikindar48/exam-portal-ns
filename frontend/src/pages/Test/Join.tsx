@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,65 +9,27 @@ import { testsApi } from "@/services/api/client";
 import { User, ArrowLeft, Key, ShieldCheck, Timer, CheckCircle2, ChevronRight, LogIn, RotateCcw } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
 
-interface TestDetail {
-  id: string;
-  test_name: string;
-  timer: number;
-  attempts_allowed: number | null;
-  negative_marking: boolean;
-  negative_marks: number;
-  allow_guests: boolean;
-  share_code: string;
-  camera_required?: boolean;
-  active: boolean;
-  clients?: {
-    name: string;
-    logo_url: string | null;
-  } | null;
-}
-
 export default function Join() {
   const { code } = useParams();
   const { user, role, signInAnonymously } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [test, setTest] = useState<TestDetail | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [test, setTest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [manualCode, setManualCode] = useState(code || "");
   const [studentName, setStudentName] = useState("");
   const [showNameForm, setShowNameForm] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    if (code) {
-      fetchTest(code, isMounted);
-    } else {
-      setLoading(false);
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, [code]);
-
-  const fetchTest = async (shareCode: string, isMounted = true) => {
-    if (isMounted) setLoading(true);
+  const fetchTest = useCallback(async (shareCode: string) => {
+    setLoading(true);
     try {
-      const { data, error } = await testsApi.getByShareCode(shareCode.toUpperCase());
-      if (!isMounted) return;
-
-      if (error) {
-        toast({
-          title: "Connection Error",
-          description: error.message || "Failed to look up test code due to a network issue.",
-          variant: "destructive",
-        });
-        setTest(null);
-        return;
-      }
+      // First, find the test by code regardless of active status
+      const { data } = await testsApi.getByShareCode(shareCode.toUpperCase());
 
       if (!data) {
         toast({
-          title: "Invalid Code",
+          title: "Not Found",
           description: `Test with code "${shareCode}" was not found.`,
           variant: "destructive",
         });
@@ -75,7 +37,7 @@ export default function Join() {
       } else if (data.active === false) {
         toast({
           title: "Test Unavailable",
-          description: "This test is currently inactive or not yet published by the administrator.",
+          description: "This test is currently in Draft mode or not yet published.",
           variant: "warning",
         });
         setTest(null);
@@ -84,50 +46,52 @@ export default function Join() {
       }
     } catch (err) {
       console.error("Error fetching test:", err);
-      if (isMounted) {
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive",
-        });
-        setTest(null);
-      }
+      toast({
+        title: "Error",
+        description: "Failed to look up test code.",
+        variant: "destructive",
+      });
+      setTest(null);
     } finally {
-      if (isMounted) setLoading(false);
+      setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (code) {
+      fetchTest(code);
+    } else {
+      setLoading(false);
+    }
+  }, [code, fetchTest]);
 
   const handleJoin = () => {
-    if (loading || !test) return; // Guard against loading state and duplicate clicks
-    
     const isAnonymous = user?.isAnonymous;
-    if (user && !isAnonymous) {
-      if (role === "student") {
-        navigate(`/student/test/${test.id}`);
-      } else {
-        toast({ 
-          title: "Access Restricted", 
-          description: "Only student accounts can take tests. Please sign out of your admin account first.", 
-          variant: "warning" 
-        });
-      }
+    if (user && role === "student" && !isAnonymous) {
+      // Logged in student — always allowed
+      navigate(`/student/test/${test.id}`);
+    } else if (user && role !== "student" && !isAnonymous) {
+      toast({ 
+        title: "Access Restricted", 
+        description: "Only students can take tests. Please sign out of your admin account to continue.", 
+        variant: "warning" 
+      });
     } else {
+      // Guest / Anonymous — check if test allows guests
       if (!test.allow_guests) {
         toast({
           title: "Sign in Required",
-          description: "This test does not allow guest access. Please sign in with an authorized student account.",
+          description: "This test does not allow guest access. Please sign in to continue.",
           variant: "destructive",
         });
-      } else {
-        setShowNameForm(true);
+        return;
       }
+      setShowNameForm(true);
     }
   };
 
   const handleGuestJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading || !test) return; // Guard against double submission
-    
     if (!studentName.trim()) {
       toast({
         title: "Name Required",
@@ -138,8 +102,7 @@ export default function Join() {
     }
 
     setLoading(true);
-    // Authenticate anonymously so the guest has a valid Firebase token for secure API calls.
-    // The backend uses this token to authorize downstream requests.
+    // Authenticate anonymously so the guest has a valid Firebase token for API calls
     const { error: authError } = await signInAnonymously();
     if (authError) {
       toast({
@@ -161,7 +124,6 @@ export default function Join() {
 
   const handleCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Guard against double submit
     if (manualCode.trim()) {
       fetchTest(manualCode.trim());
     }
@@ -170,8 +132,8 @@ export default function Join() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 overflow-hidden selection:bg-blue-100">
       {/* Decorative background glows */}
-      <div aria-hidden="true" className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-400/10 dark:bg-blue-900/10 blur-[120px] pointer-events-none" />
-      <div aria-hidden="true" className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-400/10 dark:bg-indigo-900/10 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-400/10 dark:bg-blue-900/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-400/10 dark:bg-indigo-900/10 blur-[120px] pointer-events-none" />
       
       {/* Theme toggle in top corner */}
       <div className="absolute top-6 right-6">
@@ -185,12 +147,12 @@ export default function Join() {
           <div className="flex flex-col items-center text-center space-y-4">
             <div className="flex items-center justify-center">
               <div className="relative group">
-                <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-none blur-sm opacity-20 group-hover:opacity-40 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-none blur-sm opacity-20 group-hover:opacity-40 transition-opacity" />
                 <div className="relative flex items-center justify-center w-16 h-16 bg-slate-900 dark:bg-slate-950 border border-slate-800 overflow-hidden shadow-inner">
                   {test?.clients?.logo_url ? (
-                    <img src={test.clients.logo_url} alt={test.clients.name || "Organization Logo"} className="h-full w-full object-cover" />
+                    <img src={test.clients.logo_url} alt={test.clients.name} className="h-full w-full object-cover" />
                   ) : (
-                    <ShieldCheck aria-hidden="true" className="h-8 w-8 text-blue-500 animate-pulse" />
+                    <ShieldCheck className="h-8 w-8 text-blue-500 animate-pulse" />
                   )}
                 </div>
               </div>
@@ -203,7 +165,7 @@ export default function Join() {
               <h1 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
                 {test ? test.test_name : "Secure Exam Entry"}
               </h1>
-              {!test && !loading && (
+              {!test && (
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Enter your invite code below to access your examination.
                 </p>
@@ -213,18 +175,7 @@ export default function Join() {
 
           {/* Form Content */}
           <div className="space-y-6">
-            {loading ? (
-              /* Loading Spinner/Skeleton View */
-              <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                <div className="relative h-10 w-10">
-                  <div aria-hidden="true" className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
-                  <div aria-hidden="true" className="absolute inset-0 rounded-full border-4 border-t-blue-600 animate-spin" />
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest animate-pulse">
-                  Retrieving Exam Details...
-                </p>
-              </div>
-            ) : !test ? (
+            {!test ? (
               <div className="space-y-4">
                 <form onSubmit={handleCodeSubmit} className="space-y-4">
                   <div className="space-y-2">
@@ -232,14 +183,14 @@ export default function Join() {
                       Invite Code
                     </Label>
                     <div className="relative">
-                      <Key aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-450" />
+                      <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-450" />
                       <Input
                         id="invite-code"
                         value={manualCode}
                         onChange={(e) => setManualCode(e.target.value.toUpperCase())}
                         placeholder="ENTER INVITE CODE"
                         className="pl-10 text-center font-mono text-lg font-bold tracking-[0.3em] uppercase bg-slate-50/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 h-12"
-                        maxLength={20}
+                        maxLength={8}
                         required
                         autoComplete="off"
                       />
@@ -251,7 +202,7 @@ export default function Join() {
                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold h-11 text-xs uppercase tracking-widest shadow-lg shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-300"
                     disabled={loading}
                   >
-                    Verify & Access Test
+                    {loading ? "Searching Repository..." : "Verify & Access Test"}
                   </Button>
                 </form>
 
@@ -260,7 +211,7 @@ export default function Join() {
                     onClick={() => navigate("/")}
                     className="inline-flex items-center text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors uppercase tracking-wider gap-1.5"
                   >
-                    <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+                    <ArrowLeft className="h-3.5 w-3.5" />
                     Exit to Landing
                   </button>
                 </div>
@@ -272,7 +223,7 @@ export default function Join() {
                     Candidate Full Name
                   </Label>
                   <div className="relative">
-                    <User aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       id="student-name"
                       value={studentName}
@@ -310,26 +261,26 @@ export default function Join() {
                 {/* Verified Test details grid */}
                 <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-900 rounded-sm space-y-4">
                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Verified Examination</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-slate-400">
-                        <Timer aria-hidden="true" className="h-3.5 w-3.5" />
+                        <Timer className="h-3.5 w-3.5" />
                         <span className="text-[9px] font-black uppercase tracking-wider">Duration</span>
                       </div>
-                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">{test.timer} Min</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">{test?.timer} Min</p>
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-slate-400">
-                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-                        <span className="text-[9px] font-black uppercase tracking-wider">Attempts</span>
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span className="text-[9px] font-black uppercase tracking-wider">Attempt Limit</span>
                       </div>
-                      <p className="text-sm font-black text-slate-800 dark:text-slate-200 font-mono">
-                        {test.attempts_allowed === null ? "Unlimited" : `${test.attempts_allowed} Max`}
+                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">
+                        {test?.attempts_allowed === null ? "Unlimited" : test?.attempts_allowed === 1 ? "1 Attempt" : `${test?.attempts_allowed} Attempts`}
                       </p>
                     </div>
                   </div>
@@ -343,7 +294,7 @@ export default function Join() {
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold h-11 text-xs uppercase tracking-widest shadow-lg shadow-green-500/10 hover:shadow-green-500/20 transition-all duration-300"
                     >
                       Start Examination
-                      <ChevronRight aria-hidden="true" className="ml-1 h-4 w-4" />
+                      <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   ) : user && role !== "student" && !user.isAnonymous ? (
                     <div className="text-center space-y-3">
@@ -360,12 +311,12 @@ export default function Join() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {test.allow_guests ? (
+                      {test?.allow_guests ? (
                         <Button
                           onClick={handleJoin}
                           className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold h-11 text-xs uppercase tracking-widest shadow-lg shadow-green-500/10 hover:shadow-green-500/20 transition-all duration-300"
                         >
-                          <User aria-hidden="true" className="mr-2 h-4 w-4 shrink-0" />
+                          <User className="mr-2 h-4 w-4 shrink-0" />
                           Take Exam as Guest
                         </Button>
                       ) : (
@@ -383,10 +334,10 @@ export default function Join() {
                         </p>
                         <Button
                           variant="outline"
-                          onClick={() => navigate(`/auth?redirect=/join/${test.share_code}`)}
+                          onClick={() => navigate(`/auth?redirect=/join/${test?.share_code}`)}
                           className="w-full border-slate-200 dark:border-slate-800 text-xs font-bold uppercase tracking-wider h-11 hover:bg-slate-50 dark:hover:bg-slate-950"
                         >
-                          <LogIn aria-hidden="true" className="mr-2 h-4 w-4 shrink-0" />
+                          <LogIn className="mr-2 h-4 w-4 shrink-0" />
                           Sign in to Account
                         </Button>
                       </div>
