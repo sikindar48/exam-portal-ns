@@ -1,7 +1,7 @@
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Building, Pencil, Trash2, UserCog, ShieldCheck, Database, HardDrive, FileText, CheckCircle2 } from "lucide-react";
+import { Building, Pencil, Trash2, UserCog, ShieldCheck, Database, HardDrive, FileText, FileUp, FileDown, BarChart2, Palette, Camera, Video } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Client {
@@ -45,7 +45,7 @@ export function ClientTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-slate-200 dark:border-slate-800">
               <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Organization Name</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Operational Status</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
               <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Subscription Limits</TableHead>
               <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Active Licenses</TableHead>
               <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Usage Stats</TableHead>
@@ -135,15 +135,31 @@ export function ClientTable({
                   </TableCell>
                   <TableCell className="py-4">
                     {client.features && client.features.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {client.features.map((feat) => (
-                          <span key={feat} className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 uppercase tracking-widest">
-                            {feat.replace("_", " ")}
-                          </span>
-                        ))}
+                      <div className="flex items-center gap-1.5">
+                        {client.features.map((feat) => {
+                          const iconMap: Record<string, { icon: React.ReactNode; label: string; cls: string }> = {
+                            csv_import:          { icon: <FileUp className="h-3.5 w-3.5" />,      label: "CSV Import",          cls: "bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400" },
+                            xlsx_export:         { icon: <FileDown className="h-3.5 w-3.5" />,    label: "XLSX Export",         cls: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400" },
+                            analytics:           { icon: <BarChart2 className="h-3.5 w-3.5" />,   label: "Analytics",           cls: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400" },
+                            custom_branding:     { icon: <Palette className="h-3.5 w-3.5" />,     label: "Custom Branding",     cls: "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400" },
+                            advanced_proctoring: { icon: <ShieldCheck className="h-3.5 w-3.5" />, label: "Advanced Proctoring", cls: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400" },
+                            camera_proctoring:   { icon: <Camera className="h-3.5 w-3.5" />,      label: "Camera Proctoring",   cls: "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300" },
+                          };
+                          const entry = iconMap[feat];
+                          if (!entry) return null;
+                          return (
+                            <span
+                              key={feat}
+                              title={entry.label}
+                              className={`inline-flex items-center justify-center h-6 w-6 border transition-opacity cursor-default hover:opacity-80 ${entry.cls}`}
+                            >
+                              {entry.icon}
+                            </span>
+                          );
+                        })}
                       </div>
                     ) : (
-                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase">NO LICENSES</span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase">—</span>
                     )}
                   </TableCell>
                   <TableCell className="py-4">

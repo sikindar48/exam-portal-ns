@@ -100,7 +100,7 @@ export default async function handler(req: Request, res: Response) {
       }),
       db.execute("SELECT COUNT(*) as count FROM audit_logs"),
       db.execute(`
-        SELECT cs.client_id, c.name, c.active_status, c.created_at, cs.status as sub_status, cs.expiry_date, sp.name as plan_name, sp.id as plan_id
+        SELECT c.id as client_id, c.name, c.active_status, c.created_at, cs.status as sub_status, cs.expiry_date, sp.name as plan_name, sp.id as plan_id
         FROM clients c
         LEFT JOIN client_subscriptions cs ON cs.client_id = c.id
         LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id

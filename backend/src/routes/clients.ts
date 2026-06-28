@@ -202,6 +202,15 @@ export default async function handler(req: Request, res: Response) {
       ],
     });
 
+    // Seed default client subscription
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const expiryStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await db.execute({
+      sql: `INSERT INTO client_subscriptions (client_id, plan_id, start_date, expiry_date, status, renewal_status)
+            VALUES (?, 'free', ?, ?, 'active', 'manual')`,
+      args: [id, todayStr, expiryStr],
+    });
+
     // Seed features
     if (features && Array.isArray(features)) {
       for (const feat of features) {

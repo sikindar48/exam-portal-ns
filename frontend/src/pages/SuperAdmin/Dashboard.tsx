@@ -4,7 +4,7 @@ import {
   Building2, Users, FileQuestion, TrendingUp,
   ArrowRight, CheckCircle2, XCircle, RefreshCw,
   BookOpen, UserCheck, AlertCircle, AlertTriangle,
-  Activity, Cpu, Database, Zap, HardDrive,
+  Activity, Database, Zap, X,
 } from "lucide-react";
 import { statsApi } from "@/services/api/client";
 import { Footer } from "@/components/Brand/Footer";
@@ -65,14 +65,22 @@ interface PlatformStats {
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [gcpStats, setGcpStats] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dismissedExpiry, setDismissedExpiry] = useState(() => {
+    return sessionStorage.getItem("dismissed_expiry_alert") === "true";
+  });
 
   useEffect(() => { loadStats(); }, []);
 
   const loadStats = async () => {
     setLoading(true);
-    const { data } = await statsApi.platform();
-    if (data) setStats(data as PlatformStats);
+    const [resPlatform, resGcp] = await Promise.all([
+      statsApi.platform(),
+      statsApi.gcp()
+    ]);
+    if (resPlatform.data) setStats(resPlatform.data as PlatformStats);
+    if (resGcp.data) setGcpStats(resGcp.data);
     setLoading(false);
   };
 
@@ -83,6 +91,34 @@ export default function SuperAdminDashboard() {
     { name: "Expired",   value: ssd.expired,   color: "#f59e0b" },
     { name: "Suspended", value: ssd.suspended, color: "#ef4444" },
   ].filter(d => d.value > 0) : [];
+
+  const svc = gcpStats?.cloudRun?.find((s: any) => s.region === "asia-south1") || {
+    requestRate: 0,
+    cpuUtilization: 0,
+    memoryUtilization: 0,
+    instanceCount: 0,
+    latencyMs: 0,
+    netInKbps: 0,
+    netOutKbps: 0
+  };
+
+  const latency = svc.latencyMs ?? 0;
+  const cpu = svc.cpuUtilization ?? 0;
+  const mem = svc.memoryUtilization ?? 0;
+
+  let healthLabel = "Healthy";
+  let healthColor = "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800";
+  let healthDot = "bg-emerald-500";
+
+  if (latency > 500 || cpu > 90 || mem > 90) {
+    healthLabel = "Critical";
+    healthColor = "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 animate-pulse";
+    healthDot = "bg-red-500";
+  } else if (latency > 200 || cpu > 80 || mem > 80) {
+    healthLabel = "Warning";
+    healthColor = "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800";
+    healthDot = "bg-amber-500";
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
@@ -108,18 +144,31 @@ export default function SuperAdminDashboard() {
         <main className="flex-1 container max-w-7xl mx-auto p-8 space-y-8">
 
           {/* ── Alert Banners ───────────────────────────────────────────── */}
-          {!loading && ((stats?.expiringSoonCount ?? 0) > 0 || (stats?.suspendedOrgs ?? 0) > 0) && (
+          {!loading && (((stats?.expiringSoonCount ?? 0) > 0 && !dismissedExpiry) || (stats?.suspendedOrgs ?? 0) > 0) && (
             <div className="space-y-2">
-              {(stats?.expiringSoonCount ?? 0) > 0 && (
+              {(stats?.expiringSoonCount ?? 0) > 0 && !dismissedExpiry && (
                 <div
                   onClick={() => navigate("/superadmin/subscriptions")}
-                  className="flex items-center gap-3 px-5 py-3 border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/10 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/20 transition-all"
+                  className="flex items-center justify-between px-5 py-3 border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/10 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/20 transition-all group"
                 >
-                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                    <span className="font-black">{stats?.expiringSoonCount}</span> subscription{stats?.expiringSoonCount !== 1 ? "s" : ""} expiring within 7 days —{" "}
-                    <span className="underline underline-offset-2">Review subscriptions</span>
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                      <span className="font-black">{stats?.expiringSoonCount}</span> subscription{stats?.expiringSoonCount !== 1 ? "s" : ""} expiring within 7 days —{" "}
+                      <span className="underline underline-offset-2">Review subscriptions</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDismissedExpiry(true);
+                      sessionStorage.setItem("dismissed_expiry_alert", "true");
+                    }}
+                    className="p-1 rounded-none hover:bg-amber-100 dark:hover:bg-amber-950 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                    title="Dismiss alert"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               )}
               {(stats?.suspendedOrgs ?? 0) > 0 && (
@@ -159,162 +208,22 @@ export default function SuperAdminDashboard() {
             ))}
           </div>
 
-          {/* ── Row 1.5: Load Monitoring & Server Pressure ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Card 1: Active Connection Pressure */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.18em] flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5 text-blue-600 animate-pulse" />
-                  Active Connection Pressure
-                </h3>
-                {loading ? (
-                  <span className="h-2 w-2 rounded-full bg-slate-300 animate-pulse" />
-                ) : (
-                  <span className={`text-[8px] font-black px-1.5 py-0.5 border tracking-widest uppercase ${
-                    (stats?.loadMetrics?.capacityUsage ?? 0) > 80
-                      ? "bg-red-50 text-red-600 border-red-100 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50"
-                      : (stats?.loadMetrics?.capacityUsage ?? 0) > 50
-                      ? "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50"
-                      : "bg-green-50 text-green-600 border-green-100 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/50"
-                  }`}>
-                    {(stats?.loadMetrics?.capacityUsage ?? 0) > 80 ? "HIGH PRESSURE" : (stats?.loadMetrics?.capacityUsage ?? 0) > 50 ? "MODERATE LOAD" : "OPTIMAL"}
-                  </span>
-                )}
-              </div>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Concurrent Sessions</p>
-                    {loading ? (
-                      <div className="h-6 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                    ) : (
-                      <p className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                        {stats?.loadMetrics?.concurrentUsers ?? 0} <span className="text-[10px] text-slate-400 font-bold">Active</span>
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">API Request Velocity</p>
-                    {loading ? (
-                      <div className="h-6 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                    ) : (
-                      <p className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                        {stats?.loadMetrics?.rps ?? 0} <span className="text-[10px] text-slate-400 font-bold">req/sec</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    <span>Connection Capacity Utilization</span>
-                    <span className="font-black text-slate-700 dark:text-slate-300">{stats?.loadMetrics?.capacityUsage ?? 0}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
-                    <div
-                      className={`absolute inset-y-0 left-0 transition-all duration-500 ${
-                        (stats?.loadMetrics?.capacityUsage ?? 0) > 80
-                          ? "bg-red-600"
-                          : (stats?.loadMetrics?.capacityUsage ?? 0) > 50
-                          ? "bg-amber-500"
-                          : "bg-blue-600"
-                      }`}
-                      style={{ width: `${stats?.loadMetrics?.capacityUsage ?? 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Database & API Performance Metrics */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.18em] flex items-center gap-1.5">
-                  <Cpu className="h-3.5 w-3.5 text-purple-600" />
-                  Database & API Pressure
-                </h3>
-                {loading ? (
-                  <span className="h-2 w-2 rounded-full bg-slate-300 animate-pulse" />
-                ) : (
-                  <span className="text-[8px] font-black px-1.5 py-0.5 border border-green-100 bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/50 tracking-widest uppercase">
-                    HEALTHY
-                  </span>
-                )}
-              </div>
-              <div className="p-5">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <div className="flex items-center gap-3">
-                    <Zap className="h-4 w-4 text-amber-500 shrink-0" />
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg API Latency</p>
-                      {loading ? (
-                        <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse mt-0.5" />
-                      ) : (
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">{stats?.loadMetrics?.apiLatency ?? 0} ms</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Cpu className="h-4 w-4 text-purple-500 shrink-0" />
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Server CPU Load</p>
-                      {loading ? (
-                        <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse mt-0.5" />
-                      ) : (
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">{stats?.loadMetrics?.cpuLoad ?? 0}%</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Database className="h-4 w-4 text-blue-500 shrink-0" />
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">DB Connection Pool</p>
-                      {loading ? (
-                        <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse mt-0.5" />
-                      ) : (
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">{stats?.loadMetrics?.dbPoolActive ?? 0}/20 Active</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <HardDrive className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <div>
-                      <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Memory Footprint</p>
-                      {loading ? (
-                        <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse mt-0.5" />
-                      ) : (
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">{stats?.loadMetrics?.memoryUsed ?? 0} MB</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* ── Row 2: Today + Subscription Distribution ───────────────── */}
+          {/* ── Row 2: Top Organizations & Subscription Health ─────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
             {/* Top Orgs by Students (left col-span-2) */}
             <div className="lg:col-span-2 flex flex-col h-full">
-              {/* Top Orgs by Students */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm overflow-hidden flex-1 flex flex-col justify-between">
                 <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800">
                   <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.18em]">Top Organizations by Students</h3>
                 </div>
-                <div className="p-5 space-y-3 flex-1 flex flex-col justify-center">
+                <div className="p-5 space-y-3">
                   {loading
                     ? Array.from({ length: 5 }).map((_, i) => (
                         <div key={i} className="flex items-center gap-3">
-                          <div className="h-3 w-24 bg-slate-100 dark:bg-slate-800 animate-pulse rounded" />
-                          <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                          <div className="h-3 w-8 bg-slate-100 dark:bg-slate-800 animate-pulse rounded" />
+                          <div className="h-3 w-24 bg-slate-100 dark:bg-slate-850 animate-pulse rounded" />
+                          <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-850 animate-pulse" />
+                          <div className="h-3 w-8 bg-slate-100 dark:bg-slate-850 animate-pulse rounded" />
                         </div>
                       ))
                     : !(stats?.topOrgsByStudents?.length)
@@ -327,11 +236,11 @@ export default function SuperAdminDashboard() {
                             <div key={org.name} className="flex items-center gap-3">
                               <span className="text-[9px] font-black text-slate-400 w-4 text-right shrink-0">{i + 1}</span>
                               <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 w-28 truncate shrink-0" title={org.name}>{org.name}</p>
-                              <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                              <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-850 relative overflow-hidden">
                                 <div
                                   className="absolute inset-y-0 left-0"
                                   style={{ width: `${pct}%`, backgroundColor: `${color}30`, borderRight: `2px solid ${color}` }}
-                                  />
+                                />
                               </div>
                               <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 w-8 text-right shrink-0">{org.students}</span>
                             </div>
@@ -342,139 +251,277 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
 
-            {/* Right Column: Subscription Distribution + Quick Actions */}
+            {/* Right Column: Turso Database */}
             <div className="flex flex-col h-full">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm p-5 flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.18em] mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Subscription Health</h3>
-                  
-                  <div className="flex items-center gap-4 min-h-[96px]">
-                    {/* Donut */}
-                    <div className="w-1/2 h-24">
-                      {loading || !subPieData.length ? (
-                        <div className="h-full flex items-center justify-center">
-                          <div className="h-6 w-6 border-2 border-slate-200 dark:border-slate-800 border-t-blue-500 rounded-full animate-spin" />
-                        </div>
-                      ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={subPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={20} outerRadius={36} paddingAngle={3}>
-                              {subPieData.map((d, i) => <Cell key={i} fill={d.color} stroke="transparent" />)}
-                            </Pie>
-                            <Tooltip
-                              contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 0, color: "#fff", fontSize: 10 }}
-                              formatter={(v: any, n: any) => [`${v} orgs`, n]}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
+              <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 flex-1 flex flex-col justify-between">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Database Server</span>
+                    <h4 className="text-xs font-black uppercase tracking-tight text-slate-700 dark:text-slate-300 mt-0.5">Turso DB</h4>
+                  </div>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 uppercase tracking-widest flex items-center gap-1">
+                    <Database className="h-3 w-3" />
+                    {gcpStats?.turso?.type || "turso"}
+                  </span>
+                </div>
 
-                    {/* Status list */}
-                    <div className="w-1/2 space-y-1.5 border-l border-slate-100 dark:border-slate-800 pl-4">
-                      {ssd ? [
-                        { key: "active",    label: "Active",    val: ssd.active,    color: "#10b981" },
-                        { key: "trial",     label: "Trial",     val: ssd.trial,     color: "#3b82f6" },
-                        { key: "expired",   label: "Expired",   val: ssd.expired,   color: "#f59e0b" },
-                        { key: "suspended", label: "Suspended", val: ssd.suspended, color: "#ef4444" },
-                      ].map(({ key, label, val, color }) => (
-                        <div key={key} className="flex items-center justify-between text-[10px] font-bold">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                            <span className="text-slate-500 dark:text-slate-400">{label}</span>
+                {loading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-4 bg-slate-100 dark:bg-slate-850 rounded w-3/4" />
+                    <div className="h-4 bg-slate-100 dark:bg-slate-850 rounded w-1/2" />
+                  </div>
+                ) : (
+                  (() => {
+                    const db = gcpStats?.turso || {};
+                    const sizeBytes = db.sizeBytes ?? 0;
+                    const tablesCount = db.tablesCount ?? 0;
+                    const url = db.url ?? "local.db";
+                    
+                    const storageLimit = db.storageLimit ?? 5368709120; // 5 GB
+                    const rowsRead = db.rowsRead ?? 0;
+                    const rowsReadLimit = db.rowsReadLimit ?? 500000000;
+                    const rowsWritten = db.rowsWritten ?? 0;
+                    const rowsWrittenLimit = db.rowsWrittenLimit ?? 10000000;
+
+                    const sizeMb = (sizeBytes / (1024 * 1024)).toFixed(2);
+                    
+                    const storagePct = storageLimit > 0 ? (sizeBytes / storageLimit) * 100 : 0;
+                    const readPct = rowsReadLimit > 0 ? (rowsRead / rowsReadLimit) * 100 : 0;
+                    const writePct = rowsWrittenLimit > 0 ? (rowsWritten / rowsWrittenLimit) * 100 : 0;
+
+                    const formatPct = (pct: number) => {
+                      if (pct === 0) return "0%";
+                      if (pct < 0.0001) return "< 0.0001%";
+                      return `${pct.toFixed(4)}%`;
+                    };
+
+                    const formatNumber = (num: number) => {
+                      return new Intl.NumberFormat().format(num);
+                    };
+
+                    const formatCompact = (num: number | undefined | null) => {
+                      if (num === undefined || num === null) return "0";
+                      if (num >= 1000000000) return `${(num / 1000000000).toFixed(0)} GB`;
+                      if (num >= 1000000) return `${(num / 1000000).toFixed(0)}M`;
+                      if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+                      return num.toString();
+                    };
+
+                    return (
+                      <div className="space-y-3.5 mt-4">
+                        {/* Usage Bars */}
+                        <div className="space-y-3">
+                          {/* Storage Size */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                              <span>Storage Used</span>
+                              <span>{sizeMb} MB / {formatCompact(storageLimit)} ({formatPct(storagePct)})</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 dark:bg-slate-850 relative overflow-hidden">
+                              <div className="absolute inset-y-0 left-0 bg-indigo-500" style={{ width: `${Math.min(100, storagePct)}%` }} />
+                            </div>
                           </div>
-                          <span className="font-black text-slate-700 dark:text-slate-300">{val}</span>
+
+                          {/* Rows Read */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                              <span>Rows Read</span>
+                              <span>{formatNumber(rowsRead)} / {formatCompact(rowsReadLimit)} ({formatPct(readPct)})</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 dark:bg-slate-850 relative overflow-hidden">
+                              <div className="absolute inset-y-0 left-0 bg-blue-500" style={{ width: `${Math.min(100, readPct)}%` }} />
+                            </div>
+                          </div>
+
+                          {/* Rows Written */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                              <span>Rows Written</span>
+                              <span>{formatNumber(rowsWritten)} / {formatCompact(rowsWrittenLimit)} ({formatPct(writePct)})</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 dark:bg-slate-850 relative overflow-hidden">
+                              <div className="absolute inset-y-0 left-0 bg-teal-500" style={{ width: `${Math.min(100, writePct)}%` }} />
+                            </div>
+                          </div>
                         </div>
-                      )) : Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="h-3 bg-slate-100 dark:bg-slate-800 animate-pulse rounded" />
-                      ))}
-                    </div>
+
+                        {/* DB Health Alert check */}
+                        <div className="text-[8px] font-black uppercase text-slate-400 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3 mt-1">
+                          <span>Tables: <strong className="text-slate-700 dark:text-slate-300 font-black">{tablesCount}</strong></span>
+                          <span className="text-emerald-500 dark:text-emerald-400 flex items-center gap-1 font-black">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            ONLINE
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* ── Row 3: GCP Live Infrastructure & Monitoring ────────────── */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm overflow-hidden p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.18em] flex items-center gap-2">
+                <Zap className="h-4 w-4 text-emerald-500 animate-pulse" />
+                GCP Infrastructure
+              </h3>
+              {gcpStats?.isMock && (
+                <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 uppercase tracking-widest">
+                  Simulated Mode
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Cloud Run Service 1: asia-south1 */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4 space-y-4">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Cloud Run Service</span>
+                    <h4 className="text-xs font-black uppercase tracking-tight text-slate-700 dark:text-slate-300 mt-0.5">exam-portal-api</h4>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!loading && (
+                      <span className={`text-[8px] font-black px-1.5 py-0.5 border uppercase tracking-widest flex items-center gap-1.5 ${healthColor}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${healthDot}`} />
+                        {healthLabel}
+                      </span>
+                    )}
+                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 uppercase tracking-widest flex items-center gap-1">
+                      <Activity className="h-3 w-3" />
+                      asia-south1
+                    </span>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => navigate("/superadmin/subscriptions")}
-                  className="mt-4 w-full text-[9px] font-black text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all py-2 border border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600"
-                >
-                  Manage Subscriptions <ArrowRight className="h-3 w-3" />
-                </button>
+                {loading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-4 bg-slate-100 dark:bg-slate-850 rounded w-3/4" />
+                    <div className="h-4 bg-slate-100 dark:bg-slate-850 rounded w-1/2" />
+                  </div>
+                ) : (
+                  (() => {
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">Traffic</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{svc.requestRate} req/s</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">Latency</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{svc.latencyMs ?? 54} ms</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">CPU Load</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{svc.cpuUtilization}%</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">Memory</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{svc.memoryUtilization}%</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">Instances</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{(svc.instanceCount !== undefined && svc.instanceCount !== null) ? svc.instanceCount : 1} Warm</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">Network In</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{svc.netInKbps ?? 0} KB/s</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                            <span className="text-[7px] font-black text-slate-400 block uppercase">Network Out</span>
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{svc.netOutKbps ?? 0} KB/s</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 flex items-center justify-center">
+                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active</span>
+                          </div>
+                        </div>
+
+                        {/* CPU progress bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                            <span>CPU Utilization</span>
+                            <span>{svc.cpuUtilization}%</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 dark:bg-slate-850 relative overflow-hidden">
+                            <div className="absolute inset-y-0 left-0 bg-emerald-500" style={{ width: `${Math.min(100, svc.cpuUtilization)}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
               </div>
 
-            </div>
-          </div>
+              {/* Cloud Storage Bucket usage */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4 space-y-4">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2 flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Cloud Storage</span>
+                    <h4 className="text-xs font-black uppercase tracking-tight text-slate-700 dark:text-slate-300 mt-0.5">Bucket Pools</h4>
+                  </div>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 uppercase tracking-widest flex items-center gap-1">
+                    <Database className="h-3 w-3" />
+                    Storage
+                  </span>
+                </div>
 
-          {/* ── Row 3: Recent Organizations ────────────────────────────── */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.18em]">Recently Onboarded Organizations</h3>
-              <button
-                onClick={() => navigate("/superadmin/clients")}
-                className="text-[9px] font-black text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest flex items-center gap-1 transition-all"
-              >
-                View All <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                    <th className="px-6 py-3 text-left text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Organization</th>
-                    <th className="px-4 py-3 text-left text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Plan</th>
-                    <th className="px-4 py-3 text-left text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Status</th>
-                    <th className="px-4 py-3 text-left text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Expiry</th>
-                    <th className="px-4 py-3 text-left text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Onboarded</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={i} className="border-b border-slate-100 dark:border-slate-900">
-                        {[3, 2, 1.5, 2, 2].map((_, j) => (
-                          <td key={j} className="px-6 py-4"><div className="h-3 bg-slate-100 dark:bg-slate-800 animate-pulse rounded w-3/4" /></td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : !(stats?.recentClients?.length) ? (
-                    <tr><td colSpan={5} className="px-6 py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No organizations yet</td></tr>
-                  ) : (
-                    stats.recentClients.map((org) => {
-                      const ss = SUB_STATUS[org.subStatus] || { label: org.subStatus || "—", cls: "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-600 dark:border-slate-800" };
-                      const isOverdue = org.expiryDate && new Date(org.expiryDate) < new Date();
-                      const isNear = org.expiryDate && !isOverdue && new Date(org.expiryDate) < new Date(Date.now() + 7 * 86400000);
+                {loading ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-4 bg-slate-100 dark:bg-slate-850 rounded w-3/4" />
+                    <div className="h-4 bg-slate-100 dark:bg-slate-850 rounded w-1/2" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {gcpStats?.storage?.map((b: any) => {
+                      const sizeGb = (b.totalBytes / (1024 * 1024 * 1024)).toFixed(3);
                       return (
-                        <tr key={org.id} className="border-b border-slate-100 dark:border-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all">
-                          <td className="px-6 py-3.5">
-                            <div className="flex items-center gap-2">
-                              {org.isActive
-                                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                              }
-                              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{org.name}</span>
+                        <div key={b.bucketName} className="space-y-3">
+                          <div className="flex items-center justify-between text-[10px] border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <div className="truncate pr-2">
+                              <span className="font-bold text-slate-700 dark:text-slate-300 block truncate" title={b.bucketName}>
+                                {b.bucketName.replace("run-sources-ns-exam-portal-", "")}
+                              </span>
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                {b.objectCount} Objects
+                              </span>
                             </div>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PLAN_COLORS[org.planId] || "#64748b" }} />
-                              {org.planName || "—"}
+                            <span className="font-black text-slate-900 dark:text-white shrink-0">
+                              {sizeGb} GB
                             </span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className={`text-[9px] font-black px-2 py-0.5 border rounded-sm uppercase tracking-widest ${ss.cls}`}>{ss.label}</span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className={`text-[10px] font-bold ${isOverdue ? "text-red-500" : isNear ? "text-amber-500" : "text-slate-500 dark:text-slate-400"}`}>
-                              {org.expiryDate || "—"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                            {new Date(org.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </td>
-                        </tr>
+                          </div>
+
+                          {/* File List */}
+                          <div className="space-y-1.5">
+                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Latest Objects:</span>
+                            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                              {b.fileList?.length ? (
+                                b.fileList.map((file: any) => (
+                                  <div key={file.name} className="flex items-center justify-between text-[9px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950/40 p-2 border border-slate-200/50 dark:border-slate-800/50">
+                                    <span className="truncate pr-3 font-semibold text-slate-700 dark:text-slate-300" title={file.name}>
+                                      {file.name}
+                                    </span>
+                                    <span className="shrink-0 font-black text-slate-400 text-[8px]">
+                                      {(file.size / (1024 * 1024)).toFixed(2)} MB
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[9px] text-slate-400 italic py-1">No objects found</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
+                    })}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
 

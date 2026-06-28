@@ -152,6 +152,174 @@ export default function SuperAdminSubscriptions() {
             </div>
           </div>
 
+          {/* Plan Reference Matrix */}
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 rounded-none shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-900 pb-3">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Plan Reference & Capabilities Matrix</h3>
+                <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">Review limit allocations and licensed feature permissions for each subscription tier.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+              {/* Free Plan Card */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10 p-4 space-y-3">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Free Tier</span>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-700 dark:text-slate-300">Free Plan</h4>
+                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">₹0 / Forever</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Quotas & Limits</span>
+                  <div className="grid grid-cols-3 gap-1 text-[10px] font-bold text-center">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Exams</span>
+                      <span>3/Mo</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Cand.</span>
+                      <span>20</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Qs</span>
+                      <span>50</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
+                  <ul className="text-[10px] font-bold space-y-1 text-slate-400">
+                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> CSV Student Import</li>
+                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> XLSX Reports Export</li>
+                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Advanced Analytics</li>
+                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Custom Branding</li>
+                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Basic Proctoring</li>
+                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Camera Proctoring</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Starter Plan Card */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10 p-4 space-y-3">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 block">Mid-Range</span>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <h4 className="text-sm font-black uppercase tracking-tight text-blue-600 dark:text-blue-400">Starter Plan</h4>
+                    <span className="text-[10px] font-black text-blue-600/80 dark:text-blue-400/80 uppercase tracking-wider">₹1,999 / Month</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Quotas & Limits</span>
+                  <div className="grid grid-cols-3 gap-1 text-[10px] font-bold text-center">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Exams</span>
+                      <span>25/Mo</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Cand.</span>
+                      <span>100</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Qs</span>
+                      <span>100</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
+                  <ul className="text-[10px] font-bold space-y-1 text-slate-600 dark:text-slate-400">
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> CSV Student Import</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> XLSX Reports Export</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Advanced Analytics</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Custom Branding</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Basic Proctoring</li>
+                    <li className="flex items-center gap-1.5 opacity-55 text-slate-400"><span className="text-red-500 font-bold">×</span> Camera Proctoring</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Growth Plan Card */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10 p-4 space-y-3">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 block">Scaling</span>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <h4 className="text-sm font-black uppercase tracking-tight text-emerald-600 dark:text-emerald-400">Growth Plan</h4>
+                    <span className="text-[10px] font-black text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">₹3,999 / Month</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Quotas & Limits</span>
+                  <div className="grid grid-cols-3 gap-1 text-[10px] font-bold text-center">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Exams</span>
+                      <span>50/Mo</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Cand.</span>
+                      <span>250</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Qs</span>
+                      <span>200</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
+                  <ul className="text-[10px] font-bold space-y-1 text-slate-600 dark:text-slate-400">
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> CSV Student Import</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> XLSX Reports Export</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Advanced Analytics</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Custom Branding</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Basic Proctoring</li>
+                    <li className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400"><span className="font-bold">✓</span> Camera Proctoring</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Enterprise Plan Card */}
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10 p-4 space-y-3">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-purple-500 block">Unrestricted</span>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <h4 className="text-sm font-black uppercase tracking-tight text-purple-600 dark:text-purple-400">Enterprise Plan</h4>
+                    <span className="text-[10px] font-black text-purple-600/80 dark:text-purple-400/80 uppercase tracking-wider">Custom Pricing</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Quotas & Limits</span>
+                  <div className="grid grid-cols-3 gap-1 text-[10px] font-bold text-center">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Exams</span>
+                      <span>100/Mo</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Cand.</span>
+                      <span>500</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1">
+                      <span className="text-[7px] font-black text-slate-400 block uppercase">Qs</span>
+                      <span>300</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
+                  <ul className="text-[10px] font-bold space-y-1 text-slate-600 dark:text-slate-400">
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> CSV Student Import</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> XLSX Reports Export</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Advanced Analytics</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Custom Branding</li>
+                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Basic Proctoring</li>
+                    <li className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400"><span className="font-bold">✓</span> Camera Proctoring</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Subscriptions Table */}
           <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-none shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
@@ -200,8 +368,29 @@ export default function SuperAdminSubscriptions() {
                           <td className="py-4 px-6 text-xs text-slate-500 font-medium">
                             {sub.start_date}
                           </td>
-                          <td className="py-4 px-6 text-xs text-slate-500 font-medium">
-                            {sub.expiry_date}
+                          <td className="py-4 px-6">
+                            {sub.expiry_date ? (() => {
+                              const expiry = new Date(sub.expiry_date);
+                              const now = new Date();
+                              const diffDays = Math.ceil((expiry.getTime() - now.getTime()) / 86400000);
+                              const isExpired = diffDays < 0;
+                              const isExpiringSoon = !isExpired && diffDays <= 7;
+                              return (
+                                <span className={`text-xs font-bold flex items-center gap-1 ${
+                                  isExpired
+                                    ? "text-red-600 dark:text-red-400"
+                                    : isExpiringSoon
+                                      ? "text-amber-600 dark:text-amber-400"
+                                      : "text-slate-500 dark:text-slate-400"
+                                }`}>
+                                  {isExpired && <span title="Expired" className="text-[10px]">🔴</span>}
+                                  <span className={isExpired ? "line-through opacity-70" : ""}>{sub.expiry_date}</span>
+                                  {isExpiringSoon && <span className="text-[9px] font-black uppercase tracking-widest">({diffDays} Days)</span>}
+                                </span>
+                              );
+                            })() : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             <span className={`text-[9px] font-black px-2 py-0.5 border rounded-sm uppercase tracking-widest ${statusBadge}`}>
@@ -254,12 +443,98 @@ export default function SuperAdminSubscriptions() {
                 }}
                 className="h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
               >
-                <option value="free">Free Plan (3 Exams, 20 Students, 50 Qs)</option>
-                <option value="starter">Starter Plan (25 Exams, 100 Students, 100 Qs)</option>
-                <option value="growth">Growth Plan (50 Exams, 250 Students, 200 Qs)</option>
-                <option value="enterprise">Enterprise Plan (Unlimited Limits)</option>
+                <option value="free">Free Plan (₹0 - 3 Exams, 20 Students, 50 Qs)</option>
+                <option value="starter">Starter Plan (₹1,999/mo - 25 Exams, 100 Students, 100 Qs)</option>
+                <option value="growth">Growth Plan (₹3,999/mo - 50 Exams, 250 Students, 200 Qs)</option>
+                <option value="enterprise">Enterprise Plan (Custom - Unlimited Limits)</option>
               </select>
             </div>
+
+            {/* Dynamic Plan Preview Card */}
+            {planId && (
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Plan Quotas</span>
+                  <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                    {planId === "free" ? "₹0 / FOREVER" : planId === "starter" ? "₹1,999 / MO" : planId === "growth" ? "₹3,999 / MO" : "CUSTOM PRICING"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                    <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Exams/Mo</span>
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                      {planId === "free" ? "3" : planId === "starter" ? "25" : planId === "growth" ? "50" : "100"}
+                    </span>
+                  </div>
+                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                    <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Students/Exam</span>
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                      {planId === "free" ? "20" : planId === "starter" ? "100" : planId === "growth" ? "250" : "500"}
+                    </span>
+                  </div>
+                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
+                    <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Questions/Exam</span>
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                      {planId === "free" ? "50" : planId === "starter" ? "100" : planId === "growth" ? "200" : "300"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-2 space-y-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 block mb-1">Feature Access (Permissions)</span>
+                  <div className="grid grid-cols-1 gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center justify-between">
+                      <span>CSV Student Import</span>
+                      {planId !== "free" ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>XLSX Reports Export</span>
+                      {planId !== "free" ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Advanced Dashboard Analytics</span>
+                      {planId !== "free" ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Custom Branding & Logo</span>
+                      {planId !== "free" ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Basic Proctoring events</span>
+                      {planId !== "free" ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>AI Camera Proctoring</span>
+                      {planId === "growth" || planId === "enterprise" ? (
+                        <span className="text-purple-600 dark:text-purple-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Plan Expiry Date</label>

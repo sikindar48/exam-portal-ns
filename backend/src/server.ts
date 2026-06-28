@@ -1,3 +1,13 @@
+process.on("uncaughtException", (err) => {
+  console.error("=== UNCAUGHT EXCEPTION ===");
+  console.error(err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("=== UNHANDLED REJECTION ===");
+  console.error(reason);
+});
+
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import "dotenv/config";
@@ -30,6 +40,7 @@ import auditLogsHandler from "./routes/audit-logs.js";
 import packagesHandler from "./routes/packages.js";
 import subscriptionRequestsHandler from "./routes/subscription-requests.js";
 import authRoutesHandler from "./routes/auth.js";
+import gcpStatsHandler from "./routes/gcp-stats.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -144,6 +155,7 @@ app.all("/api/superadmin/subscriptions/:client_id", subscriptionsHandler);
 app.all("/api/superadmin/subscriptions", subscriptionsHandler);
 app.all("/api/superadmin/audit-logs", auditLogsHandler);
 app.all("/api/subscription-requests", subscriptionRequestsHandler);
+app.all("/api/gcp-stats", gcpStatsHandler);
 app.all("/api/auth/forgot-password", authRoutesHandler);
 app.all("/api/auth/reset-password", authRoutesHandler);
 

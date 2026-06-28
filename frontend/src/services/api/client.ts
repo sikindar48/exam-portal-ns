@@ -249,6 +249,7 @@ export const userRolesApi = {
 export const statsApi = {
   platform: () => apiFetch("/stats?scope=platform"),
   client: () => apiFetch("/stats?scope=client"),
+  gcp: () => apiFetch("/gcp-stats"),
 };
 
 // ── RPC ───────────────────────────────────────────────────────────────────────

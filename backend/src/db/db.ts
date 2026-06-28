@@ -312,7 +312,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
     await db.execute("DELETE FROM subscription_plan_features");
     const planFeatures = [
       { plan_id: "starter", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_proctoring"] },
-      { plan_id: "growth", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "advanced_proctoring"] },
+      { plan_id: "growth", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "camera_proctoring", "advanced_proctoring"] },
       { plan_id: "enterprise", features: ["csv_import", "xlsx_export", "analytics", "custom_branding", "camera_proctoring", "advanced_proctoring"] }
     ];
     for (const pf of planFeatures) {

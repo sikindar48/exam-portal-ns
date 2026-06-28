@@ -31,32 +31,33 @@ export default async function handler(req: Request, res: Response) {
   // ── GET /api/superadmin/subscriptions ──────────────────────────────────────
   if (req.method === "GET") {
     try {
-      // Query subscription list
+      // Query subscription list (LEFT JOIN to ensure clients without explicit subscription entries also show up)
       const { rows: subs } = await db.execute(`
         SELECT 
-          cs.client_id,
+          c.id as client_id,
           c.name as client_name,
-          cs.plan_id,
-          sp.name as plan_name,
-          cs.start_date,
-          cs.expiry_date,
-          cs.status,
-          cs.renewal_status
-        FROM client_subscriptions cs
-        JOIN clients c ON c.id = cs.client_id
-        JOIN subscription_plans sp ON sp.id = cs.plan_id
-        ORDER BY cs.updated_at DESC
+          COALESCE(cs.plan_id, 'free') as plan_id,
+          COALESCE(sp.name, 'Free Plan') as plan_name,
+          COALESCE(cs.start_date, date('now')) as start_date,
+          COALESCE(cs.expiry_date, date('now', '+30 days')) as expiry_date,
+          COALESCE(cs.status, 'active') as status,
+          COALESCE(cs.renewal_status, 'manual') as renewal_status
+        FROM clients c
+        LEFT JOIN client_subscriptions cs ON cs.client_id = c.id
+        LEFT JOIN subscription_plans sp ON sp.id = COALESCE(cs.plan_id, 'free')
+        ORDER BY COALESCE(cs.updated_at, c.created_at) DESC
       `);
 
       // Query analytics metrics
       const today = new Date().toISOString().slice(0, 10);
       const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-      // Clients per plan
+      // Clients per plan (LEFT JOIN to default any client without subscription to 'free')
       const { rows: planCounts } = await db.execute(`
-        SELECT plan_id, COUNT(*) as count 
-        FROM client_subscriptions 
-        GROUP BY plan_id
+        SELECT COALESCE(cs.plan_id, 'free') as plan_id, COUNT(*) as count 
+        FROM clients c
+        LEFT JOIN client_subscriptions cs ON cs.client_id = c.id
+        GROUP BY COALESCE(cs.plan_id, 'free')
       `);
 
       // Expiring soon count
