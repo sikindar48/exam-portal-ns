@@ -40,7 +40,6 @@ substitutions:
   _REGION: 'asia-south1'
 
 options:
-  machineType: 'E2_STANDARD_2'
   logging: CLOUD_LOGGING_ONLY
 
 availableSecrets:
