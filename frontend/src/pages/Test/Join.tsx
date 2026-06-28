@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -14,21 +14,14 @@ export default function Join() {
   const { user, role, signInAnonymously } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [test, setTest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [manualCode, setManualCode] = useState(code || "");
   const [studentName, setStudentName] = useState("");
   const [showNameForm, setShowNameForm] = useState(false);
 
-  useEffect(() => {
-    if (code) {
-      fetchTest(code);
-    } else {
-      setLoading(false);
-    }
-  }, [code]);
-
-  const fetchTest = async (shareCode: string) => {
+  const fetchTest = useCallback(async (shareCode: string) => {
     setLoading(true);
     try {
       // First, find the test by code regardless of active status
@@ -62,7 +55,15 @@ export default function Join() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (code) {
+      fetchTest(code);
+    } else {
+      setLoading(false);
+    }
+  }, [code, fetchTest]);
 
   const handleJoin = () => {
     const isAnonymous = user?.isAnonymous;
