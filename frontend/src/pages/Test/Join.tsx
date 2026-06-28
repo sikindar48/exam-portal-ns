@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { testsApi } from "@/services/api/client";
-import { ClipboardList, User, ArrowLeft, Key, ShieldCheck, Timer, FileText, CheckCircle2, ChevronRight, LogIn } from "lucide-react";
+import { User, ArrowLeft, Key, ShieldCheck, Timer, CheckCircle2, ChevronRight, LogIn, RotateCcw } from "lucide-react";
 import { Toggle } from "@/components/Theme/Toggle";
 
 export default function Join() {
@@ -264,13 +264,23 @@ export default function Join() {
                     <span className="text-[10px] font-black uppercase tracking-widest">Verified Examination</span>
                   </div>
 
-                  <div className="pt-2">
+                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-slate-400">
                         <Timer className="h-3.5 w-3.5" />
                         <span className="text-[9px] font-black uppercase tracking-wider">Duration</span>
                       </div>
                       <p className="text-sm font-black text-slate-800 dark:text-slate-200">{test.timer} Min</p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span className="text-[9px] font-black uppercase tracking-wider">Attempt Limit</span>
+                      </div>
+                      <p className="text-sm font-black text-slate-800 dark:text-slate-200">
+                        {test.attempts_allowed === null ? "Unlimited" : test.attempts_allowed === 1 ? "1 Attempt" : `${test.attempts_allowed} Attempts`}
+                      </p>
                     </div>
                   </div>
                 </div>
