@@ -136,7 +136,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       id: "nav-btn-dashboard"
     },
     {
-      label: "Manage Students",
+      label: "Candidates",
       path: "/client-admin/students",
       icon: Users,
       id: "nav-btn-students"
@@ -148,7 +148,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       id: "nav-btn-questions"
     },
     {
-      label: "Examination Papers",
+      label: "Exams",
       path: "/client-admin/tests",
       icon: ClipboardList,
       id: "nav-btn-tests"
@@ -160,7 +160,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       id: "nav-btn-analytics"
     },
     {
-      label: "Proctoring Logs",
+      label: "Proctoring",
       path: "/client-admin/proctoring",
       icon: Shield,
       id: "nav-btn-proctoring"
@@ -172,7 +172,7 @@ export function ClientAdminSidebar({ activeTab }: ClientAdminSidebarProps) {
       id: "nav-btn-subscription"
     },
     {
-      label: "System Settings",
+      label: "Settings",
       path: "/client-admin/settings",
       icon: Settings,
       id: "nav-btn-settings"

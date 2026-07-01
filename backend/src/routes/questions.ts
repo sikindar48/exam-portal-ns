@@ -329,7 +329,7 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // Option A (Versioning): Create a new question record instead of updating the current record in place.
+    // In-place Update: Modify the current question record in place.
     const { rows: currentRows } = await db.execute({
       sql: "SELECT * FROM questions WHERE id = ?",
       args: [String(id)],
@@ -337,22 +337,17 @@ export default async function handler(req: Request, res: Response) {
     if (!currentRows.length) return res.status(404).json({ error: "Question not found" });
     const current = mapQuestionRow(currentRows[0]);
 
-    const newId = randomUUID();
-    const newVersion = (current.version || 1) + 1;
-
     // Merge old and new values
     const mergedOptions = req.body.options || current.options || [];
     const mergedCorrectAnswers = req.body.correct_answers || current.correct_answers || [];
 
     await db.execute({
-      sql: `INSERT INTO questions
-            (id, client_id, folder_id, question_text, option_a, option_b, option_c, option_d,
-             correct_answer, difficulty, marks, question_type, options, correct_answers,
-             negative_marks, explanation, is_case_sensitive, import_batch_id, version, created_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))`,
+      sql: `UPDATE questions
+            SET folder_id = ?, question_text = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?,
+                correct_answer = ?, difficulty = ?, marks = ?, question_type = ?, options = ?, correct_answers = ?,
+                negative_marks = ?, explanation = ?, is_case_sensitive = ?, updated_at = datetime('now')
+            WHERE id = ?`,
       args: [
-        newId,
-        current.client_id,
         req.body.folder_id !== undefined ? req.body.folder_id : current.folder_id,
         req.body.question_text || current.question_text,
         req.body.option_a !== undefined ? req.body.option_a : current.option_a,
@@ -368,14 +363,13 @@ export default async function handler(req: Request, res: Response) {
         req.body.negative_marks !== undefined ? req.body.negative_marks : current.negative_marks,
         req.body.explanation !== undefined ? req.body.explanation : current.explanation,
         req.body.is_case_sensitive !== undefined ? req.body.is_case_sensitive : current.is_case_sensitive,
-        current.import_batch_id,
-        newVersion,
+        String(id),
       ],
     });
 
     const { rows: responseRows } = await db.execute({
       sql: "SELECT * FROM questions WHERE id = ?",
-      args: [newId],
+      args: [String(id)],
     });
     return res.status(200).json(mapQuestionRow(responseRows[0]));
   }

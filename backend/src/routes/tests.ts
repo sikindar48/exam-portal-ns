@@ -228,7 +228,7 @@ export default async function handler(req: Request, res: Response) {
         id, clientId, b.folder_id ?? null, b.test_name, b.timer ?? 60,
         b.shuffle ? 1 : 0, b.allow_review !== false ? 1 : 0,
         b.negative_marking ? 1 : 0, b.negative_marks ?? 0,
-        b.restrict_navigation ? 1 : 0, b.attempts_allowed ?? 1,
+        b.restrict_navigation ? 1 : 0, b.attempts_allowed !== undefined ? b.attempts_allowed : 1,
         resolvedStatus, resolvedActive,
         b.allow_guests ? 1 : 0,
         b.scheduled_start ?? null, b.scheduled_end ?? null,

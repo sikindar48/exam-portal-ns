@@ -65,7 +65,7 @@ export function TestTable({
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search assessments by name..."
+            placeholder="Search exams by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 text-xs font-bold text-slate-700 dark:text-slate-200 rounded-none focus:outline-none focus:border-blue-500 placeholder-slate-400"
@@ -88,7 +88,7 @@ export function TestTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-50 dark:bg-slate-950/50 border-b-2 border-slate-200 dark:border-slate-800">
-            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Assessment Name</TableHead>
+            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Exam Name</TableHead>
             <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Duration</TableHead>
             <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
             <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Access Code</TableHead>
@@ -112,8 +112,8 @@ export function TestTable({
                 <div className="flex flex-col items-center gap-4 text-slate-400">
                   <ClipboardList className="h-12 w-12 opacity-20" />
                   <div>
-                    <p className="text-xs font-black uppercase tracking-widest">No Assessment Records</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Create your first test to get started.</p>
+                    <p className="text-xs font-black uppercase tracking-widest">No Exam Records</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mt-1">Create your first exam to get started.</p>
                   </div>
                 </div>
               </TableCell>
@@ -158,7 +158,7 @@ export function TestTable({
                       size="sm"
                       onClick={() => navigate(`/client-admin/tests/builder/${test.id}`)}
                       className="h-8 w-8 rounded-none border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all p-0"
-                      title="Test Blueprint"
+                      title="Exam Blueprint"
                     >
                       <FileText className="h-3.5 w-3.5" />
                     </Button>

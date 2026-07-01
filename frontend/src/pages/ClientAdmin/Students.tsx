@@ -454,12 +454,12 @@ export default function StudentsManagement() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
-      <ClientAdminSidebar activeTab="Manage Students" />
+      <ClientAdminSidebar activeTab="Candidates" />
       
       <div className="flex-1 flex flex-col min-h-screen">
-        <ClientAdminHeader
-          title="Candidate Management"
-          subtitle="Student Management"
+        <ClientAdminHeader 
+          title="Candidates"
+          subtitle="Candidate Directory"
           showBackButton={true}
           backPath="/client-admin"
           actions={
@@ -603,7 +603,7 @@ export default function StudentsManagement() {
                   <Button 
                     className="h-9 px-6 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest shadow-lg"
                   >
-                    <Plus className="mr-2 h-3.5 w-3.5" /> Register Student
+                    <Plus className="mr-2 h-3.5 w-3.5" /> Register Candidate
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-none border-t-4 border-t-blue-600">

@@ -196,7 +196,7 @@ export default function Engine() {
     return Object.values(groups);
   }, [questions]);
 
-  const handleSubmit = useCallback(async (autoSubmit = false) => {
+  const handleSubmit = useCallback(async (autoSubmit = false, overrides?: { attemptId?: string; test?: any }) => {
     if (!autoSubmit && !showSubmitDialog) {
       setShowSubmitDialog(true);
       return;
@@ -211,8 +211,12 @@ export default function Engine() {
 
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     setLoading(true);
+
+    const targetAttemptId = overrides?.attemptId || attemptId;
+    const targetTest = overrides?.test || test;
+
     try {
-      console.log("Starting submission for attempt:", attemptId);
+      console.log("Starting submission for attempt:", targetAttemptId);
       if (isGuest) {
         // Guest scoring logic (fallback for UI/Local)
         const { data: tqs } = await testQuestionsApi.list(testId!);
@@ -222,9 +226,9 @@ export default function Engine() {
           if (!q) return;
           total += q.marks || 1;
           if (answers[q.id] === q.correct_answer) score += q.marks || 1;
-          else if (test?.negative_marking && answers[q.id]) score -= test.negative_marks || 0;
+          else if (targetTest?.negative_marking && answers[q.id]) score -= targetTest.negative_marks || 0;
         });
-        localStorage.setItem(`guest_result_${testId}`, JSON.stringify({ testName: test?.test_name, studentName: guestName, score: Math.max(0, score), totalMarks: total }));
+        localStorage.setItem(`guest_result_${testId}`, JSON.stringify({ testName: targetTest?.test_name, studentName: guestName, score: Math.max(0, score), totalMarks: total }));
       }
 
       // Universal submission logic for both Guest and Registered students
@@ -232,7 +236,8 @@ export default function Engine() {
       await flushDirtyAnswers();
 
       console.log("Calling submission RPC...");
-      const { data: submitData, error } = await rpc.submitAttempt(attemptId, (test?.timer * 60) - timeLeftRef.current);
+      const durationUsed = targetTest ? (targetTest.timer * 60) - (overrides?.attemptId ? 0 : timeLeftRef.current) : 0;
+      const { data: submitData, error } = await rpc.submitAttempt(targetAttemptId, durationUsed);
       
       if (error) {
         console.error("Submission RPC error:", error);
@@ -244,10 +249,10 @@ export default function Engine() {
       
       const params = new URLSearchParams();
       params.set("name", candidateName);
-      params.set("org", test?.clients?.name || "");
-      params.set("logo", test?.clients?.logo_url || "");
+      params.set("org", targetTest?.clients?.name || "");
+      params.set("logo", targetTest?.clients?.logo_url || "");
       params.set("isGuest", isGuest ? "true" : "false");
-      params.set("attemptId", attemptId);
+      params.set("attemptId", targetAttemptId);
 
       if (submitData) {
         params.set("results_visible", submitData.results_visible ? "true" : "false");
@@ -272,7 +277,7 @@ export default function Engine() {
       if (typeof window !== "undefined" && window.sessionStorage) {
         sessionStorage.removeItem("guest_attempt_token");
       }
-      navigate(`/student/submit-success?${params.toString()}`);
+      navigate(`/student/submit-success?${params.toString()}`, { replace: true });
     } catch (err: any) {
       console.error("Detailed submission error:", err);
       toast({ 
@@ -283,7 +288,7 @@ export default function Engine() {
       setLoading(false);
       autoSubmitTriggered.current = false;
     }
-  }, [answers, test, attemptId, testId, navigate, toast, isGuest, guestName, showSubmitDialog, flushDirtyAnswers]);
+  }, [answers, test, attemptId, testId, navigate, toast, isGuest, guestName, showSubmitDialog, flushDirtyAnswers, attemptToken]);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -560,6 +565,15 @@ export default function Engine() {
       }
 
       setTimeLeft(calculatedTimeLeft);
+      if (calculatedTimeLeft <= 0 && activeAttemptId) {
+        toast({
+          title: "Exam Time Expired",
+          description: "Your session has expired and your assessment is being submitted.",
+          variant: "destructive"
+        });
+        await handleSubmit(true, { attemptId: activeAttemptId, test: testData });
+        return;
+      }
       if (finalLockedSectionIds.length > 0) {
         setLockedSectionIds(finalLockedSectionIds);
         localStorage.setItem(`locked_sections_${activeAttemptId}`, JSON.stringify(finalLockedSectionIds));

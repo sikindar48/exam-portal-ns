@@ -133,11 +133,11 @@ export default function StudentDashboard() {
           <section>
             <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 border-b-2 border-slate-900 dark:border-slate-800 pb-4 gap-4">
               <div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Available Examinations</h2>
-                <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select a paper to begin your session</p>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Available Exams</h2>
+                <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select an exam to begin your session</p>
               </div>
               <div className="text-left sm:text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Papers</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Exams</span>
                 <p className="text-lg sm:text-xl font-black text-blue-600">{tests.length}</p>
               </div>
             </div>
@@ -157,20 +157,20 @@ export default function StudentDashboard() {
                   onClick={() => navigate("/join")}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest px-8 rounded-none h-11"
                 >
-                  Join a Test Session
+                  Join an Exam Session
                 </Button>
               </div>
             ) : tests.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-12 text-center">
                 <ClipboardList className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">No examinations are currently scheduled for you.</p>
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">No exams are currently scheduled for you.</p>
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {tests.map((test) => {
                   const used = attemptCounts[test.id] || 0;
-                  const allowed = test.attempts_allowed ?? 1;
-                  const exhausted = used >= allowed;
+                  const allowed = test.attempts_allowed;
+                  const exhausted = allowed !== null && used >= allowed;
                   return (
                     <div 
                       key={test.id} 
@@ -189,7 +189,7 @@ export default function StudentDashboard() {
                           {test.test_name}
                         </h3>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          Attempts: <span className={exhausted ? "text-red-500" : "text-slate-600"}>{used} / {allowed}</span>
+                          Attempts: <span className={exhausted ? "text-red-500" : "text-slate-600"}>{used} / {allowed === null ? "Unlimited" : allowed}</span>
                         </p>
                       </div>
                       <div className="p-6 pt-0 mt-auto">
@@ -202,7 +202,7 @@ export default function StudentDashboard() {
                               : "bg-slate-900 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-md"
                           }`}
                         >
-                          {exhausted ? "Limit Reached" : "Start Test"}
+                          {exhausted ? "Limit Reached" : "Start Exam"}
                         </Button>
                       </div>
                     </div>
@@ -221,7 +221,7 @@ export default function StudentDashboard() {
 
             {attempts.length === 0 ? (
               <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your recent scores will appear here once you complete a test.</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your recent scores will appear here once you complete an exam.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -238,7 +238,7 @@ export default function StudentDashboard() {
                           {new Date(attempt.submitted_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
                         </p>
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-blue-600 transition-colors">
-                          {attempt.tests?.test_name || "Examination Paper"}
+                          {attempt.tests?.test_name || "Exam Paper"}
                         </h4>
                       </div>
                       

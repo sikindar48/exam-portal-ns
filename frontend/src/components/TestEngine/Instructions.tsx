@@ -168,7 +168,7 @@ export function Instructions({
           </div>
           <div className="flex flex-col justify-center">
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Paper</p>
-            <p className="text-xs font-bold text-slate-900 dark:text-white leading-none uppercase">{testName || "Examination Paper"}</p>
+            <p className="text-xs font-bold text-slate-900 dark:text-white leading-none uppercase">{testName || "Exam Paper"}</p>
           </div>
         </div>
         
@@ -393,7 +393,7 @@ export function Instructions({
             {/* Candidate Name Only (No Dummy ID) */}
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Candidate Name</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{studentName || "Student"}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{studentName || "Candidate"}</p>
             </div>
 
             {/* Symbols Legend - Hidden on Mobile */}
@@ -478,7 +478,7 @@ export function Instructions({
                   : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
               }`}
             >
-              Begin Test
+              Begin Exam
             </Button>
           </>
         ) : (
@@ -525,7 +525,7 @@ export function Instructions({
                         : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                     }`}
                   >
-                    Begin Test
+                    Begin Exam
                   </Button>
                 </div>
               </div>

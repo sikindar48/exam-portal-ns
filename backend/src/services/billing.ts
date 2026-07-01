@@ -186,7 +186,7 @@ export async function validateQuestionLimit(testId: string, proposedCount: numbe
 }
 
 /** Validate if candidate capacity is exceeded for attempts creation */
-export async function validateCandidateCapacity(testId: string): Promise<boolean> {
+export async function validateCandidateCapacity(testId: string, studentId?: string): Promise<boolean> {
   const db = getDb();
 
   // 1. Check if test has read_only flag
@@ -199,12 +199,22 @@ export async function validateCandidateCapacity(testId: string): Promise<boolean
 
   const clientId = String(testCheck.rows[0].client_id);
 
-  // Count active/completed attempts
+  // Count unique candidates who have started/completed attempts
   const countCheck = await db.execute({
-    sql: "SELECT COUNT(*) as count FROM attempts WHERE test_id = ?",
+    sql: "SELECT COUNT(DISTINCT student_id) as count FROM attempts WHERE test_id = ?",
     args: [testId]
   });
-  const currentAttempts = Number((countCheck.rows[0] as any).count);
+  const uniqueCandidatesCount = Number((countCheck.rows[0] as any).count);
+
+  // Check if this specific student already has attempts
+  let studentExists = false;
+  if (studentId) {
+    const studentCheck = await db.execute({
+      sql: "SELECT 1 FROM attempts WHERE test_id = ? AND student_id = ? LIMIT 1",
+      args: [testId, studentId]
+    });
+    studentExists = studentCheck.rows.length > 0;
+  }
 
   // 2. Check if Pay Per Test is active
   const billingCheck = await db.execute({
@@ -217,7 +227,8 @@ export async function validateCandidateCapacity(testId: string): Promise<boolean
     if (String(billing.status) === "completed") return false;
     const maxCandidates = Number(billing.max_candidates);
 
-    if (currentAttempts >= maxCandidates) {
+    // Only block if a new candidate is trying to join after max limit is reached
+    if (uniqueCandidatesCount >= maxCandidates && !studentExists) {
       // Transition to completed and read-only
       await db.execute({
         sql: "UPDATE test_billing SET status = 'completed' WHERE test_id = ?",
@@ -235,7 +246,7 @@ export async function validateCandidateCapacity(testId: string): Promise<boolean
   // 3. Subscription check
   const plan = await getEffectivePlan(clientId);
   if (plan.max_students_per_exam === -1) return true;
-  return currentAttempts < plan.max_students_per_exam;
+  return studentExists || uniqueCandidatesCount < plan.max_students_per_exam;
 }
 
 /** Validate if a feature is allowed for a test */

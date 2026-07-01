@@ -24,9 +24,9 @@ export function TestHeader({
 }: TestHeaderProps) {
   const title = openFolderId 
     ? (openFolderId === "uncategorized" ? "Uncategorized Items" : folders.find(f => f.id === openFolderId)?.name || "Folder View")
-    : "Test Management";
+    : "Exam Management";
 
-  const subtitle = openFolderId ? "Tests / Folder View" : "Tests / Dashboard";
+  const subtitle = openFolderId ? "Exams / Folder View" : "Exams / Dashboard";
   const onBack = openFolderId ? () => setOpenFolderId(null) : () => navigate("/client-admin");
 
   return (
@@ -53,7 +53,7 @@ export function TestHeader({
             }}
             className="h-9 px-4 rounded-none bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
           >
-            <Plus className="mr-2 h-3.5 w-3.5" /> Create Test
+            <Plus className="mr-2 h-3.5 w-3.5" /> Create Exam
           </Button>
         </>
       }

@@ -407,7 +407,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Check candidate capacity / Pay Per Test limits
-    const isAllowed = await validateCandidateCapacity(test_id);
+    const isAllowed = await validateCandidateCapacity(test_id, resolvedStudentId);
     if (!isAllowed) {
       return res.status(403).json({ error: "Capacity Reached: The candidate capacity for this test has been reached or the test is marked completed." });
     }

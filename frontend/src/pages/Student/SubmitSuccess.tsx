@@ -190,7 +190,7 @@ export default function SubmitSuccess() {
               </div>
               <div className="space-y-2 text-center">
                 <h2 className="text-2xl font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight">
-                  Test Submitted Successfully!
+                  Exam Submitted Successfully!
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium text-center">
                   Your responses have been securely recorded.

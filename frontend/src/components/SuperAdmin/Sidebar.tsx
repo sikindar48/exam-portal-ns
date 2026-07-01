@@ -94,7 +94,7 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
       ]
     },
     {
-      label: "Feedbacks",
+      label: "Feedback",
       path: "/superadmin/feedbacks",
       icon: MessageSquare,
       id: "super-nav-btn-feedbacks"

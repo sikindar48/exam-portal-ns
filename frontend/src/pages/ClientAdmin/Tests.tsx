@@ -266,7 +266,7 @@ export default function TestsManagement() {
       negative_marking: test.negative_marking ?? false,
       negative_marks: test.negative_marks ?? 0.25,
       restrict_navigation: test.restrict_navigation ?? false,
-      attempts_allowed: test.attempts_allowed ?? 1,
+      attempts_allowed: test.attempts_allowed,
       scheduled_start: toLocalDateTimeLocal(test.scheduled_start),
       scheduled_end: toLocalDateTimeLocal(test.scheduled_end),
       public_link_enabled: test.public_link_enabled ?? true,
@@ -310,7 +310,7 @@ export default function TestsManagement() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
-      <ClientAdminSidebar activeTab="Examination Papers" />
+      <ClientAdminSidebar activeTab="Exams" />
       
       <div className="flex-1 flex flex-col min-h-screen">
         <TestHeader 

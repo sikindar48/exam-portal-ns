@@ -38,7 +38,7 @@ export function TestDialog({
       <DialogContent className="max-w-2xl rounded-none border-t-4 border-t-blue-600 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">
-            {editingTest ? "Edit Test" : "Create New Test"}
+            {editingTest ? "Edit Exam" : "Create New Exam"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
@@ -68,13 +68,13 @@ export function TestDialog({
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">
-                Note: Pay Per Test credits are consumed immediately upon test creation.
+                Note: Exam Plan credits are consumed immediately upon exam creation.
               </p>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="test_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Test Name</Label>
+            <Label htmlFor="test_name" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Exam Name</Label>
             <Input
               id="test_name"
               value={formData.test_name}
@@ -118,7 +118,7 @@ export function TestDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-y border-slate-100 dark:border-slate-800 py-6">
             <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">Test Settings</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2">Exam Settings</h3>
               <div className="flex items-center justify-between">
                 <Label htmlFor="shuffle" className="text-xs font-bold uppercase tracking-tight">Shuffle Questions</Label>
                 <Switch id="shuffle" checked={formData.shuffle} onCheckedChange={(checked) => setFormData({ ...formData, shuffle: checked })} disabled={isReadOnly} />
@@ -197,12 +197,12 @@ export function TestDialog({
                   <Input
                     id="attempts"
                     type="number"
-                    value={formData.attempts_allowed}
-                    onChange={(e) => setFormData({ ...formData, attempts_allowed: parseInt(e.target.value) })}
+                    value={formData.attempts_allowed === null ? "" : formData.attempts_allowed}
+                    onChange={(e) => setFormData({ ...formData, attempts_allowed: e.target.value ? parseInt(e.target.value) : null })}
                     className="h-9 rounded-none border-slate-200 dark:border-slate-800 font-bold pr-8"
                     disabled={isReadOnly}
                   />
-                  {formData.attempts_allowed === 0 && <InfinityIcon className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />}
+                  {(formData.attempts_allowed === 0 || formData.attempts_allowed === null) && <InfinityIcon className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />}
                 </div>
               </div>
             </div>
@@ -225,7 +225,7 @@ export function TestDialog({
               disabled={loading}
               className="w-full h-12 rounded-none bg-slate-900 dark:bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-900/20"
             >
-              {loading ? "SAVING..." : editingTest ? "UPDATE TEST" : "CREATE TEST"}
+              {loading ? "SAVING..." : editingTest ? "UPDATE EXAM" : "CREATE EXAM"}
             </Button>
           </div>
         </form>

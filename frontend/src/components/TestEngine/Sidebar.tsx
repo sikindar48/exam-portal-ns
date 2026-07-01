@@ -141,7 +141,7 @@ export function Sidebar({
           disabled={disableSubmit}
           className="w-full h-10 rounded-none bg-green-600 hover:bg-green-700 text-white font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Submit Test
+          Submit Exam
         </Button>
         {disableSubmit && (
           <p className="mt-2 text-center text-[11px] text-slate-400">
