@@ -29,6 +29,7 @@ steps:
       - '--region=$_REGION'
       - '--allow-unauthenticated'
       - '--set-secrets=TURSO_DATABASE_URL=turso-database-url:latest,TURSO_AUTH_TOKEN=turso-auth-token:latest'
+      - '--update-env-vars=RAZORPAY_KEY_ID=rzp_live_TGayKgYF6kfKCt,RAZORPAY_KEY_SECRET=Q1T8RypFzImMstk15MlUbCcF,RAZORPAY_WEBHOOK_SECRET=Q1T8RypFzImMstk15MlUbCcF'
 
 images:
   - '$_REGION-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/exam-portal-ns/exam-portal-api:$_SHORT_SHA'
