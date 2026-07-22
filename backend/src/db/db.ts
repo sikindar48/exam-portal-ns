@@ -520,6 +520,57 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       }
     }
 
+    // ── Razorpay Migrations ──────────────────────────────────────────────────
+
+    // Add price_inr column to subscription_plans (for Razorpay payment amounts)
+    try {
+      await db.execute(`ALTER TABLE subscription_plans ADD COLUMN price_inr INTEGER DEFAULT 0`);
+      console.log("Added column price_inr to subscription_plans table.");
+      // Seed default prices (in INR)
+      await db.execute(`UPDATE subscription_plans SET price_inr = 0 WHERE id = 'free'`);
+      await db.execute(`UPDATE subscription_plans SET price_inr = 1999 WHERE id = 'starter' AND price_inr = 0`);
+      await db.execute(`UPDATE subscription_plans SET price_inr = 3999 WHERE id = 'growth' AND price_inr = 0`);
+      await db.execute(`UPDATE subscription_plans SET price_inr = 9999 WHERE id = 'enterprise' AND price_inr = 0`);
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding price_inr to subscription_plans:", err);
+      }
+    }
+
+    // Add razorpay_order_id to client_test_purchases for payment linkage
+    try {
+      await db.execute(`ALTER TABLE client_test_purchases ADD COLUMN razorpay_order_id TEXT`);
+      console.log("Added razorpay_order_id to client_test_purchases.");
+    } catch (err: any) {
+      if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
+        console.error("Error adding razorpay_order_id to client_test_purchases:", err);
+      }
+    }
+
+    // Razorpay payments table — tracks every payment attempt
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS razorpay_payments (
+        id TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        razorpay_order_id TEXT UNIQUE NOT NULL,
+        razorpay_payment_id TEXT,
+        type TEXT NOT NULL CHECK (type IN ('plan', 'package')),
+        plan_id TEXT,
+        package_id TEXT,
+        purchase_id TEXT,
+        amount INTEGER NOT NULL,
+        currency TEXT DEFAULT 'INR',
+        status TEXT DEFAULT 'created' CHECK (status IN ('created', 'paid', 'failed')),
+        metadata TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        paid_at TEXT
+      );
+    `);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_razorpay_payments_client ON razorpay_payments(client_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_razorpay_payments_status ON razorpay_payments(status);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_razorpay_payments_created ON razorpay_payments(created_at);`);
+    console.log("razorpay_payments table ready.");
+
     console.log("Database migrations ran successfully.");
   } catch (err) {
     console.error("Database migrations failed:", err);

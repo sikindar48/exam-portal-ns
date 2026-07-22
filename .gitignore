@@ -40,3 +40,6 @@ bun.lock
 frontend/dist/
 backend/dist/
 .vercel
+*.db
+test-results/
+testing/

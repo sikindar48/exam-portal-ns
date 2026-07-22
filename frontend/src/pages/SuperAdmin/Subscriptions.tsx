@@ -5,11 +5,12 @@ import { Footer } from "@/components/Brand/Footer";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CreditCard, Edit, Calendar, CheckCircle2, AlertOctagon, RefreshCcw, ShieldAlert, Award } from "lucide-react";
+import { CreditCard, Edit, Calendar, CheckCircle2, RefreshCcw, ShieldAlert, DollarSign } from "lucide-react";
 import { apiClient } from "@/services/api/client";
 
 export default function SuperAdminSubscriptions() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>({
     freeCount: 0,
     starterCount: 0,
@@ -20,6 +21,8 @@ export default function SuperAdminSubscriptions() {
   });
   const [loading, setLoading] = useState(false);
   const [editSub, setEditSub] = useState<any | null>(null);
+  const [showPriceDialog, setShowPriceDialog] = useState(false);
+  const [editingPrices, setEditingPrices] = useState<Record<string, number>>({});
   const [updating, setUpdating] = useState(false);
   const { toast } = useToast();
 
@@ -31,6 +34,7 @@ export default function SuperAdminSubscriptions() {
 
   useEffect(() => {
     fetchSubscriptions();
+    fetchPlans();
   }, []);
 
   const fetchSubscriptions = async () => {
@@ -49,6 +53,22 @@ export default function SuperAdminSubscriptions() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPlans = async () => {
+    try {
+      const res = await apiClient("/superadmin/subscriptions/plans");
+      if (res && Array.isArray(res)) {
+        setPlans(res);
+        const pricesMap: Record<string, number> = {};
+        res.forEach((p: any) => {
+          pricesMap[p.id] = p.price_inr ?? 0;
+        });
+        setEditingPrices(pricesMap);
+      }
+    } catch (err) {
+      console.error("Failed to load plan prices:", err);
     }
   };
 
@@ -100,6 +120,38 @@ export default function SuperAdminSubscriptions() {
     }
   };
 
+  const handleSavePrices = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdating(true);
+    try {
+      for (const pId of Object.keys(editingPrices)) {
+        await apiClient(`/superadmin/subscriptions/plans/${pId}`, {
+          method: "PATCH",
+          body: { price_inr: editingPrices[pId] },
+        });
+      }
+      toast({
+        title: "Prices Updated! 🎉",
+        description: "Subscription plan pricing updated successfully for all organizations.",
+      });
+      setShowPriceDialog(false);
+      fetchPlans();
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save plan prices",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const getPriceFor = (id: string, fallback: number) => {
+    const p = plans.find((x) => x.id === id);
+    return p ? (p.price_inr ?? fallback) : fallback;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
       <SuperAdminSidebar activeTab="Subscriptions" />
@@ -111,14 +163,23 @@ export default function SuperAdminSubscriptions() {
           showBackButton={true}
           backPath="/superadmin"
           actions={
-            <Button
-              onClick={fetchSubscriptions}
-              disabled={loading}
-              className="h-9 px-4 rounded-none border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:border-slate-600 transition-all"
-            >
-              <RefreshCcw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-              Refresh Plans
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowPriceDialog(true)}
+                className="h-9 px-4 rounded-none bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"
+              >
+                <DollarSign className="h-3.5 w-3.5" />
+                Edit Plan Prices
+              </Button>
+              <Button
+                onClick={fetchSubscriptions}
+                disabled={loading}
+                className="h-9 px-4 rounded-none border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:border-slate-600 transition-all"
+              >
+                <RefreshCcw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+                Refresh Plans
+              </Button>
+            </div>
           }
         />
 
@@ -157,8 +218,16 @@ export default function SuperAdminSubscriptions() {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-900 pb-3">
               <div>
                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Plan Reference & Capabilities Matrix</h3>
-                <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">Review limit allocations and licensed feature permissions for each subscription tier.</p>
+                <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">Review limit allocations, pricing, and licensed feature permissions for each subscription tier.</p>
               </div>
+              <Button
+                onClick={() => setShowPriceDialog(true)}
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-none text-[9px] font-black uppercase tracking-widest border-indigo-500 text-indigo-600 dark:text-indigo-400"
+              >
+                Set Plan Pricing
+              </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
@@ -188,17 +257,6 @@ export default function SuperAdminSubscriptions() {
                     </div>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
-                  <ul className="text-[10px] font-bold space-y-1 text-slate-400">
-                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> CSV Student Import</li>
-                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> XLSX Reports Export</li>
-                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Advanced Analytics</li>
-                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Custom Branding</li>
-                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Basic Proctoring</li>
-                    <li className="flex items-center gap-1.5 opacity-55"><span className="text-red-500 font-bold">×</span> Camera Proctoring</li>
-                  </ul>
-                </div>
               </div>
 
               {/* Starter Plan Card */}
@@ -207,7 +265,9 @@ export default function SuperAdminSubscriptions() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 block">Mid-Range</span>
                   <div className="flex items-center justify-between mt-0.5">
                     <h4 className="text-sm font-black uppercase tracking-tight text-blue-600 dark:text-blue-400">Starter Plan</h4>
-                    <span className="text-[10px] font-black text-blue-600/80 dark:text-blue-400/80 uppercase tracking-wider">₹1,999 / Month</span>
+                    <span className="text-[10px] font-black text-blue-600/80 dark:text-blue-400/80 uppercase tracking-wider">
+                      ₹{getPriceFor("starter", 1999).toLocaleString()} / Yr
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -227,17 +287,6 @@ export default function SuperAdminSubscriptions() {
                     </div>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
-                  <ul className="text-[10px] font-bold space-y-1 text-slate-600 dark:text-slate-400">
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> CSV Student Import</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> XLSX Reports Export</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Advanced Analytics</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Custom Branding</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Basic Proctoring</li>
-                    <li className="flex items-center gap-1.5 opacity-55 text-slate-400"><span className="text-red-500 font-bold">×</span> Camera Proctoring</li>
-                  </ul>
-                </div>
               </div>
 
               {/* Growth Plan Card */}
@@ -246,7 +295,9 @@ export default function SuperAdminSubscriptions() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 block">Scaling</span>
                   <div className="flex items-center justify-between mt-0.5">
                     <h4 className="text-sm font-black uppercase tracking-tight text-emerald-600 dark:text-emerald-400">Growth Plan</h4>
-                    <span className="text-[10px] font-black text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">₹3,999 / Month</span>
+                    <span className="text-[10px] font-black text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">
+                      ₹{getPriceFor("growth", 3999).toLocaleString()} / Yr
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -266,17 +317,6 @@ export default function SuperAdminSubscriptions() {
                     </div>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
-                  <ul className="text-[10px] font-bold space-y-1 text-slate-600 dark:text-slate-400">
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> CSV Student Import</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> XLSX Reports Export</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Advanced Analytics</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Custom Branding</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Basic Proctoring</li>
-                    <li className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400"><span className="font-bold">✓</span> Camera Proctoring</li>
-                  </ul>
-                </div>
               </div>
 
               {/* Enterprise Plan Card */}
@@ -285,7 +325,9 @@ export default function SuperAdminSubscriptions() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-purple-500 block">Unrestricted</span>
                   <div className="flex items-center justify-between mt-0.5">
                     <h4 className="text-sm font-black uppercase tracking-tight text-purple-600 dark:text-purple-400">Enterprise Plan</h4>
-                    <span className="text-[10px] font-black text-purple-600/80 dark:text-purple-400/80 uppercase tracking-wider">Custom Pricing</span>
+                    <span className="text-[10px] font-black text-purple-600/80 dark:text-purple-400/80 uppercase tracking-wider">
+                      ₹{getPriceFor("enterprise", 9999).toLocaleString()} / Yr
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -304,17 +346,6 @@ export default function SuperAdminSubscriptions() {
                       <span>300</span>
                     </div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">Features</span>
-                  <ul className="text-[10px] font-bold space-y-1 text-slate-600 dark:text-slate-400">
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> CSV Student Import</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> XLSX Reports Export</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Advanced Analytics</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Custom Branding</li>
-                    <li className="flex items-center gap-1.5"><span className="text-emerald-500 font-bold">✓</span> Basic Proctoring</li>
-                    <li className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400"><span className="font-bold">✓</span> Camera Proctoring</li>
-                  </ul>
                 </div>
               </div>
             </div>
@@ -419,6 +450,87 @@ export default function SuperAdminSubscriptions() {
         <Footer />
       </div>
 
+      {/* Edit Plan Prices Dialog */}
+      <Dialog open={showPriceDialog} onOpenChange={setShowPriceDialog}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-none font-sans p-6 text-slate-900 dark:text-white">
+          <DialogHeader className="border-b border-slate-100 dark:border-slate-900 pb-4 mb-4">
+            <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-indigo-500" />
+              Configure Subscription Plan Prices (INR)
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSavePrices} className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Set the price for each subscription tier. Client Admins will pay this exact amount online via Razorpay.
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Free Plan (₹)</label>
+                <input
+                  type="number"
+                  disabled
+                  value={0}
+                  className="w-full h-9 border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-500 text-xs font-bold px-3 outline-none rounded-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-blue-500">Starter Plan Price (₹)</label>
+                <input
+                  type="number"
+                  value={editingPrices["starter"] ?? 1999}
+                  onChange={(e) => setEditingPrices({ ...editingPrices, starter: Number(e.target.value) || 0 })}
+                  className="w-full h-9 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold px-3 outline-none rounded-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Growth Plan Price (₹)</label>
+                <input
+                  type="number"
+                  value={editingPrices["growth"] ?? 3999}
+                  onChange={(e) => setEditingPrices({ ...editingPrices, growth: Number(e.target.value) || 0 })}
+                  className="w-full h-9 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold px-3 outline-none rounded-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-purple-500">Enterprise Plan Price (₹)</label>
+                <input
+                  type="number"
+                  value={editingPrices["enterprise"] ?? 9999}
+                  onChange={(e) => setEditingPrices({ ...editingPrices, enterprise: Number(e.target.value) || 0 })}
+                  className="w-full h-9 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs font-bold px-3 outline-none rounded-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-900">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowPriceDialog(false)}
+                className="h-9 px-4 rounded-none text-[10px] font-black uppercase tracking-widest"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updating}
+                className="h-9 px-6 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-none"
+              >
+                {updating ? "Saving..." : "Save Prices"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Subscription Plan Dialog */}
       <Dialog open={editSub !== null} onOpenChange={(open) => !open && setEditSub(null)}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-none font-sans p-6 text-slate-900 dark:text-white">
@@ -444,92 +556,11 @@ export default function SuperAdminSubscriptions() {
                 className="w-full h-10 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider px-3 outline-none rounded-none focus:border-red-500"
               >
                 <option value="free">Free Plan (₹0 - 3 Exams, 20 Students, 50 Qs)</option>
-                <option value="starter">Starter Plan (₹1,999/mo - 25 Exams, 100 Students, 100 Qs)</option>
-                <option value="growth">Growth Plan (₹3,999/mo - 50 Exams, 250 Students, 200 Qs)</option>
-                <option value="enterprise">Enterprise Plan (Custom - Unlimited Limits)</option>
+                <option value="starter">Starter Plan (₹{getPriceFor("starter", 1999).toLocaleString()} - 25 Exams, 100 Students, 100 Qs)</option>
+                <option value="growth">Growth Plan (₹{getPriceFor("growth", 3999).toLocaleString()} - 50 Exams, 250 Students, 200 Qs)</option>
+                <option value="enterprise">Enterprise Plan (₹{getPriceFor("enterprise", 9999).toLocaleString()} - Unlimited Limits)</option>
               </select>
             </div>
-
-            {/* Dynamic Plan Preview Card */}
-            {planId && (
-              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-3">
-                
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
-                    <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Exams/Mo</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                      {planId === "free" ? "3" : planId === "starter" ? "25" : planId === "growth" ? "50" : "100"}
-                    </span>
-                  </div>
-                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
-                    <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Students/Exam</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                      {planId === "free" ? "20" : planId === "starter" ? "100" : planId === "growth" ? "250" : "500"}
-                    </span>
-                  </div>
-                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2 text-center">
-                    <span className="text-[8px] font-black uppercase text-slate-400 block tracking-wider">Questions/Exam</span>
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                      {planId === "free" ? "50" : planId === "starter" ? "100" : planId === "growth" ? "200" : "300"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-200 dark:border-slate-800 pt-2 space-y-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 block mb-1">Feature Access (Permissions)</span>
-                  <div className="grid grid-cols-1 gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                    <div className="flex items-center justify-between">
-                      <span>CSV Student Import</span>
-                      {planId !== "free" ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>XLSX Reports Export</span>
-                      {planId !== "free" ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Advanced Dashboard Analytics</span>
-                      {planId !== "free" ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Custom Branding & Logo</span>
-                      {planId !== "free" ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Basic Proctoring events</span>
-                      {planId !== "free" ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Camera Proctoring</span>
-                      {planId === "growth" || planId === "enterprise" ? (
-                        <span className="text-purple-600 dark:text-purple-400 text-[10px] uppercase font-black tracking-widest">● Active</span>
-                      ) : (
-                        <span className="text-slate-400 text-[10px] uppercase font-black tracking-widest">○ Inactive</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Plan Expiry Date</label>

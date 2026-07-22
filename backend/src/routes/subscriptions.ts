@@ -9,10 +9,28 @@ export default async function handler(req: Request, res: Response) {
   const user = await requireUser(req, res);
   if (!user) return;
 
-  // Super Admin security block
+  // ── GET /api/subscription-plans (list plans with prices - accessible to any authenticated user) ────────
+  if (req.method === "GET" && (req.path.endsWith("/plans") || req.path.endsWith("/subscription-plans"))) {
+    const { rows } = await db.execute("SELECT * FROM subscription_plans ORDER BY price_inr ASC");
+    return res.status(200).json(rows);
+  }
+
+  // Super Admin security block for all management endpoints below
   const isSuper = await hasRole(user.id, "superadmin");
   if (!isSuper) {
     return res.status(403).json({ error: "Permission denied. Super Admin access only." });
+  }
+
+  // ── PATCH /api/superadmin/subscriptions/plans/:plan_id (update price) ───────
+  if (req.method === "PATCH" && req.path.includes("/plans/")) {
+    const planId = req.path.split("/plans/")[1];
+    const { price_inr } = req.body;
+    if (price_inr === undefined) return res.status(400).json({ error: "price_inr is required" });
+    await db.execute({
+      sql: "UPDATE subscription_plans SET price_inr = ? WHERE id = ?",
+      args: [Number(price_inr), planId],
+    });
+    return res.status(200).json({ success: true });
   }
 
   // 1. Automatic Subscription Expiry Check (Updates status to 'expired' if today > expiry_date)

@@ -42,6 +42,7 @@ import subscriptionRequestsHandler from "./routes/subscription-requests.js";
 import authRoutesHandler from "./routes/auth.js";
 import gcpStatsHandler from "./routes/gcp-stats.js";
 import attemptsFeedbackHandler from "./routes/attempts-feedback.js";
+import paymentsHandler from "./routes/payments.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -153,6 +154,9 @@ app.all("/api/create-user", createUserHandler);
 app.all("/api/proctoring/events", proctoringHandler);
 app.all("/api/settings*", settingsHandler);
 app.all("/api/packages*", packagesHandler);
+app.get("/api/subscription-plans", subscriptionsHandler);
+app.get("/api/superadmin/subscriptions/plans", subscriptionsHandler);
+app.patch("/api/superadmin/subscriptions/plans/:plan_id", subscriptionsHandler);
 app.all("/api/superadmin/subscriptions/:client_id", subscriptionsHandler);
 app.all("/api/superadmin/subscriptions", subscriptionsHandler);
 app.all("/api/superadmin/audit-logs", auditLogsHandler);
@@ -160,6 +164,12 @@ app.all("/api/subscription-requests", subscriptionRequestsHandler);
 app.all("/api/gcp-stats", gcpStatsHandler);
 app.all("/api/auth/forgot-password", authRoutesHandler);
 app.all("/api/auth/reset-password", authRoutesHandler);
+
+// Payments — webhook needs raw body BEFORE json parser, so registered with express.raw
+app.post("/api/payments/webhook", express.raw({ type: "application/json" }), paymentsHandler);
+app.all("/api/payments/create-order", paymentsHandler);
+app.all("/api/payments/verify", paymentsHandler);
+app.get("/api/payments", paymentsHandler);
 
 // RPC / Custom endpoints
 app.all("/api/rpc/clone-test", cloneTestHandler);

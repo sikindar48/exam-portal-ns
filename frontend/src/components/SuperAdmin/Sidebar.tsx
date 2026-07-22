@@ -81,6 +81,7 @@ export function SuperAdminSidebar({ activeTab }: SuperAdminSidebarProps) {
       subTabs: [
         { label: "Active Plans", path: "/superadmin/subscriptions", id: "super-nav-btn-subscriptions-plans" },
         { label: "Requests", path: "/superadmin/subscription-requests", id: "super-nav-btn-subscriptions-requests" },
+        { label: "Payments Log", path: "/superadmin/payments", id: "super-nav-btn-subscriptions-payments" },
       ]
     },
     {

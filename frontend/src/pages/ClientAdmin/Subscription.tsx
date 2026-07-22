@@ -133,18 +133,19 @@ export default function Subscription() {
                     <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-4">
                       {activePlan.price}
                       {client?.plan_id !== "enterprise" && (
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider"> / month</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider"> / year</span>
                       )}
                     </p>
                   </div>
-                  {client?.plan_id !== "enterprise" && (
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       onClick={() => navigate("/client-admin/subscription/plans")}
-                      className="bg-blue-650 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded-none h-9 px-4 shrink-0 transition-colors"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-none h-9 px-4 shrink-0 transition-colors flex items-center gap-1.5"
                     >
-                      Upgrade Plan
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Upgrade Plan / Pay Online
                     </Button>
-                  )}
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -209,7 +210,7 @@ export default function Subscription() {
                               size="sm"
                               variant="outline"
                               onClick={() => setViewingPurchaseDetails(p)}
-                              className="h-6 w-28 px-2 text-[9px] font-black uppercase tracking-widest rounded-none border border-slate-300 bg-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-transparent dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white transition-colors"
+                              className="h-6 w-28 px-2 text-[9px] font-black uppercase tracking-widest rounded-none border border-slate-300 bg-transparent text-slate-700 hover:bg-slate-900 hover:text-white dark:border-slate-700 dark:bg-transparent dark:text-slate-300 dark:hover:bg-slate-100 dark:hover:text-slate-900 transition-colors"
                             >
                               View Details
                             </Button>
@@ -248,20 +249,43 @@ export default function Subscription() {
                   </div>
                 </div>
 
-                {/* Pay Per Test Credits info */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl space-y-6">
-                  <div className="flex items-center gap-3">
-                    <Ticket className="h-5 w-5 text-indigo-600" />
-                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Pay Per Test</h3>
+                {/* Enhanced Pay Per Test Credits Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl space-y-6 relative overflow-hidden group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Ticket className="h-5 w-5 text-indigo-600" />
+                      <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Pay Per Test</h3>
+                    </div>
+                    <span className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 border border-indigo-200 dark:border-indigo-800">
+                      From ₹99
+                    </span>
                   </div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide leading-relaxed">
-                    Run custom tests outside active plan limits.
-                  </p>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Host custom high-capacity examinations, placement drives, or specialized tests outside your monthly plan limits.
+                    </p>
+                    <ul className="space-y-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 pt-1">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <span>Single-use credit tokens</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <span>Custom student & question limits</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <span>Instant online activation via Razorpay</span>
+                      </li>
+                    </ul>
+                  </div>
+
                   <Button
                     onClick={() => navigate("/client-admin/subscription/packages")}
-                    className="w-full h-10 rounded-none bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest"
+                    className="w-full h-10 rounded-none bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
                   >
-                    View Inventory
+                    Explore & Buy Packages
                   </Button>
                 </div>
               </div>

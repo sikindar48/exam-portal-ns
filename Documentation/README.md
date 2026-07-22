@@ -310,7 +310,7 @@ gcloud builds submit --config cloudbuild.yaml
 # Or deploy directly
 gcloud run deploy exam-portal-api \
   --source . \
-  --region asia-south2 \
+  --region asia-south1 \
   --allow-unauthenticated \
   --set-env-vars TURSO_DATABASE_URL=...,TURSO_AUTH_TOKEN=...
 ```
