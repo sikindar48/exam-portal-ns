@@ -96,7 +96,8 @@ export default function Builder() {
         marks: tq.marks ?? tq.questions?.marks ?? 1,
         section_id: tq.section_id || null,
         position: tq.position ?? 0,
-        question_type: tq.question_type || tq.questions?.question_type || "mcq"
+        question_type: tq.question_type || tq.questions?.question_type || "mcq",
+        image_url: tq.image_url || tq.questions?.image_url || "",
       })) || [];
 
       const t = test as any;
@@ -160,22 +161,79 @@ export default function Builder() {
   const duplicateQuestion = (id: string) => {
     const question = testData.questions.find((q) => q.id === id);
     if (question) {
+      const newId = `temp_${Date.now()}`;
       setTestData((prev) => ({
         ...prev,
-        questions: [...prev.questions, { ...question, id: `temp_${Date.now()}`, temp_id: Date.now() }],
+        questions: [...prev.questions, { ...question, id: newId, temp_id: Date.now() }],
       }));
+
+      setTimeout(() => {
+        const el = document.getElementById(`question-card-${newId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 120);
     }
   };
 
-  const onCsvImportSuccess = async (importedIds?: string[]) => {
-    if (importedIds && importedIds.length > 0) {
+  const onCsvImportSuccess = async (importedIds?: string[], parsedQuestions?: any[]) => {
+    if ((importedIds && importedIds.length > 0) || (parsedQuestions && parsedQuestions.length > 0)) {
       setLoading(true);
       try {
-        const { data, error } = await questionsApi.getByIds(importedIds);
-        if (error) throw new Error(error.message);
-        if (data) {
-          setTestData((prev) => ({ ...prev, questions: [...prev.questions, ...(data as unknown as Question[])] }));
-          toast({ title: "Import Success", description: `${(data as any[]).length} questions added.` });
+        let freshQuestions: Question[] = [];
+        if (importedIds && importedIds.length > 0) {
+          const { data, error } = await questionsApi.getByIds(importedIds);
+          if (!error && data) {
+            freshQuestions = data as unknown as Question[];
+          }
+        }
+
+        // Fallback / merge with parsed CSV questions to ensure image_url is populated
+        if (parsedQuestions && parsedQuestions.length > 0) {
+          if (freshQuestions.length === 0) {
+            freshQuestions = parsedQuestions.map((q, idx) => ({
+              ...q,
+              id: q.id || `csv_${Date.now()}_${idx}`,
+              question_type: q.question_type || "mcq",
+              marks: q.marks ?? 1,
+            })) as Question[];
+          } else {
+            freshQuestions = freshQuestions.map((fq) => {
+              const matchedCsv = parsedQuestions.find((iq) => 
+                (iq.id && iq.id === fq.id) ||
+                (iq.question_text && fq.question_text && iq.question_text.trim().toLowerCase() === fq.question_text.trim().toLowerCase())
+              );
+              if (matchedCsv && matchedCsv.image_url) {
+                return { ...fq, image_url: matchedCsv.image_url };
+              }
+              return fq;
+            });
+          }
+        }
+
+        if (freshQuestions.length > 0) {
+          setTestData((prev) => {
+            const freshByText = new Map(freshQuestions.map((q) => [q.question_text?.trim().toLowerCase(), q]));
+            const freshById = new Map(freshQuestions.map((q) => [q.id, q]));
+            
+            const updatedExisting = prev.questions.map((q) => {
+              const match = freshById.get(q.id) || freshByText.get(q.question_text?.trim().toLowerCase());
+              if (match) {
+                return { ...q, ...match, image_url: match.image_url || q.image_url };
+              }
+              return q;
+            });
+
+            const brandNew = freshQuestions.filter((q) => 
+              !prev.questions.some((old) => old.id === q.id || (old.question_text && q.question_text && old.question_text.trim().toLowerCase() === q.question_text.trim().toLowerCase()))
+            );
+
+            return {
+              ...prev,
+              questions: [...updatedExisting, ...brandNew],
+            };
+          });
+          toast({ title: "Import Success", description: `${freshQuestions.length} questions imported.` });
         }
       } catch (err) {
         toast({ title: "Import Error", description: "Failed to display imported questions.", variant: "destructive" });
@@ -284,6 +342,8 @@ export default function Builder() {
           section_id: sectionId,
           position: index,
           question_type: q.question_type || "mcq",
+          image_url: q.image_url || null,
+          explanation: q.explanation || "",
         };
       });
 
@@ -307,7 +367,7 @@ export default function Builder() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans flex flex-col justify-between">
       <Header 
         testName={testData.test_name} 
         saving={saving} 
@@ -316,7 +376,7 @@ export default function Builder() {
         showImport={features.includes("csv_import")}
       />
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-8 flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-1">
             <Sidebar 
@@ -348,15 +408,16 @@ export default function Builder() {
 
             <div className="space-y-8 pb-12">
               {testData.questions.map((question, index) => (
-                <QuestionCard
-                  key={question.id}
-                  question={question}
-                  index={index}
-                  sections={testData.sections}
-                  onUpdate={updateQuestion}
-                  onDelete={deleteQuestion}
-                  onDuplicate={duplicateQuestion}
-                />
+                <div key={question.id || index} id={`question-card-${question.id}`}>
+                  <QuestionCard
+                    question={question}
+                    index={index}
+                    sections={testData.sections}
+                    onUpdate={updateQuestion}
+                    onDelete={deleteQuestion}
+                    onDuplicate={duplicateQuestion}
+                  />
+                </div>
               ))}
 
               {testData.questions.length === 0 && (

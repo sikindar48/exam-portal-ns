@@ -359,20 +359,92 @@ export default async function handler(req: Request, res: Response) {
     const { id } = req.query;
     if (!id) return res.status(400).json({ error: "id required" });
 
+    const testIdStr = String(id);
+
+    // Fetch test details for isolation check and client ID
+    const { rows: testRows } = await db.execute({
+      sql: "SELECT client_id FROM tests WHERE id = ?",
+      args: [testIdStr],
+    });
+    if (!testRows.length) return res.status(404).json({ error: "Test not found" });
+    const testClientId = (testRows[0] as any).client_id;
+
     // Client Admin Isolation Check
     if (isClientAdmin && !isSuper) {
       const callerClientId = await getUserClientId(user.id);
-      const { rows: testRows } = await db.execute({
-        sql: "SELECT client_id FROM tests WHERE id = ?",
-        args: [String(id)],
-      });
-      if (!testRows.length) return res.status(404).json({ error: "Test not found" });
-      if (testRows[0].client_id !== callerClientId) {
+      if (testClientId !== callerClientId) {
         return res.status(403).json({ error: "Permission denied" });
       }
     }
 
-    await db.execute({ sql: "DELETE FROM tests WHERE id = ?", args: [id as string] });
+    // 1. Delete associated proctoring snapshot image files from GCS / Disk and deduct storage
+    try {
+      const { rows: evidenceRows } = await db.execute({
+        sql: "SELECT storage_path FROM proctoring_events WHERE test_id = ? AND has_evidence = 1 AND storage_path IS NOT NULL",
+        args: [testIdStr],
+      });
+
+      let totalFreedBytes = 0;
+      const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID || "exam-portal-ns"}.appspot.com`;
+
+      for (const row of evidenceRows as any[]) {
+        const sPath = row.storage_path;
+        if (!sPath) continue;
+
+        // Try deleting from GCS
+        try {
+          const { getApps } = await import("firebase-admin/app");
+          const { getStorage } = await import("firebase-admin/storage");
+          if (getApps().length > 0) {
+            const bucket = getStorage().bucket(storageBucketName);
+            const file = bucket.file(sPath);
+            const [exists] = await file.exists();
+            if (exists) {
+              const [metadata] = await file.getMetadata();
+              totalFreedBytes += Number(metadata.size || 100000);
+              await file.delete();
+            }
+          } else {
+            // Local file fallback
+            const fs = await import("fs");
+            const path = await import("path");
+            const localFilePath = path.join(process.cwd(), "public/mock-images", sPath);
+            if (fs.existsSync(localFilePath)) {
+              const stats = await fs.promises.stat(localFilePath);
+              totalFreedBytes += stats.size;
+              await fs.promises.unlink(localFilePath);
+            }
+          }
+        } catch (fileErr) {
+          console.error("Failed to delete proctoring image file during test deletion:", sPath, fileErr);
+        }
+      }
+
+      if (totalFreedBytes > 0 && testClientId) {
+        const freedMB = totalFreedBytes / (1024 * 1024);
+        await incrementClientUsage(testClientId, "storage_used_mb", -freedMB);
+      }
+    } catch (evtErr) {
+      console.error("Failed to process evidence image cleanup for deleted test:", evtErr);
+    }
+
+    // 2. Clean up questions created exclusively inside Test Builder for this test (not in question bank)
+    try {
+      await db.execute({
+        sql: `DELETE FROM questions 
+              WHERE id IN (
+                SELECT tq.question_id FROM test_questions tq
+                JOIN questions q ON q.id = tq.question_id
+                WHERE tq.test_id = ? AND q.folder_id IS NULL AND q.import_batch_id IS NULL
+              )`,
+        args: [testIdStr],
+      });
+    } catch (qErr) {
+      console.error("Failed to clean up test-builder questions for deleted test:", qErr);
+    }
+
+    // 3. Delete the test (Cascades attempts, proctoring_events, test_questions)
+    await db.execute({ sql: "DELETE FROM tests WHERE id = ?", args: [testIdStr] });
     return res.status(200).json({ success: true });
   }
 

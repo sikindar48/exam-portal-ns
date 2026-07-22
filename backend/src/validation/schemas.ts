@@ -46,6 +46,7 @@ export const questionCreateSchema = z.object({
   correct_answers: z.array(z.string()).optional(),
   negative_marks: z.number().min(0).optional(),
   explanation: z.string().optional().nullable(),
+  image_url: z.string().optional().nullable(),
   is_case_sensitive: z.number().int().optional(),
   import_batch_id: z.string().optional().nullable(),
   version: z.number().int().min(1).optional(),
@@ -53,6 +54,7 @@ export const questionCreateSchema = z.object({
 
 export const questionUpdateSchema = questionCreateSchema.extend({
   ids: z.array(z.string()).optional(),
+  bulk_image_urls: z.array(z.object({ id: z.string(), image_url: z.string() })).optional(),
 }).partial();
 
 export const profileUpsertSchema = z.object({

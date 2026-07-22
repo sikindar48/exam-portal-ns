@@ -5,7 +5,7 @@
   "description": "NS Exam Portal - Express Backend with Turso Database",
   "type": "module",
   "scripts": {
-    "dev": "node --loader ts-node/esm src/server.ts",
+    "dev": "nodemon --watch src --ext ts --exec 'node --loader ts-node/esm src/server.ts'",
     "build": "tsc",
     "start": "node dist/server.js"
   },
@@ -28,6 +28,7 @@
     "@types/node": "^22.16.5",
     "@types/nodemailer": "^8.0.1",
     "@types/supertest": "^7.2.0",
+    "nodemon": "^3.1.14",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",

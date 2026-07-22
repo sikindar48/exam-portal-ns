@@ -18,7 +18,8 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       { name: "explanation", type: "TEXT DEFAULT ''" },
       { name: "is_case_sensitive", type: "INTEGER DEFAULT 0" },
       { name: "import_batch_id", type: "TEXT" },
-      { name: "version", type: "INTEGER DEFAULT 1" }
+      { name: "version", type: "INTEGER DEFAULT 1" },
+      { name: "image_url", type: "TEXT DEFAULT NULL" }
     ];
 
     for (const col of columns) {
@@ -159,9 +160,14 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         max_exams_per_month INTEGER DEFAULT -1,
         max_students_per_exam INTEGER DEFAULT -1,
         max_questions_per_exam INTEGER DEFAULT -1,
+        max_storage_mb INTEGER DEFAULT 25,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    try {
+      await db.execute(`ALTER TABLE client_limits ADD COLUMN max_storage_mb INTEGER DEFAULT 25`);
+    } catch (err: any) {}
 
     // Monthly usage tracking table
     await db.execute(`
@@ -245,9 +251,14 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         max_exams_per_month INTEGER DEFAULT -1,
         max_students_per_exam INTEGER DEFAULT -1,
         max_questions_per_exam INTEGER DEFAULT -1,
+        max_storage_mb INTEGER DEFAULT 25,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    try {
+      await db.execute(`ALTER TABLE subscription_plans ADD COLUMN max_storage_mb INTEGER DEFAULT 25`);
+    } catch (err: any) {}
 
     // Plan features mapping table
     await db.execute(`
@@ -300,13 +311,18 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
 
     // Seed default subscription plans if empty
     await db.execute(`
-      INSERT OR IGNORE INTO subscription_plans (id, name, max_exams_per_month, max_students_per_exam, max_questions_per_exam)
+      INSERT OR IGNORE INTO subscription_plans (id, name, max_exams_per_month, max_students_per_exam, max_questions_per_exam, max_storage_mb)
       VALUES 
-        ('free', 'Free Plan', 3, 20, 50),
-        ('starter', 'Starter Plan', 25, 100, 100),
-        ('growth', 'Growth Plan', 50, 250, 200),
-        ('enterprise', 'Enterprise Plan', 100, 500, 300)
+        ('free', 'Free Plan', 3, 20, 50, 25),
+        ('starter', 'Starter Plan', 25, 100, 100, 250),
+        ('growth', 'Growth Plan', 50, 250, 200, 1024),
+        ('enterprise', 'Enterprise Plan', 100, 500, 300, 5120)
     `);
+
+    await db.execute("UPDATE subscription_plans SET max_storage_mb = 25 WHERE id = 'free'");
+    await db.execute("UPDATE subscription_plans SET max_storage_mb = 250 WHERE id = 'starter'");
+    await db.execute("UPDATE subscription_plans SET max_storage_mb = 1024 WHERE id = 'growth'");
+    await db.execute("UPDATE subscription_plans SET max_storage_mb = 5120 WHERE id = 'enterprise'");
 
     // Sync plan feature mappings with plans documentation
     await db.execute("DELETE FROM subscription_plan_features");
@@ -335,7 +351,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         args: [cId, todayStr, expiryStr]
       });
       await db.execute({
-        sql: "INSERT OR IGNORE INTO client_limits (client_id, max_exams_per_month, max_students_per_exam, max_questions_per_exam) VALUES (?, 3, 20, 50)",
+        sql: "INSERT OR IGNORE INTO client_limits (client_id, max_exams_per_month, max_students_per_exam, max_questions_per_exam, max_storage_mb) VALUES (?, 3, 20, 50, 25)",
         args: [cId]
       });
     }
@@ -365,6 +381,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         price REAL NOT NULL,
         max_questions INTEGER NOT NULL,
         max_candidates INTEGER NOT NULL,
+        max_storage_mb INTEGER DEFAULT 25,
         csv_import INTEGER DEFAULT 0,
         xlsx_export INTEGER DEFAULT 0,
         analytics INTEGER DEFAULT 1,
@@ -375,6 +392,10 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
         active INTEGER DEFAULT 1
       );
     `);
+
+    try {
+      await db.execute(`ALTER TABLE test_packages ADD COLUMN max_storage_mb INTEGER DEFAULT 25`);
+    } catch (err: any) {}
 
     // Create Client Test Purchases inventory table
     await db.execute(`
@@ -394,7 +415,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       console.log("Added custom_max_candidates to client_test_purchases table.");
     } catch (err: any) {
       if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
-        console.error("Error adding custom_max_candidates to client_test_purchases:", err);
+        console.error(`Error adding custom_max_candidates to client_test_purchases:`, err);
       }
     }
 
@@ -403,7 +424,7 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
       console.log("Added custom_max_questions to client_test_purchases table.");
     } catch (err: any) {
       if (!err.message.includes("duplicate column") && !err.message.includes("already exists")) {
-        console.error("Error adding custom_max_questions to client_test_purchases:", err);
+        console.error(`Error adding custom_max_questions to client_test_purchases:`, err);
       }
     }
 
@@ -424,18 +445,22 @@ async function runMigrations(db: ReturnType<typeof createClient>) {
 
     // Seed default packages
     const seedPackages = [
-      { id: "base", name: "Base Assessment", price: 99.00, max_questions: 50, max_candidates: 50, csv_import: 0, xlsx_export: 0, analytics: 1, custom_branding: 1, basic_proctoring: 0, camera_proctoring: 0 },
-      { id: "basic", name: "Basic Assessment", price: 199.00, max_questions: 50, max_candidates: 50, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 0 },
-      { id: "standard", name: "Standard Assessment", price: 399.00, max_questions: 50, max_candidates: 50, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 },
-      { id: "professional", name: "Professional Assessment", price: 499.00, max_questions: 100, max_candidates: 100, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 }, // lite
-      { id: "placement_drive", name: "Placement Drive", price: 1499.00, max_questions: 200, max_candidates: 500, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 } // lite
+      { id: "base", name: "Base Assessment", price: 99.00, max_questions: 50, max_candidates: 50, max_storage_mb: 25, csv_import: 0, xlsx_export: 0, analytics: 1, custom_branding: 1, basic_proctoring: 0, camera_proctoring: 0 },
+      { id: "basic", name: "Basic Assessment", price: 199.00, max_questions: 50, max_candidates: 50, max_storage_mb: 50, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 0 },
+      { id: "standard", name: "Standard Assessment", price: 399.00, max_questions: 50, max_candidates: 50, max_storage_mb: 100, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 },
+      { id: "professional", name: "Professional Assessment", price: 499.00, max_questions: 100, max_candidates: 100, max_storage_mb: 100, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 }, // lite
+      { id: "placement_drive", name: "Placement Drive", price: 1499.00, max_questions: 200, max_candidates: 500, max_storage_mb: 100, csv_import: 1, xlsx_export: 1, analytics: 1, custom_branding: 1, basic_proctoring: 1, camera_proctoring: 1 } // lite
     ];
 
     for (const pkg of seedPackages) {
       await db.execute({
-        sql: `INSERT OR IGNORE INTO test_packages (id, name, price, max_questions, max_candidates, csv_import, xlsx_export, analytics, custom_branding, basic_proctoring, camera_proctoring)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [pkg.id, pkg.name, pkg.price, pkg.max_questions, pkg.max_candidates, pkg.csv_import, pkg.xlsx_export, pkg.analytics, pkg.custom_branding, pkg.basic_proctoring, pkg.camera_proctoring]
+        sql: `INSERT OR IGNORE INTO test_packages (id, name, price, max_questions, max_candidates, max_storage_mb, csv_import, xlsx_export, analytics, custom_branding, basic_proctoring, camera_proctoring)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [pkg.id, pkg.name, pkg.price, pkg.max_questions, pkg.max_candidates, pkg.max_storage_mb, pkg.csv_import, pkg.xlsx_export, pkg.analytics, pkg.custom_branding, pkg.basic_proctoring, pkg.camera_proctoring]
+      });
+      await db.execute({
+        sql: "UPDATE test_packages SET max_storage_mb = ? WHERE id = ?",
+        args: [pkg.max_storage_mb, pkg.id]
       });
     }
 

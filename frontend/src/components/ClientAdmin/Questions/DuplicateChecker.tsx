@@ -26,16 +26,30 @@ export function DuplicateChecker({ onComplete }: { onComplete: () => void }) {
     if (error) {
       toast({ title: "Error", description: "Failed to check for duplicates", variant: "destructive" });
     } else if (data) {
-      const groups: Record<string, string[]> = {};
+      const getOptionsString = (q: any) => {
+        let opts: string[] = [];
+        if (Array.isArray(q.options) && q.options.length > 0) {
+          opts = q.options;
+        } else {
+          opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
+        }
+        return opts.map((o) => (o || "").trim().toLowerCase()).join(" | ");
+      };
+
+      const groups: Record<string, { text: string; ids: string[] }> = {};
       (data || []).forEach((q) => {
         const text = q.question_text.trim();
-        if (!groups[text]) groups[text] = [];
-        groups[text].push(q.id);
+        const optsStr = getOptionsString(q);
+        const key = `${text.toLowerCase()}|${optsStr}`;
+        if (!groups[key]) {
+          groups[key] = { text: optsStr ? `${text} [Options: ${optsStr}]` : text, ids: [] };
+        }
+        groups[key].ids.push(q.id);
       });
 
-      const duplicateGroups = Object.entries(groups)
-        .filter(([_, ids]) => ids.length > 1)
-        .map(([text, ids]) => ({ text, ids }));
+      const duplicateGroups = Object.values(groups)
+        .filter((g) => g.ids.length > 1)
+        .map((g) => ({ text: g.text, ids: g.ids }));
 
       setDuplicates(duplicateGroups);
     }

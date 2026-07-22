@@ -3,6 +3,7 @@ import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { hasRole, getUserClientId } from "../services/roles.js";
 import { isFeatureEnabled } from "../services/features.js";
+import { getClientLimits, getClientUsageMonthly } from "../services/limits.js";
 
 /**
  * GET /api/stats?scope=platform  → SuperAdmin dashboard
@@ -275,6 +276,9 @@ export default async function handler(req: Request, res: Response) {
       submissions: Number(t.submissions) || 0,
     }));
 
+    const limits = await getClientLimits(clientId);
+    const usage = await getClientUsageMonthly(clientId);
+
     return res.status(200).json({
       totalStudents: (students.rows[0] as any).count,
       totalQuestions: (questions.rows[0] as any).count,
@@ -282,6 +286,10 @@ export default async function handler(req: Request, res: Response) {
       totalAttempts: totalAttemptsCount,
       avgScore: Math.round(avgScore),
       passRate: Math.round(passRate),
+      storageUsedMb: usage.storage_used_mb || 0,
+      maxStorageMb: limits.max_storage_mb || 25,
+      examsCreatedThisMonth: usage.exams_created || 0,
+      maxExamsPerMonth: limits.max_exams_per_month,
       topPerformers,
       testPerformance,
     });

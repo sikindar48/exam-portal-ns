@@ -3,6 +3,7 @@ import { getDb } from "../db/db.js";
 import { requireUser } from "../auth/auth.js";
 import { getUserClientId, hasRole, isGuestStudent } from "../services/roles.js";
 import { isFeatureEnabled } from "../services/features.js";
+import { getClientLimits, getClientUsageMonthly, incrementClientUsage } from "../services/limits.js";
 import { randomUUID } from "crypto";
 import { getStorage } from "firebase-admin/storage";
 import { getApps } from "firebase-admin/app";
@@ -367,43 +368,65 @@ export default async function handler(req: Request, res: Response) {
         const ext = match[1];
         const base64Data = match[2];
         const buffer = Buffer.from(base64Data, "base64");
-        
-        const timestamp = Date.now();
-        const gcsPath = `proctoring/${test_id}/${attempt_id}/${timestamp}.${ext}`;
-        const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID || "exam-portal-ns"}.appspot.com`;
+        const imageMb = buffer.length / (1024 * 1024);
 
-        if (getApps().length > 0) {
-          try {
-            const bucket = getStorage().bucket(storageBucketName);
-            const file = bucket.file(gcsPath);
-            await file.save(buffer, {
-              metadata: { contentType: `image/${ext}` },
-              public: false,
-            });
-            storage_path = gcsPath;
-            has_evidence = 1;
-          } catch (err) {
-            console.error("GCS Upload failed:", err);
-            if (isProd) {
-              return res.status(500).json({ error: "Evidence upload failed" });
+        // Fetch client_id for storage quota enforcement
+        const { rows: testRows } = await db.execute({
+          sql: "SELECT client_id FROM tests WHERE id = ?",
+          args: [test_id],
+        });
+        const testClientId = testRows.length > 0 ? (testRows[0] as any).client_id : null;
+
+        let allowImageUpload = true;
+        if (testClientId) {
+          const limits = await getClientLimits(testClientId);
+          const currentUsage = await getClientUsageMonthly(testClientId);
+          if ((currentUsage.storage_used_mb || 0) + imageMb > limits.max_storage_mb) {
+            console.warn(`Storage quota exceeded for client ${testClientId} (${(currentUsage.storage_used_mb || 0).toFixed(2)}MB / ${limits.max_storage_mb}MB). Image evidence snapshot skipped.`);
+            allowImageUpload = false;
+          }
+        }
+
+        if (allowImageUpload) {
+          const timestamp = Date.now();
+          const gcsPath = `proctoring/${test_id}/${attempt_id}/${timestamp}.${ext}`;
+          const storageBucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID || "exam-portal-ns"}.appspot.com`;
+
+          if (getApps().length > 0) {
+            try {
+              const bucket = getStorage().bucket(storageBucketName);
+              const file = bucket.file(gcsPath);
+              await file.save(buffer, {
+                metadata: { contentType: `image/${ext}` },
+                public: false,
+              });
+              storage_path = gcsPath;
+              has_evidence = 1;
+              if (testClientId) await incrementClientUsage(testClientId, "storage_used_mb", imageMb);
+            } catch (err) {
+              console.error("GCS Upload failed:", err);
+              if (isProd) {
+                return res.status(500).json({ error: "Evidence upload failed" });
+              }
             }
-          }
-        } else {
-          if (isProd) {
-            return res.status(500).json({ error: "Storage service not initialized in production" });
-          }
-          // Offline Local Fallback
-          try {
-            const fs = await import("fs");
-            const path = await import("path");
-            const localDir = path.join(process.cwd(), "public/mock-images", `proctoring/${test_id}/${attempt_id}`);
-            await fs.promises.mkdir(localDir, { recursive: true });
-            const localFilePath = path.join(localDir, `${timestamp}.${ext}`);
-            await fs.promises.writeFile(localFilePath, buffer);
-            storage_path = `proctoring/${test_id}/${attempt_id}/${timestamp}.${ext}`;
-            has_evidence = 1;
-          } catch (err) {
-            console.error("Local mock GCS write failed:", err);
+          } else {
+            if (isProd) {
+              return res.status(500).json({ error: "Storage service not initialized in production" });
+            }
+            // Offline Local Fallback
+            try {
+              const fs = await import("fs");
+              const path = await import("path");
+              const localDir = path.join(process.cwd(), "public/mock-images", `proctoring/${test_id}/${attempt_id}`);
+              await fs.promises.mkdir(localDir, { recursive: true });
+              const localFilePath = path.join(localDir, `${timestamp}.${ext}`);
+              await fs.promises.writeFile(localFilePath, buffer);
+              storage_path = `proctoring/${test_id}/${attempt_id}/${timestamp}.${ext}`;
+              has_evidence = 1;
+              if (testClientId) await incrementClientUsage(testClientId, "storage_used_mb", imageMb);
+            } catch (err) {
+              console.error("Local mock GCS write failed:", err);
+            }
           }
         }
       }

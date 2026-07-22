@@ -71,7 +71,7 @@ export default function Page() {
       <FaqSection />
 
       {/* Ready to Conduct / CTA */}
-      <section className="py-24 px-4 md:px-8 bg-slate-950 text-white relative overflow-hidden">
+      <section className="py-20 px-4 md:px-8 bg-slate-950 text-white relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-blue-955/20 blur-[150px] pointer-events-none" />
         
         <div className="container mx-auto max-w-3xl text-center relative z-10">

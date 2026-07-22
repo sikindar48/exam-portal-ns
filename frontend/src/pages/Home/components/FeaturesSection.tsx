@@ -12,10 +12,10 @@ import {
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-24 px-4 md:px-8 border-b border-slate-200 dark:border-slate-900 bg-slate-100/30 dark:bg-slate-900/10 content-visibility-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "0 1000px" } as React.CSSProperties}>
+    <section id="features" className="py-20 px-4 md:px-8 border-b border-slate-200 dark:border-slate-900 bg-slate-100/30 dark:bg-slate-900/10 content-visibility-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "0 1000px" } as React.CSSProperties}>
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-16">
-           <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-650 dark:text-blue-400 border-none mb-3 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full">
+           <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 border-none mb-3 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full select-none cursor-default">
             Core Capabilities
           </Badge>
           <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-4">

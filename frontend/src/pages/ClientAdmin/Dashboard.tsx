@@ -12,7 +12,8 @@ import {
   Award,
   Shield,
   Activity,
-  Calendar
+  Calendar,
+  HardDrive
 } from "lucide-react";
 import { statsApi, attemptsApi } from "@/services/api/client";
 import { Footer } from "@/components/Brand/Footer";
@@ -37,6 +38,10 @@ export default function ClientAdminDashboard() {
     totalAttempts: 0,
     avgScore: 0,
     passRate: 0,
+    storageUsedMb: 0,
+    maxStorageMb: 25,
+    examsCreatedThisMonth: 0,
+    maxExamsPerMonth: 3,
   });
   const [recentAttempts, setRecentAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +70,10 @@ export default function ClientAdminDashboard() {
           totalAttempts: d.totalAttempts,
           avgScore: d.avgScore,
           passRate: d.passRate,
+          storageUsedMb: Number(d.storageUsedMb || 0),
+          maxStorageMb: Number(d.maxStorageMb || 25),
+          examsCreatedThisMonth: Number(d.examsCreatedThisMonth || 0),
+          maxExamsPerMonth: Number(d.maxExamsPerMonth ?? 3),
         });
       }
 
@@ -229,6 +238,40 @@ export default function ClientAdminDashboard() {
               </div>
 
             </div>
+
+            {/* Bottom Quotas & Limits Section */}
+            <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-3 rounded-none shadow-sm flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <HardDrive className="h-3.5 w-3.5 text-sky-600" />
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">STORAGE QUOTA</p>
+                  </div>
+                  <p className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                    {stats.storageUsedMb.toFixed(1)} / {stats.maxStorageMb} MB
+                  </p>
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {Math.round((stats.storageUsedMb / (stats.maxStorageMb || 1)) * 100)}% USED
+                </span>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-3 rounded-none shadow-sm flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <ClipboardList className="h-3.5 w-3.5 text-indigo-600" />
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">EXAM QUOTA</p>
+                  </div>
+                  <p className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                    {stats.examsCreatedThisMonth} / {stats.maxExamsPerMonth < 0 ? "UNLIMITED" : `${stats.maxExamsPerMonth} EXAMS`}
+                  </p>
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  MONTHLY LIMIT
+                </span>
+              </div>
+            </div>
+
           </div>
         </main>
         

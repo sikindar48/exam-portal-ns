@@ -11,6 +11,12 @@ export function mapQuestionRow(row: any) {
   if (!row) return row;
   const mapped = { ...row };
 
+  // Turso libsql returns `undefined` (not `null`) for ALTER TABLE-added columns
+  // whose value is NULL — coerce explicitly so image_url always appears in responses
+  if (mapped.image_url === undefined) {
+    mapped.image_url = null;
+  }
+
   if (typeof mapped.options === "string") {
     try {
       mapped.options = JSON.parse(mapped.options || "[]");
@@ -36,6 +42,17 @@ export function mapQuestionRow(row: any) {
     ].filter((opt) => opt !== null && opt !== undefined && opt !== "");
   }
 
+  if (mapped.question_type === "true_false") {
+    mapped.option_c = "";
+    mapped.option_d = "";
+    // Strip N/A and empty values from the options array
+    if (Array.isArray(mapped.options)) {
+      mapped.options = mapped.options.filter(
+        (o: string) => o && o.trim() !== "" && o.trim().toLowerCase() !== "n/a"
+      );
+    }
+  }
+
   // Dynamic mapping of legacy correct answer if new array is empty
   if ((!mapped.correct_answers || mapped.correct_answers.length === 0) && mapped.correct_answer) {
     mapped.correct_answers = [mapped.correct_answer];
@@ -43,6 +60,7 @@ export function mapQuestionRow(row: any) {
 
   return mapped;
 }
+
 
 export default async function handler(req: Request, res: Response) {
   const db = getDb();
@@ -198,10 +216,10 @@ export default async function handler(req: Request, res: Response) {
       }
 
       // Ensure option_a..d and correct_answer are populated to satisfy legacy NOT NULL and CHECK constraints in SQLite schema
-      const optA = q.option_a || options[0] || "N/A";
-      const optB = q.option_b || options[1] || "N/A";
-      const optC = q.option_c || options[2] || "N/A";
-      const optD = q.option_d || options[3] || "N/A";
+      const optA = q.option_a || options[0] || (question_type === "true_false" ? "True" : "N/A");
+      const optB = q.option_b || options[1] || (question_type === "true_false" ? "False" : "N/A");
+      const optC = question_type === "true_false" ? "" : (q.option_c || options[2] || "N/A");
+      const optD = question_type === "true_false" ? "" : (q.option_d || options[3] || "N/A");
 
       let correctAns = "A";
       if (q.correct_answer && ["A", "B", "C", "D"].includes(q.correct_answer.toUpperCase())) {
@@ -220,11 +238,22 @@ export default async function handler(req: Request, res: Response) {
 
       try {
         const result = await db.execute({
-          sql: `INSERT OR IGNORE INTO questions
+          sql: `INSERT INTO questions
                 (id, client_id, folder_id, question_text, option_a, option_b, option_c, option_d,
                  correct_answer, difficulty, marks, question_type, options, correct_answers,
-                 negative_marks, explanation, is_case_sensitive, import_batch_id, version, created_at, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))`,
+                 negative_marks, explanation, image_url, is_case_sensitive, import_batch_id, version, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+                ON CONFLICT(id) DO UPDATE SET
+                  image_url = excluded.image_url,
+                  question_text = excluded.question_text,
+                  option_a = excluded.option_a,
+                  option_b = excluded.option_b,
+                  option_c = excluded.option_c,
+                  option_d = excluded.option_d,
+                  correct_answer = excluded.correct_answer,
+                  marks = excluded.marks,
+                  explanation = excluded.explanation,
+                  updated_at = datetime('now')`,
           args: [
             id, targetClientId, q.folder_id ?? null,
             q.question_text,
@@ -235,18 +264,15 @@ export default async function handler(req: Request, res: Response) {
             JSON.stringify(correct_answers),
             q.negative_marks ?? 0,
             q.explanation ?? "",
+            q.image_url ?? null,
             q.is_case_sensitive ?? 0,
             q.import_batch_id ?? null,
             q.version ?? 1,
           ],
         });
 
-        if (result.rowsAffected > 0) {
-          importedCount++;
-          inserted.push(mapQuestionRow({ ...q, id, client_id: targetClientId, question_type, options, correct_answers }));
-        } else {
-          duplicateCount++;
-        }
+        importedCount++;
+        inserted.push(mapQuestionRow({ ...q, id, client_id: targetClientId, question_type, options, correct_answers, image_url: q.image_url }));
       } catch (err) {
         console.error("Failed to insert question:", err);
         failedCount++;
@@ -297,7 +323,22 @@ export default async function handler(req: Request, res: Response) {
     const callerClientId = await getUserClientId(user.id);
 
     // Support bulk folder movement
-    const { ids, folder_id } = req.body;
+    const { ids, folder_id, bulk_image_urls } = req.body;
+
+    // Support bulk image_url update: [{ id, image_url }]
+    if (bulk_image_urls && Array.isArray(bulk_image_urls) && bulk_image_urls.length > 0) {
+      const updateStmts = bulk_image_urls
+        .filter((u: any) => u.id && u.image_url)
+        .map((u: any) => ({
+          sql: "UPDATE questions SET image_url = ?, updated_at = datetime('now') WHERE id = ?",
+          args: [u.image_url, u.id],
+        }));
+      if (updateStmts.length > 0) {
+        await db.batch(updateStmts);
+      }
+      return res.status(200).json({ success: true, updated: updateStmts.length });
+    }
+
     if (ids && Array.isArray(ids)) {
       if (isClientAdmin && !isSuper) {
         const placeholders = ids.map(() => "?").join(",");
@@ -345,7 +386,7 @@ export default async function handler(req: Request, res: Response) {
       sql: `UPDATE questions
             SET folder_id = ?, question_text = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?,
                 correct_answer = ?, difficulty = ?, marks = ?, question_type = ?, options = ?, correct_answers = ?,
-                negative_marks = ?, explanation = ?, is_case_sensitive = ?, updated_at = datetime('now')
+                negative_marks = ?, explanation = ?, image_url = ?, is_case_sensitive = ?, updated_at = datetime('now')
             WHERE id = ?`,
       args: [
         req.body.folder_id !== undefined ? req.body.folder_id : current.folder_id,
@@ -362,6 +403,7 @@ export default async function handler(req: Request, res: Response) {
         JSON.stringify(mergedCorrectAnswers),
         req.body.negative_marks !== undefined ? req.body.negative_marks : current.negative_marks,
         req.body.explanation !== undefined ? req.body.explanation : current.explanation,
+        req.body.image_url !== undefined ? req.body.image_url : current.image_url,
         req.body.is_case_sensitive !== undefined ? req.body.is_case_sensitive : current.is_case_sensitive,
         String(id),
       ],

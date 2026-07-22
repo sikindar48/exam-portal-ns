@@ -27,20 +27,32 @@ export function validateQuestion(question: ParsedQuestion, allParsedQuestions?: 
 
   // Check for duplicate rows inside the uploaded CSV itself (Stage 2)
   if (allParsedQuestions) {
-    const normalize = (text: string) => text.trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalize = (text?: string) => (text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getOptionsString = (q: ParsedQuestion) => {
+      if (Array.isArray(q.options) && q.options.length > 0) {
+        return q.options.map(normalize).join('|');
+      }
+      return [q.option_a, q.option_b, q.option_c, q.option_d]
+        .filter(Boolean)
+        .map((opt) => normalize(opt))
+        .join('|');
+    };
+
     const normalizedText = normalize(question.question_text);
-    
+    const optionsText = getOptionsString(question);
+
     const duplicateInCsv = allParsedQuestions.some(
       q => q.rowNumber !== row && 
            normalize(q.question_text) === normalizedText && 
-           q.question_type === question.question_type
+           q.question_type === question.question_type &&
+           getOptionsString(q) === optionsText
     );
 
     if (duplicateInCsv) {
       errors.push({
         row,
         field: 'question_text',
-        message: 'Duplicate question text and type found within this CSV upload'
+        message: 'Duplicate question text, type, and options found within this CSV upload'
       });
     }
   }

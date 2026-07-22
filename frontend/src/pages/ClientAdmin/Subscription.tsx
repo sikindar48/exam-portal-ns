@@ -18,6 +18,7 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
       "Up to 3 Exams per Month",
       "Up to 50 Questions per Exam",
       "Up to 20 Students per Exam",
+      "25 MB Storage Limit",
       "Question Shuffle & Basic Analytics",
     ]
   },
@@ -28,6 +29,7 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
       "Up to 25 Exams per Month",
       "Up to 100 Questions per Exam",
       "Up to 100 Students per Exam",
+      "250 MB Storage Limit",
       "Custom Brand Logo, CSV Import, XLSX Export",
       "Advanced Analytics & Basic Proctoring",
     ]
@@ -39,6 +41,7 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
       "Up to 50 Exams per Month",
       "Up to 200 Questions per Exam",
       "Up to 250 Students per Exam",
+      "1 GB Storage Limit",
       "Everything in Starter, Advanced Analytics",
     ]
   },
@@ -48,6 +51,7 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
     features: [
       "Unlimited Exams & Student Enrollment",
       "Unlimited Questions per Exam",
+      "5 GB Storage Limit",
       "Camera Proctoring Lite & Custom Branding",
       "Everything in Growth",
     ]

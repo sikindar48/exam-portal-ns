@@ -7,6 +7,7 @@ export interface ParsedQuestion {
   negative_marks: number;
   difficulty: string;
   explanation: string;
+  image_url?: string;
   rowNumber: number;
   import_batch_id?: string;
   version?: number;
@@ -18,7 +19,7 @@ export interface CSVParseResult {
 }
 
 export function parseCSV(csvText: string, importBatchId?: string): CSVParseResult {
-  const lines = csvText.trim().split('\n');
+  const lines = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
   const questions: ParsedQuestion[] = [];
   const errors: { row: number; message: string }[] = [];
 
@@ -28,7 +29,7 @@ export function parseCSV(csvText: string, importBatchId?: string): CSVParseResul
   }
 
   // Parse header
-  const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const header = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
   
   // Minimal headers required for legacy/new compatibility
   const requiredHeaders = ['question_text', 'correct_answer', 'marks'];
@@ -90,10 +91,14 @@ export function parseCSV(csvText: string, importBatchId?: string): CSVParseResul
         ? values[header.indexOf('difficulty')]?.trim().toLowerCase() || 'medium'
         : 'medium';
 
-      // 5. Explanation
+      // 5. Explanation & Optional Image URL
       const explanation = header.includes('explanation')
         ? values[header.indexOf('explanation')]?.trim() || ''
         : '';
+
+      const image_url = header.includes('image_url')
+        ? values[header.indexOf('image_url')]?.trim() || ''
+        : undefined;
 
       // 6. Options Array Builder
       const optA = header.includes('option_a') ? values[header.indexOf('option_a')]?.trim() || '' : '';
@@ -131,6 +136,7 @@ export function parseCSV(csvText: string, importBatchId?: string): CSVParseResul
         negative_marks,
         difficulty,
         explanation,
+        image_url,
         rowNumber: i + 1,
         import_batch_id: importBatchId,
         version: 1
@@ -171,12 +177,19 @@ function parseCSVLine(line: string): string[] {
 }
 
 export function generateCSVTemplate(): string {
-  const header = 'question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,marks,negative_marks,difficulty,explanation';
-  const example1 = '"What is 2+2?","mcq","3","4","5","6","B","1","0","easy","2+2 is 4"';
-  const example2 = '"The Earth revolves around the Sun?","true_false","True","False","","","A","1","0","easy","Statement is correct"';
-  const example3 = '"Select all prime numbers","multi_select","2","3","4","5","A|B|D","2","0.5","medium","2, 3, and 5 are prime"';
+  const header = 'question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,marks,negative_marks,difficulty,explanation,image_url';
+  const q1 = '"What is the capital city of France?","mcq","Berlin","Madrid","Paris","Rome","C","1","0.25","easy","Paris is the capital of France.","https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400"';
+  const q2 = '"The human heart has 4 chambers.","true_false","True","False","","","A","1","0","easy","Human heart consists of 2 atria and 2 ventricles.",""';
+  const q3 = '"Identify the world famous monument shown in the image.","mcq","Taj Mahal","Colosseum","Eiffel Tower","Pyramids","A","2","0.5","medium","The Taj Mahal is located in Agra, India.","https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400"';
+  const q4 = '"Which geometric shape is depicted in the illustration?","mcq","Equilateral Triangle","Circle","Hexagon","Square","B","1","0.25","easy","The image displays a smooth circle shape.","https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400"';
+  const q5 = '"Light travels faster than sound in air.","true_false","True","False","","","A","1","0","easy","Speed of light is 3x10^8 m/s vs sound at 343 m/s.",""';
+  const q6 = '"What is the output of 15 * 4 in basic arithmetic?","mcq","50","60","65","70","B","1","0.25","easy","15 multiplied by 4 equals 60.",""';
+  const q7 = '"Examine the microchip board architecture in the image.","mcq","Series Circuit","Parallel Circuit","Printed Circuit Board","Fiber Optic","C","2","0.5","hard","The image displays a PCB motherboard architecture.","https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"';
+  const q8 = '"Water freezes at 0 degrees Celsius under standard atmospheric pressure.","true_false","True","False","","","A","1","0","easy","0°C is the freezing point of pure water.",""';
+  const q9 = '"Which organelle is known as the powerhouse of the cell?","mcq","Nucleus","Ribosome","Mitochondria","Golgi Body","C","1","0.25","medium","Mitochondria generate ATP energy for the cell.","https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=400"';
+  const q10 = '"Identify the software development workspace environment shown.","mcq","Code Editor","Database Manager","Vector Drawing","Spreadsheet","A","2","0.5","medium","The image shows source code in a modern IDE code editor.","https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400"';
 
-  return [header, example1, example2, example3].join('\n');
+  return [header, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10].join('\n');
 }
 
 export function downloadCSVTemplate() {

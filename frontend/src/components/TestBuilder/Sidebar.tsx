@@ -20,7 +20,8 @@ import {
   Layers,
   Settings2,
   HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  FileText
 } from "lucide-react";
 import { TestData, TestSection } from "@/types/test";
 
@@ -147,53 +148,114 @@ export function Sidebar({
 
       {/* 1. BASICS TAB */}
       {activeTab === "basics" && (
-        <Card className="border bg-white dark:bg-slate-900 overflow-hidden flex flex-col rounded-none animate-in fade-in duration-200">
-          <CardHeader className="pb-4 border-b bg-slate-50/50 dark:bg-slate-800/50">
-            <CardTitle className="flex items-center gap-2 text-base uppercase tracking-tighter font-black">
-              <Settings className="h-4.5 w-4.5 text-blue-600" />
-              General Info
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 space-y-5">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Test Name</Label>
-                <Input
-                  value={testData.test_name}
-                  onChange={(e) => updateField("test_name", e.target.value)}
-                  placeholder="Internal Exam - Phase 1"
-                  className="rounded-none border-slate-200"
-                />
-              </div>
+        <>
+          <Card className="border bg-white dark:bg-slate-900 overflow-hidden flex flex-col rounded-none animate-in fade-in duration-200">
+            <CardHeader className="pb-4 border-b bg-slate-50/50 dark:bg-slate-800/50">
+              <CardTitle className="flex items-center gap-2 text-base uppercase tracking-tighter font-black">
+                <Settings className="h-4.5 w-4.5 text-blue-600" />
+                General Info
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 space-y-5">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Test Name</Label>
+                  <Input
+                    value={testData.test_name}
+                    onChange={(e) => updateField("test_name", e.target.value)}
+                    placeholder="Internal Exam - Phase 1"
+                    className="rounded-none border-slate-200"
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Duration (Min)</Label>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <Input
-                      type="number"
-                      value={testData.timer}
-                      onChange={(e) => updateField("timer", parseInt(e.target.value))}
-                      className="pl-9 rounded-none border-slate-200"
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Duration (Min)</Label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <Input
+                        type="number"
+                        value={testData.timer}
+                        onChange={(e) => updateField("timer", parseInt(e.target.value))}
+                        className="pl-9 rounded-none border-slate-200"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Marks</Label>
-                  <div className="relative">
-                    <Target className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <Input
-                      value={totalMarks}
-                      disabled
-                      className="pl-9 bg-slate-50 rounded-none border-slate-200 font-bold"
-                    />
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total Marks</Label>
+                    <div className="relative">
+                      <Target className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <Input
+                        value={totalMarks}
+                        disabled
+                        className="pl-9 bg-slate-50 rounded-none border-slate-200 font-bold"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Questions Overview Preview */}
+          <Card className="border bg-white dark:bg-slate-900 overflow-hidden flex flex-col rounded-none mt-4 animate-in fade-in duration-200">
+            <CardHeader className="pb-3 border-b bg-slate-50/50 dark:bg-slate-800/50 flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-xs uppercase tracking-wider font-black">
+                <FileText className="h-4 w-4 text-blue-600" />
+                Preview ({testData.questions.length})
+              </CardTitle>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-none">
+                {totalMarks} Marks
+              </span>
+            </CardHeader>
+            <CardContent className="p-3">
+              {testData.questions.length === 0 ? (
+                <div className="text-center py-6 text-slate-400 text-xs font-medium border border-dashed border-slate-200">
+                  No questions added yet.
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                  {testData.questions.map((q, idx) => (
+                    <div
+                      key={q.id || idx}
+                      onClick={() => {
+                        const el = document.getElementById(`question-card-${q.id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }
+                      }}
+                      className="p-2.5 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-950/50 cursor-pointer transition-all flex items-start justify-between gap-3 group"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center bg-slate-900 text-white text-[10px] font-bold rounded-none group-hover:bg-blue-600 transition-colors">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-snug">
+                            {q.question_text || `Question ${idx + 1}`}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                              {q.question_type === "true_false" ? "True/False" : "MCQ"}
+                            </span>
+                            {q.difficulty && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                • {q.difficulty}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black text-blue-600 shrink-0 bg-blue-50 dark:bg-blue-950/50 px-1.5 py-0.5 border border-blue-100 dark:border-blue-900">
+                        +{q.marks}m
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* 2. SECURITY & RULES TAB */}
@@ -351,7 +413,7 @@ export function Sidebar({
             <CardHeader className="pb-3 border-b bg-slate-50/50 dark:bg-slate-800/50 flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base uppercase tracking-tighter font-black">
                 <Layers className="h-4.5 w-4.5 text-blue-600" />
-                Test Sections
+                Sections
               </CardTitle>
               <Button
                 size="sm"

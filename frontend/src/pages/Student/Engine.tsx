@@ -697,12 +697,17 @@ export default function Engine() {
   // Unified Security Violation Handlers (Fullscreen, Visibility, Focus/Blur)
   useEffect(() => {
     if (showInstructions || loading) return;
-    const proctoringEnabled = 
-      !!test?.clients?.features?.includes("advanced_proctoring") || 
-      !!test?.clients?.features?.includes("basic_proctoring") || 
-      !!test?.clients?.features?.includes("camera_proctoring") || 
+
+    const proctoringEnabled =
+      !!test?.clients?.features?.includes("advanced_proctoring") ||
+      !!test?.clients?.features?.includes("basic_proctoring") ||
+      !!test?.clients?.features?.includes("camera_proctoring") ||
       !!test?.camera_required;
-    if (!proctoringEnabled) return;
+
+    // Tab-switch restriction is independently controlled by restrict_navigation flag
+    const tabSwitchRestricted = !!test?.restrict_navigation || proctoringEnabled;
+
+    if (!proctoringEnabled && !tabSwitchRestricted) return;
 
     const triggerExitViolation = (type: "FULLSCREEN_EXIT" | "TAB_SWITCH" | "WINDOW_BLUR") => {
       const now = Date.now();
@@ -713,12 +718,14 @@ export default function Engine() {
       setFullscreenExitCount(prev => {
         const next = prev + 1;
 
-        proctoringApi.logEvent({
-          attempt_id: attemptId,
-          test_id: testId!,
-          event_type: type,
-          duration_seconds: 0
-        }, attemptToken || undefined).catch(console.error);
+        if (proctoringEnabled) {
+          proctoringApi.logEvent({
+            attempt_id: attemptId,
+            test_id: testId!,
+            event_type: type,
+            duration_seconds: 0
+          }, attemptToken || undefined).catch(console.error);
+        }
 
         if (next >= 3) {
           handleSubmit(true);
@@ -731,6 +738,7 @@ export default function Engine() {
     };
 
     const handleFullscreenChange = () => {
+      if (!proctoringEnabled) return; // fullscreen only enforced during proctoring
       if (!document.fullscreenElement) {
         setIsFullscreen(false);
         triggerExitViolation("FULLSCREEN_EXIT");
@@ -741,12 +749,14 @@ export default function Engine() {
     };
 
     const handleVisibilityChange = () => {
+      if (!tabSwitchRestricted) return;
       if (document.visibilityState === "hidden") {
         triggerExitViolation("TAB_SWITCH");
       }
     };
 
     const handleBlur = () => {
+      if (!tabSwitchRestricted) return;
       // Delay blur detection slightly to verify it isn't a tab switch
       setTimeout(() => {
         if (document.visibilityState !== "hidden") {

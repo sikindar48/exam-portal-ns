@@ -78,20 +78,22 @@ export function HeroSection() {
         </div>
 
         {/* Perfect For Section */}
-        <div className="border-t border-slate-200 dark:border-slate-900 pt-8 sm:pt-10">
-          <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-450 dark:text-slate-500 mb-4 sm:mb-6">
-            Perfect For Every Institution
+        <div className="border-t border-slate-200 dark:border-slate-900 pt-8 sm:pt-10 max-w-6xl mx-auto">
+          <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500 mb-6">
+            PERFECT FOR EVERY INSTITUTION
           </p>
-          <div className="grid grid-cols-2 gap-2 max-w-sm mx-auto sm:flex sm:flex-wrap sm:justify-center sm:max-w-4xl">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
             {targetAudiences.map((audience, idx) => (
               <div
                 key={idx}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950/40 hover:border-slate-350 dark:hover:border-slate-800 transition-all rounded-full shadow-sm justify-center sm:justify-start ${
-                  idx === 6 ? "col-span-2 max-w-[200px] mx-auto w-full sm:col-span-1 sm:max-w-none sm:mx-0" : ""
-                }`}
+                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-200 group"
               >
-                {audience.icon}
-                <span className="text-[10px] sm:text-xs font-semibold text-slate-750 dark:text-slate-300">{audience.label}</span>
+                <div className="p-1 rounded bg-slate-50 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/50 transition-colors shrink-0">
+                  {audience.icon}
+                </div>
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 tracking-tight leading-tight text-left">
+                  {audience.label}
+                </span>
               </div>
             ))}
           </div>

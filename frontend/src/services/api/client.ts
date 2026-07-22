@@ -141,6 +141,9 @@ export const questionsApi = {
   update: (id: string, body: any) => apiFetch(`/questions?id=${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   bulkMove: (ids: string[], folder_id: string | null) =>
     apiFetch(`/questions?id=bulk`, { method: "PATCH", body: JSON.stringify({ ids, folder_id }) }),
+  /** Batch-update image_url for multiple questions at once */
+  bulkUpdateImageUrls: (updates: { id: string; image_url: string }[]) =>
+    apiFetch(`/questions?id=bulk`, { method: "PATCH", body: JSON.stringify({ bulk_image_urls: updates }) }),
   delete: (id: string) => apiFetch(`/questions?id=${id}`, { method: "DELETE" }),
   bulkDelete: (ids: string[]) => apiFetch(`/questions?ids=${ids.join(",")}`, { method: "DELETE" }),
   checkDuplicates: (client_id: string) => apiFetch(`/questions?client_id=${client_id}`),

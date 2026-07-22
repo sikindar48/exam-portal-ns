@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { HelpCircle, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const faqs = [
   {
@@ -40,12 +41,12 @@ export function FaqSection() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 px-4 md:px-8 border-b border-slate-205 dark:border-slate-900 bg-slate-100/30 dark:bg-slate-900/10 content-visibility-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "0 600px" } as React.CSSProperties}>
+    <section id="faq" className="py-20 px-4 md:px-8 border-b border-slate-205 dark:border-slate-900 bg-slate-100/30 dark:bg-slate-900/10 content-visibility-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "0 600px" } as React.CSSProperties}>
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-16">
-          <div className="flex items-center justify-center w-10 h-10 bg-blue-105 dark:bg-blue-955 border border-blue-200 dark:border-blue-900/30 rounded-full mx-auto mb-4">
-            <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
+          <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 border-none mb-3 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full select-none cursor-default">
+            FAQ
+          </Badge>
           <h2 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
             Frequently Asked Questions
           </h2>

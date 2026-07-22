@@ -30,8 +30,7 @@ export function TestFolderGrid({
   setDeleteFolderTarget,
   navigate,
 }: TestFolderGridProps) {
-  const uncategorizedTests = tests.filter((t) => t.folder_id === null);
-  if (folders.length === 0 && uncategorizedTests.length === 0) return null;
+  if (folders.length === 0) return null;
 
   return (
     <section>

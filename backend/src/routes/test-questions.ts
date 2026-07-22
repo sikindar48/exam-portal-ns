@@ -84,8 +84,8 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const selectCols = withAnswers
-      ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
-      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
+      ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, q.image_url, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
+      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, q.image_url, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
 
     const { rows } = await db.execute({
       sql: `SELECT ${selectCols}
@@ -104,6 +104,12 @@ export default async function handler(req: Request, res: Response) {
     const sectionMap = new Map(sections.map((s: any) => [s.id, s.name]));
 
     const result = rows.map((r: any) => {
+      // Turso libsql returns `undefined` (not `null`) for ALTER TABLE-added columns
+      // whose value is NULL — so we must explicitly coerce to null for JSON serialization
+      const imageUrl: string | null = (r.image_url !== undefined && r.image_url !== null)
+        ? String(r.image_url)
+        : null;
+
       const mappedQ = mapQuestionRow({
         id: r.id,
         question_text: r.question_text,
@@ -119,6 +125,7 @@ export default async function handler(req: Request, res: Response) {
         correct_answers: r.correct_answers,
         negative_marks: r.negative_marks,
         explanation: r.explanation,
+        image_url: imageUrl,
       });
 
       const questionObj: any = {
@@ -135,12 +142,16 @@ export default async function handler(req: Request, res: Response) {
         correct_answers: mappedQ.correct_answers,
         negative_marks: mappedQ.negative_marks,
         explanation: mappedQ.explanation,
+        image_url: imageUrl,
       };
       if (withAnswers) {
         questionObj.correct_answer = mappedQ.correct_answer;
       }
       return {
         ...r,
+        image_url: imageUrl,       // ← always explicit, never dropped by JSON.stringify
+        option_c: mappedQ.option_c, // ← "" for true_false (not "N/A" from raw DB)
+        option_d: mappedQ.option_d, // ← "" for true_false (not "N/A" from raw DB)
         section_name: r.section_id ? (sectionMap.get(r.section_id) ?? "General Section") : "General Section",
         questions: questionObj,
       };
@@ -257,16 +268,35 @@ export default async function handler(req: Request, res: Response) {
     // Step 1: upsert each question into the questions table
     const upsertStmts = questions
       .filter((q) => !q.id.startsWith("temp_"))
-      .map((q) => ({
-        sql: `INSERT OR REPLACE INTO questions
-              (id, client_id, question_text, option_a, option_b, option_c, option_d,
-               correct_answer, marks, updated_at)
-              VALUES (?,
-                (SELECT client_id FROM tests WHERE id = ?),
-                ?,?,?,?,?,?,?,datetime('now'))`,
-        args: [q.id, test_id, q.question_text, q.option_a ?? null, q.option_b ?? null, q.option_c ?? null,
-               q.option_d ?? null, q.correct_answer ?? null, q.marks ?? 1],
-      }));
+      .map((q) => {
+        const hasImageUrl = !!(q.image_url);
+        return {
+          sql: `INSERT INTO questions
+                (id, client_id, question_text, option_a, option_b, option_c, option_d,
+                 correct_answer, marks, question_type, explanation, image_url, difficulty, updated_at)
+                VALUES (?,
+                  (SELECT client_id FROM tests WHERE id = ?),
+                  ?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                ON CONFLICT(id) DO UPDATE SET
+                  question_text = excluded.question_text,
+                  option_a = excluded.option_a,
+                  option_b = excluded.option_b,
+                  option_c = excluded.option_c,
+                  option_d = excluded.option_d,
+                  correct_answer = excluded.correct_answer,
+                  marks = excluded.marks,
+                  question_type = excluded.question_type,
+                  explanation = excluded.explanation,
+                  ${hasImageUrl ? "image_url = excluded.image_url," : ""}
+                  difficulty = excluded.difficulty,
+                  updated_at = datetime('now')`,
+          args: [q.id, test_id, q.question_text, q.option_a ?? null, q.option_b ?? null,
+                 q.question_type === "true_false" ? "" : (q.option_c ?? null),
+                 q.question_type === "true_false" ? "" : (q.option_d ?? null),
+                 q.correct_answer ?? null, q.marks ?? 1,
+                 q.question_type ?? "mcq", q.explanation ?? "", q.image_url || null, q.difficulty ?? "medium"],
+        };
+      });
 
     // New questions (temp_ ids): insert into questions first
     const newQuestions = questions.filter((q) => q.id.startsWith("temp_"));
@@ -277,12 +307,15 @@ export default async function handler(req: Request, res: Response) {
       return {
         sql: `INSERT INTO questions
               (id, client_id, question_text, option_a, option_b, option_c, option_d,
-               correct_answer, marks)
+               correct_answer, marks, question_type, explanation, image_url, difficulty)
               VALUES (?,
                 (SELECT client_id FROM tests WHERE id = ?),
-                ?,?,?,?,?,?,?)`,
+                ?,?,?,?,?,?,?,?,?,?,?)`,
         args: [newId, test_id, q.question_text, q.option_a ?? null, q.option_b ?? null,
-               q.option_c ?? null, q.option_d ?? null, q.correct_answer ?? null, q.marks ?? 1],
+               q.question_type === "true_false" ? "" : (q.option_c ?? null),
+               q.question_type === "true_false" ? "" : (q.option_d ?? null),
+               q.correct_answer ?? null, q.marks ?? 1,
+               q.question_type ?? "mcq", q.explanation ?? "", q.image_url ?? null, q.difficulty ?? "medium"],
       };
     });
 

@@ -147,6 +147,17 @@ export function QuestionDialog({
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="explanation" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Explanation (Optional)</Label>
+            <Textarea
+              id="explanation"
+              value={formData.explanation || ""}
+              onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+              className="min-h-[70px] rounded-none border-slate-200 dark:border-slate-800 font-medium text-xs focus:border-blue-500 transition-all"
+              placeholder="Enter optional solution explanation..."
+            />
+          </div>
+
           <div className="pt-4">
             <Button
               type="submit"

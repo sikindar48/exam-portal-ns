@@ -9,6 +9,7 @@ interface Question {
   option_d: string;
   marks: number;
   question_type?: string;
+  image_url?: string;
 }
 
 interface QuestionViewProps {
@@ -43,6 +44,19 @@ export function QuestionView({
         {question.question_text}
       </p>
 
+      {/* Question Image (Optional - Below Question Text, Above Options) */}
+      {question.image_url && (
+        <div className="my-3 flex justify-start">
+          <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 rounded-none shadow-sm">
+            <img
+              src={question.image_url}
+              alt="Question Illustration"
+              className="max-h-56 max-w-md w-full object-contain mx-auto"
+            />
+          </div>
+        </div>
+      )}
+
 
       {/* Options */}
       <RadioGroup
@@ -55,7 +69,7 @@ export function QuestionView({
             return false;
           }
           const optText = (question as any)[`option_${opt.toLowerCase()}`];
-          if (optText === undefined || optText === null || optText.trim() === "") {
+          if (optText === undefined || optText === null || optText.trim() === "" || optText.trim().toLowerCase() === "n/a") {
             return false;
           }
           return true;

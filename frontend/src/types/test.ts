@@ -11,6 +11,9 @@ export interface Question {
   position?: number;
   temp_id?: number;
   question_type?: "mcq" | "true_false" | "multi_select" | "fill_blank" | "subjective" | "coding";
+  explanation?: string;
+  image_url?: string;
+  difficulty?: "easy" | "medium" | "hard" | string;
 }
 
 export interface TestSection {

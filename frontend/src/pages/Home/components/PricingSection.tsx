@@ -31,10 +31,10 @@ export function PricingSection() {
   const [isPayPerTestDropdownOpen, setIsPayPerTestDropdownOpen] = useState(false);
 
   return (
-    <section id="pricing" className="py-24 px-4 md:px-8 border-b border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950 content-visibility-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px" } as React.CSSProperties}>
+    <section id="pricing" className="py-20 px-4 md:px-8 border-b border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950 content-visibility-auto" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px" } as React.CSSProperties}>
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-16">
-          <Badge className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-650 dark:text-indigo-400 border-none mb-3 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full">
+          <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 border-none mb-3 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full select-none cursor-default">
             Flexible Pricing
           </Badge>
           <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-4">
@@ -45,11 +45,11 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
           {/* Free Plan Card */}
           <Card className="flex flex-col justify-between border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950 rounded-none p-6 shadow-xl relative hover:border-slate-350 dark:hover:border-slate-800 transition-all duration-300">
             <div>
-              <Badge className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 mb-4 font-black uppercase tracking-wider text-[9px] rounded-none px-2.5 py-1">
+              <Badge className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-600 dark:hover:text-slate-400 border border-slate-200 dark:border-slate-800 mb-4 font-black uppercase tracking-wider text-[9px] rounded-none px-2.5 py-1 select-none cursor-default">
                 Standard Access
               </Badge>
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">Free Plan</CardTitle>
@@ -61,21 +61,29 @@ export function PricingSection() {
                 Perfect for individual trainers and schools starting out with smaller test sizes.
               </CardDescription>
               
-              <ul className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
+              <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
+                  <Check className="h-4 w-4 text-blue-500 shrink-0" />
                   <span><strong>3 Exams</strong> / Month</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
+                  <Check className="h-4 w-4 text-blue-500 shrink-0" />
                   <span><strong>50 Questions</strong> / Exam</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
+                  <Check className="h-4 w-4 text-blue-500 shrink-0" />
                   <span><strong>20 Candidates</strong> / Exam</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
+                  <Check className="h-4 w-4 text-blue-500 shrink-0" />
+                  <span><strong>25 MB Storage</strong> Limit</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <Check className="h-4 w-4 text-blue-500 shrink-0" />
+                  <span>Question Shuffle &amp; Analytics</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <Check className="h-4 w-4 text-blue-500 shrink-0" />
                   <span>No Proctoring Security</span>
                 </li>
               </ul>
@@ -89,16 +97,15 @@ export function PricingSection() {
           </Card>
 
           {/* Subscriptions Card */}
-          <Card className="flex flex-col justify-between border-2 border-blue-600 bg-blue-55/5 dark:bg-slate-900/50 rounded-none p-6 shadow-2xl relative scale-100 lg:scale-[1.03] transition-all duration-300">
+          <Card className="flex flex-col justify-between border-2 border-blue-600 bg-blue-55/5 dark:bg-slate-900/50 rounded-none p-6 shadow-2xl relative scale-100 lg:scale-[1.02] transition-all duration-300">
             <div className="absolute top-0 right-6 -translate-y-1/2">
-              <Badge className="bg-blue-600 text-white font-black uppercase tracking-wider text-[9px] rounded-none px-3 py-1 shadow-lg shadow-blue-600/25">
+              <Badge className="bg-blue-600 text-white hover:bg-blue-600 hover:text-white font-black uppercase tracking-wider text-[9px] rounded-none px-3 py-1 shadow-lg shadow-blue-600/25 select-none cursor-default">
                 Best Value
               </Badge>
             </div>
             <div>
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">Subscription Plans</CardTitle>
               
-              {/* Plan Custom Segmented Selector */}
               <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg mb-4 mt-2">
                 {(["starter", "growth", "enterprise"] as const).map((tier) => (
                   <button
@@ -125,40 +132,40 @@ export function PricingSection() {
               </div>
 
               <CardDescription className="text-slate-650 dark:text-slate-400 text-xs leading-relaxed border-t border-slate-200 dark:border-slate-800 pt-4 mb-6">
-                {selectedSubPlan === "starter" && "For growing academies and schools conducting standard online exams regularly."}
+                {selectedSubPlan === "starter" && "For growing academies conducting standard online exams regularly."}
                 {selectedSubPlan === "growth" && "For mid-size training hubs and universities needing higher capacity limits."}
-                {selectedSubPlan === "enterprise" && "For large institutions requiring full browser lockouts and advanced camera proctoring."}
+                {selectedSubPlan === "enterprise" && "For large institutions requiring full browser lockouts and camera proctoring."}
               </CardDescription>
 
-              <ul className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
+              <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
                 {selectedSubPlan === "starter" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>25 Exams</strong> / Month</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>100 Questions</strong> / Exam</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>100 Candidates</strong> / Exam</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>Custom Branding &amp; Analytics</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>Basic Security (Browser Lock)</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>25 Exams</strong> / Month</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>100 Questions</strong> / Exam</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>100 Candidates</strong> / Exam</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>250 MB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span>Custom Branding &amp; Analytics</span></li>
                   </>
                 )}
                 {selectedSubPlan === "growth" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>50 Exams</strong> / Month</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>200 Questions</strong> / Exam</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>250 Candidates</strong> / Exam</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>Custom Branding &amp; Analytics</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>Basic Security (Browser Lock)</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>50 Exams</strong> / Month</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>200 Questions</strong> / Exam</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>250 Candidates</strong> / Exam</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>1 GB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span>Camera Proctoring</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span>Everything in Starter</span></li>
                   </>
                 )}
                 {selectedSubPlan === "enterprise" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>100 Exams</strong> / Month</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>300 Questions</strong> / Exam</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>500 Candidates</strong> / Exam</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>Custom Branding &amp; Analytics</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 dark:text-blue-400 shrink-0" /><span>Advanced Security (Camera + Browser)</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>100 Exams</strong> / Month</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>300 Questions</strong> / Exam</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>500 Candidates</strong> / Exam</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span><strong>5 GB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span>Camera Proctoring &amp; Branding</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 dark:text-blue-400 shrink-0" /><span>Dedicated Support &amp; SLA</span></li>
                   </>
                 )}
               </ul>
@@ -174,12 +181,11 @@ export function PricingSection() {
           {/* Pay Per Test Card */}
           <Card className="flex flex-col justify-between border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950 rounded-none p-6 shadow-xl relative hover:border-slate-350 dark:hover:border-slate-800 transition-all duration-300">
             <div>
-              <Badge className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 mb-4 font-black uppercase tracking-wider text-[9px] rounded-none px-2.5 py-1">
+              <Badge className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-600 dark:hover:text-slate-400 border border-slate-200 dark:border-slate-800 mb-4 font-black uppercase tracking-wider text-[9px] rounded-none px-2.5 py-1 select-none cursor-default">
                 One-Time Packages
               </Badge>
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">Pay Per Test</CardTitle>
               
-              {/* Custom Styled Select Dropdown */}
               <div className="relative mb-4 mt-2">
                 <button
                   type="button"
@@ -249,54 +255,55 @@ export function PricingSection() {
                 {selectedPayPerTestPkg === "placement_drive" && "Bulk candidate capacity limits for large placement drives."}
               </CardDescription>
 
-              <ul className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4.5 w-4.5 text-blue-500 shrink-0" />
-                  <span>Buy single-use test packages on demand</span>
-                </li>
+              <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
                 {selectedPayPerTestPkg === "base" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>50 Questions</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>50 Candidates</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Analytics &amp; Custom Branding</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>No Proctoring Security</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Single-use test package</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 Questions</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 Candidates</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>25 MB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Analytics &amp; Custom Branding</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>No Proctoring Security</span></li>
                   </>
                 )}
                 {selectedPayPerTestPkg === "basic" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>50 Questions</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>50 Candidates</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Analytics &amp; Custom Branding</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Basic Security (Browser Lock)</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Single-use test package</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 Questions</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 Candidates</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 MB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Basic Security (Browser Lock)</span></li>
                   </>
                 )}
                 {selectedPayPerTestPkg === "standard" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>50 Questions</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>50 Candidates</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Analytics &amp; Custom Branding</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Advanced Security (Camera + Browser)</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Single-use test package</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 Questions</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>50 Candidates</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>100 MB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Camera Proctoring</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
                   </>
                 )}
                 {selectedPayPerTestPkg === "professional" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>100 Questions</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>100 Candidates</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Analytics &amp; Custom Branding</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Advanced Security (Camera + Browser)</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Single-use test package</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>100 Questions</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>100 Candidates</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>100 MB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Camera Proctoring</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
                   </>
                 )}
-                 {selectedPayPerTestPkg === "placement_drive" && (
+                {selectedPayPerTestPkg === "placement_drive" && (
                   <>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>200 Questions</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span><strong>500 Candidates</strong> Limit</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Analytics &amp; Custom Branding</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Advanced Security (Camera + Browser)</span></li>
-                    <li className="flex items-center gap-2.5"><Check className="h-4.5 w-4.5 text-blue-500 shrink-0" /><span>Candidate email invites with direct test links</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Single-use test package</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>200 Questions</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>500 Candidates</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span><strong>100 MB Storage</strong> Limit</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>Camera Proctoring</span></li>
+                    <li className="flex items-center gap-2.5"><Check className="h-4 w-4 text-blue-500 shrink-0" /><span>CSV Imports &amp; XLSX Exports</span></li>
                   </>
                 )}
               </ul>

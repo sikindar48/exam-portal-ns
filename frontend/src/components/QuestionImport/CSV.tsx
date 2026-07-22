@@ -29,7 +29,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CSVProps {
-  onImportSuccess: (importedIds?: string[]) => void;
+  onImportSuccess: (importedIds?: string[], parsedQuestions?: any[]) => void;
   /** If provided, imported questions are also linked to this test */
   testId?: string;
   /** If provided, imported questions are placed in this section */
@@ -92,6 +92,8 @@ export default function CSV({
     });
   };
 
+  const [cachedExisting, setCachedExisting] = useState<any[]>([]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -125,34 +127,27 @@ export default function CSV({
         setQuestions(parsedQuestions);
         setValidationErrors(validateQuestions(parsedQuestions));
 
-        // Check for duplicates immediately
+        // Fetch existing questions ONCE and cache for reuse during import
         const { data } = await questionsApi.list({ client_id: clientId });
+        const existing = data || [];
+        setCachedExisting(existing);
 
-        const normalize = (text: string) => text.trim().toLowerCase().replace(/\s+/g, " ");
+        const normalize = (text?: string) => (text || "").trim().toLowerCase().replace(/\s+/g, " ");
+        const getQuestionKey = (q: any, targetClientId: string) => {
+          const text = normalize(q.question_text);
+          const type = q.question_type || "mcq";
+          return `${text}|${type}|${targetClientId}`;
+        };
+
         const existingKeys = new Set(
-          (data || []).map(
-            (q) =>
-              `${normalize(q.question_text)}|${
-                q.question_type || "mcq"
-              }|${q.client_id || clientId}`
-          )
+          existing.map((q) => getQuestionKey(q, q.client_id || clientId))
         );
 
         const duplicates = parsedQuestions
-          .filter((q) =>
-            existingKeys.has(
-              `${normalize(q.question_text)}|${
-                q.question_type
-              }|${clientId}`
-            )
-          )
+          .filter((q) => existingKeys.has(getQuestionKey(q, clientId)))
           .map((q) => q.rowNumber);
 
-        if (duplicates.length > 0) {
-          setDuplicateRows(new Set(duplicates));
-        } else {
-          setDuplicateRows(new Set());
-        }
+        setDuplicateRows(duplicates.length > 0 ? new Set(duplicates) : new Set());
       }
     };
     reader.readAsText(selectedFile);
@@ -172,40 +167,28 @@ export default function CSV({
     setImportProgress(0);
     const startTime = performance.now();
 
-    // Fetch existing question texts to prevent duplicates
-    const { data: existingData, error: fetchError } = await questionsApi.list({
-      client_id: clientId,
-    });
+    // Reuse cached existing questions — avoid second full fetch
+    const existingData = cachedExisting.length > 0
+      ? cachedExisting
+      : ((await questionsApi.list({ client_id: clientId })).data || []);
 
-    if (fetchError) {
-      toast({
-        title: "Import Error",
-        description: "Failed to check for existing questions",
-        variant: "destructive",
-      });
-      setImporting(false);
-      return;
-    }
+    const normalize = (text?: string) => (text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const getQuestionKey = (q: any, targetClientId: string) => {
+      const text = normalize(q.question_text);
+      const type = q.question_type || "mcq";
+      return `${text}|${type}|${targetClientId}`;
+    };
 
-    const normalize = (text: string) => text.trim().toLowerCase().replace(/\s+/g, " ");
     const existingKeys = new Set(
-      (existingData || []).map(
-        (q) =>
-          `${normalize(q.question_text)}|${
-            q.question_type || "mcq"
-          }|${q.client_id || clientId}`
-      )
+      existingData.map((q) => getQuestionKey(q, q.client_id || clientId))
     );
 
     const existingKeyToIdMap: Record<string, string> = {};
-    if (existingData) {
-      for (const q of existingData) {
-        const key = `${normalize(q.question_text)}|${q.question_type || "mcq"}|${q.client_id || clientId}`;
-        existingKeyToIdMap[key] = q.id;
-      }
+    for (const q of existingData) {
+      existingKeyToIdMap[getQuestionKey(q, q.client_id || clientId)] = q.id;
     }
 
-    // Strip rowNumber and filter duplicates
+    // Strip rowNumber
     const allQuestions = questions.map(({ rowNumber, ...q }) => ({
       ...q,
       difficulty: q.difficulty || "medium",
@@ -214,10 +197,7 @@ export default function CSV({
     }));
 
     const questionsToInsert = allQuestions.filter(
-      (q) =>
-        !existingKeys.has(
-          `${normalize(q.question_text)}|${q.question_type}|${clientId}`
-        )
+      (q) => !existingKeys.has(getQuestionKey(q, clientId))
     );
     const skippedCount = allQuestions.length - questionsToInsert.length;
 
@@ -225,16 +205,27 @@ export default function CSV({
     let failedCount = 0;
     const idsToLink: string[] = [];
 
-    // Add skipped ones (already existing in DB) to idsToLink
-    allQuestions.forEach((q) => {
-      const key = `${normalize(q.question_text)}|${q.question_type}|${clientId}`;
+    // Collect skipped duplicate IDs and batch-update image_urls in one call
+    const imageUrlUpdates: { id: string; image_url: string }[] = [];
+    for (const q of allQuestions) {
+      const key = getQuestionKey(q, clientId);
       if (existingKeys.has(key)) {
         const existingId = existingKeyToIdMap[key];
         if (existingId) {
           idsToLink.push(existingId);
+          if (q.image_url) {
+            imageUrlUpdates.push({ id: existingId, image_url: q.image_url });
+          }
         }
       }
-    });
+    }
+
+    // Single batch call to update image URLs for all duplicates at once
+    if (imageUrlUpdates.length > 0) {
+      await questionsApi.bulkUpdateImageUrls(imageUrlUpdates);
+    }
+
+    setImportProgress(10);
 
     if (questionsToInsert.length > 0) {
       const batchSize = 100;
@@ -256,20 +247,23 @@ export default function CSV({
         }
 
         setImportProgress(
-          Math.round(((i + batch.length) / questionsToInsert.length) * 100),
+          10 + Math.round(((i + batch.length) / questionsToInsert.length) * 80),
         );
       }
     }
 
-    // If linked to a test, create test_questions rows
+    setImportProgress(90);
+
+    // If linked to a test, create test_questions rows in one call
     if (testId && idsToLink.length > 0) {
       const linkRows = idsToLink.map((qId) => ({
         test_id: testId,
         question_id: qId,
       }));
-
       await testQuestionsApi.add(testId, linkRows);
     }
+
+    setImportProgress(100);
 
     const endTime = performance.now();
     const durationMs = Math.round(endTime - startTime);
@@ -291,7 +285,7 @@ export default function CSV({
           failedCount > 0 ? `, ${failedCount} failed` : ""
         }`,
       });
-      onImportSuccess(idsToLink);
+      onImportSuccess(idsToLink, allQuestions);
     }
 
     if (failedCount === questionsToInsert.length && questionsToInsert.length > 0) {
@@ -359,32 +353,42 @@ export default function CSV({
       {trigger !== null && (
         <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
       )}
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Import Questions from CSV</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={downloadCSVTemplate}>
-              <Download className="mr-2 h-4 w-4" />
+      <DialogContent className="max-w-5xl max-h-[88vh] flex flex-col p-6 rounded-none border border-slate-200 dark:border-slate-800">
+        <DialogHeader className="pb-3 border-b pr-10">
+          <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center justify-between">
+            <span>Import Questions from CSV</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadCSVTemplate}
+              className="h-8 text-xs font-bold uppercase rounded-none border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 select-none transition-colors"
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
               Download Template
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Columns: question_text, question_type, option_a–d, correct_answer, marks, negative_marks, difficulty, explanation
-            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2 overflow-y-auto pr-1">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-1">
+              <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest text-[10px]">Supported CSV Columns:</span>
+              <p className="text-slate-500 font-mono text-[11px] leading-relaxed">
+                question_text, question_type, option_a–d, correct_answer, marks, negative_marks, difficulty, explanation, image_url
+              </p>
+            </div>
           </div>
 
           <input
             type="file"
             accept=".csv"
             onChange={handleFileChange}
-            className="block w-full text-sm text-foreground
+            className="block w-full text-xs text-slate-500
               file:mr-4 file:py-2 file:px-4
-              file:rounded-md file:border-0
-              file:text-sm file:font-medium
-              file:bg-primary file:text-primary-foreground
-              hover:file:bg-primary/90"
+              file:rounded-none file:border-0
+              file:text-xs file:font-black file:uppercase
+              file:bg-slate-900 file:text-white
+              hover:file:bg-black cursor-pointer border border-slate-200 dark:border-slate-800"
           />
 
           {parseErrors.length > 0 && (
@@ -425,9 +429,9 @@ export default function CSV({
           )}
 
           {questions.length > 0 && validationErrors.length === 0 && parseErrors.length === 0 && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className="border-green-200 bg-green-50/50 text-green-900">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="font-semibold text-xs">
                 {validQuestions.length} valid question
                 {validQuestions.length !== 1 ? "s" : ""} ready to import
                 {testId && " and link to this test"}
@@ -438,7 +442,7 @@ export default function CSV({
           {importing && (
             <div className="space-y-2">
               <Progress value={importProgress} />
-              <p className="text-sm text-center text-muted-foreground">
+              <p className="text-xs font-bold text-center text-slate-500">
                 Importing… {importProgress}%
               </p>
             </div>
@@ -477,19 +481,20 @@ export default function CSV({
           )}
 
           {questions.length > 0 && (
-            <div className="border rounded-md">
-              <div className="max-h-72 overflow-y-auto">
+            <div className="border border-slate-200 dark:border-slate-800 flex-1 overflow-hidden">
+              <div className="max-h-72 overflow-y-auto custom-scrollbar">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Row</TableHead>
-                      <TableHead>Question</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Correct Answer(s)</TableHead>
-                      <TableHead>Marks</TableHead>
-                      <TableHead>Negative Marks</TableHead>
-                      <TableHead>Difficulty</TableHead>
-                      <TableHead>Status</TableHead>
+                  <TableHeader className="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10 shadow-sm">
+                    <TableRow className="border-b border-slate-200 dark:border-slate-700">
+                      <TableHead className="w-12 text-[10px] font-black uppercase tracking-wider text-slate-500">Row</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 min-w-[200px]">Question</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 w-16 text-center">Image</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 w-24">Type</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-center w-20">Answer</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-center w-16">Marks</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-center w-16">Penalty</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 w-24">Difficulty</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-right w-28">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -500,29 +505,44 @@ export default function CSV({
                       return (
                         <TableRow
                           key={q.rowNumber}
-                          className={hasError ? "bg-destructive/10" : ""}
+                          className={hasError ? "bg-red-50/50 dark:bg-red-950/20" : "hover:bg-slate-50/50 dark:hover:bg-slate-900/50"}
                         >
-                          <TableCell>{q.rowNumber}</TableCell>
-                          <TableCell className="max-w-xs truncate">
+                          <TableCell className="font-mono text-xs text-slate-500 font-bold">{q.rowNumber}</TableCell>
+                          <TableCell className="max-w-xs truncate text-xs font-medium text-slate-800 dark:text-slate-200">
                             {q.question_text}
                           </TableCell>
-                          <TableCell className="capitalize text-xs font-mono">{q.question_type}</TableCell>
-                          <TableCell className="text-xs">{q.correct_answers.join(", ")}</TableCell>
-                          <TableCell className="text-xs">{q.marks}</TableCell>
-                          <TableCell className="text-xs">{q.negative_marks}</TableCell>
-                          <TableCell className="capitalize text-xs">{q.difficulty}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
+                            {q.image_url ? (
+                              <img
+                                src={q.image_url}
+                                alt="Preview"
+                                className="h-7 w-9 object-contain mx-auto border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5"
+                              />
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-mono">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <span className="inline-block uppercase tracking-wider font-bold text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              {q.question_type === "true_false" ? "True/False" : "MCQ"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs font-mono font-bold text-center">{q.correct_answers.join(", ")}</TableCell>
+                          <TableCell className="text-xs font-bold text-center text-blue-600">+{q.marks}</TableCell>
+                          <TableCell className="text-xs font-bold text-center text-red-500">{q.negative_marks ? `-${q.negative_marks}` : "0"}</TableCell>
+                          <TableCell className="capitalize text-xs font-semibold text-slate-600 dark:text-slate-400">{q.difficulty || "medium"}</TableCell>
+                          <TableCell className="text-right">
                             {hasError ? (
-                              <span className="text-destructive text-xs font-bold uppercase tracking-tight">
-                                Error
+                              <span className="text-red-600 text-[10px] font-black uppercase tracking-wider bg-red-50 dark:bg-red-950/50 px-2 py-0.5 border border-red-200 dark:border-red-900">
+                                ERROR
                               </span>
                             ) : duplicateRows.has(q.rowNumber) ? (
-                              <span className="text-amber-600 text-xs font-bold uppercase tracking-tight bg-amber-50 px-2 py-0.5 border border-amber-100">
-                                Duplicate (Will Skip)
+                              <span className="text-amber-600 text-[10px] font-black uppercase tracking-wider bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 border border-amber-200 dark:border-amber-900">
+                                DUPLICATE
                               </span>
                             ) : (
-                              <span className="text-green-600 text-xs font-bold uppercase tracking-tight">
-                                Valid
+                              <span className="text-green-600 text-[10px] font-black uppercase tracking-wider bg-green-50 dark:bg-green-950/50 px-2 py-0.5 border border-green-200 dark:border-green-900">
+                                VALID
                               </span>
                             )}
                           </TableCell>
@@ -533,7 +553,7 @@ export default function CSV({
                       <TableRow>
                         <TableCell
                           colSpan={8}
-                          className="text-center text-muted-foreground"
+                          className="text-center text-xs text-slate-400 py-3"
                         >
                           … and {questions.length - 50} more questions
                         </TableCell>
@@ -545,12 +565,13 @@ export default function CSV({
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={handleClose} className="rounded-none h-9 text-xs uppercase font-bold">
               Cancel
             </Button>
             <Button
               onClick={handleImport}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-9 text-xs font-black uppercase tracking-wider"
               disabled={
                 questions.length === 0 ||
                 validationErrors.length > 0 ||
