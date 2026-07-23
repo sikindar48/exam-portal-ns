@@ -7,6 +7,7 @@ export interface ParsedQuestion {
   negative_marks: number;
   difficulty: string;
   explanation: string;
+  section_name?: string;
   image_url?: string;
   rowNumber: number;
   import_batch_id?: string;
@@ -91,6 +92,14 @@ export function parseCSV(csvText: string, importBatchId?: string): CSVParseResul
         ? values[header.indexOf('difficulty')]?.trim().toLowerCase() || 'medium'
         : 'medium';
 
+      // 0. Optional Section Name
+      const sectionCol = header.includes('section_name')
+        ? 'section_name'
+        : header.includes('section')
+          ? 'section'
+          : null;
+      const section_name = sectionCol ? values[header.indexOf(sectionCol)]?.trim() || undefined : undefined;
+
       // 5. Explanation & Optional Image URL
       const explanation = header.includes('explanation')
         ? values[header.indexOf('explanation')]?.trim() || ''
@@ -136,6 +145,7 @@ export function parseCSV(csvText: string, importBatchId?: string): CSVParseResul
         negative_marks,
         difficulty,
         explanation,
+        section_name,
         image_url,
         rowNumber: i + 1,
         import_batch_id: importBatchId,
@@ -177,17 +187,17 @@ function parseCSVLine(line: string): string[] {
 }
 
 export function generateCSVTemplate(): string {
-  const header = 'question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,marks,negative_marks,difficulty,explanation,image_url';
-  const q1 = '"What is the capital city of France?","mcq","Berlin","Madrid","Paris","Rome","C","1","0.25","easy","Paris is the capital of France.","https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400"';
-  const q2 = '"The human heart has 4 chambers.","true_false","True","False","","","A","1","0","easy","Human heart consists of 2 atria and 2 ventricles.",""';
-  const q3 = '"Identify the world famous monument shown in the image.","mcq","Taj Mahal","Colosseum","Eiffel Tower","Pyramids","A","2","0.5","medium","The Taj Mahal is located in Agra, India.","https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400"';
-  const q4 = '"Which geometric shape is depicted in the illustration?","mcq","Equilateral Triangle","Circle","Hexagon","Square","B","1","0.25","easy","The image displays a smooth circle shape.","https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400"';
-  const q5 = '"Light travels faster than sound in air.","true_false","True","False","","","A","1","0","easy","Speed of light is 3x10^8 m/s vs sound at 343 m/s.",""';
-  const q6 = '"What is the output of 15 * 4 in basic arithmetic?","mcq","50","60","65","70","B","1","0.25","easy","15 multiplied by 4 equals 60.",""';
-  const q7 = '"Examine the microchip board architecture in the image.","mcq","Series Circuit","Parallel Circuit","Printed Circuit Board","Fiber Optic","C","2","0.5","hard","The image displays a PCB motherboard architecture.","https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"';
-  const q8 = '"Water freezes at 0 degrees Celsius under standard atmospheric pressure.","true_false","True","False","","","A","1","0","easy","0°C is the freezing point of pure water.",""';
-  const q9 = '"Which organelle is known as the powerhouse of the cell?","mcq","Nucleus","Ribosome","Mitochondria","Golgi Body","C","1","0.25","medium","Mitochondria generate ATP energy for the cell.","https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=400"';
-  const q10 = '"Identify the software development workspace environment shown.","mcq","Code Editor","Database Manager","Vector Drawing","Spreadsheet","A","2","0.5","medium","The image shows source code in a modern IDE code editor.","https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400"';
+  const header = 'section_name,question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,marks,negative_marks,difficulty,explanation,image_url';
+  const q1 = '"General","What is the capital city of France?","mcq","Berlin","Madrid","Paris","Rome","C","1","0.25","easy","Paris is the capital of France.","https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400"';
+  const q2 = '"General","The human heart has 4 chambers.","true_false","True","False","","","A","1","0","easy","Human heart consists of 2 atria and 2 ventricles.",""';
+  const q3 = '"General","Identify the world famous monument shown in the image.","mcq","Taj Mahal","Colosseum","Eiffel Tower","Pyramids","A","2","0.5","medium","The Taj Mahal is located in Agra, India.","https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400"';
+  const q4 = '"Aptitude","Which geometric shape is depicted in the illustration?","mcq","Equilateral Triangle","Circle","Hexagon","Square","B","1","0.25","easy","The image displays a smooth circle shape.","https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400"';
+  const q5 = '"Aptitude","Light travels faster than sound in air.","true_false","True","False","","","A","1","0","easy","Speed of light is 3x10^8 m/s vs sound at 343 m/s.",""';
+  const q6 = '"Aptitude","What is the output of 15 * 4 in basic arithmetic?","mcq","50","60","65","70","B","1","0.25","easy","15 multiplied by 4 equals 60.",""';
+  const q7 = '"Technical","Examine the microchip board architecture in the image.","mcq","Series Circuit","Parallel Circuit","Printed Circuit Board","Fiber Optic","C","2","0.5","hard","The image displays a PCB motherboard architecture.","https://images.unsplash.com/photo-1518770660439-4636190af475?w=400"';
+  const q8 = '"Technical","Water freezes at 0 degrees Celsius under standard atmospheric pressure.","true_false","True","False","","","A","1","0","easy","0°C is the freezing point of pure water.",""';
+  const q9 = '"Technical","Which organelle is known as the powerhouse of the cell?","mcq","Nucleus","Ribosome","Mitochondria","Golgi Body","C","1","0.25","medium","Mitochondria generate ATP energy for the cell.","https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=400"';
+  const q10 = '"Technical","Identify the software development workspace environment shown.","mcq","Code Editor","Database Manager","Vector Drawing","Spreadsheet","A","2","0.5","medium","The image shows source code in a modern IDE code editor.","https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400"';
 
   return [header, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10].join('\n');
 }

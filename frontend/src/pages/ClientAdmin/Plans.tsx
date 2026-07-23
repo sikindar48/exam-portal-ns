@@ -50,7 +50,8 @@ const DEFAULT_PLANS = [
       "Up to 200 Questions per Exam",
       "Up to 250 Students per Exam",
       "1 GB Storage Limit",
-      "Everything in Starter, Advanced Analytics",
+      "Custom Brand Logo, CSV Import, XLSX Export",
+      "Advanced Analytics & Basic Proctoring",
     ]
   },
   {
@@ -60,12 +61,12 @@ const DEFAULT_PLANS = [
     priceLabel: "₹9,999",
     billing: "Per year",
     features: [
-      "Up to 100 Exams per Month",
-      "Up to 300 Questions per Exam",
-      "Up to 500 Students per Exam",
+      "Unlimited Exams & Student Enrollment",
+      "Unlimited Questions per Exam",
       "5 GB Storage Limit",
       "Camera Proctoring Lite & Custom Branding",
-      "Everything in Growth",
+      "Custom Brand Logo, CSV Import, XLSX Export",
+      "Advanced Analytics & Basic Proctoring",
     ]
   }
 ];

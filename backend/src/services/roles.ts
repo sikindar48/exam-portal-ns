@@ -34,14 +34,22 @@ export async function hasRole(userId: string, role: AppRole): Promise<boolean> {
   return roles.some((r) => r.role === role);
 }
 
-/** Get client_id from profiles */
+/** Get client_id from profiles (fallback to user_roles if NULL) */
 export async function getUserClientId(userId: string): Promise<string | null> {
   const db = getDb();
   const { rows } = await db.execute({
     sql: "SELECT client_id FROM profiles WHERE id = ?",
     args: [userId],
   });
-  return (rows[0] as any)?.client_id ?? null;
+  const profClientId = (rows[0] as any)?.client_id ?? null;
+  if (profClientId) return profClientId;
+
+  // Fallback to user_roles table
+  const { rows: roleRows } = await db.execute({
+    sql: "SELECT client_id FROM user_roles WHERE user_id = ? AND client_id IS NOT NULL",
+    args: [userId],
+  });
+  return (roleRows[0] as any)?.client_id ?? null;
 }
 
 /** Check if user/student ID belongs to a guest profile */

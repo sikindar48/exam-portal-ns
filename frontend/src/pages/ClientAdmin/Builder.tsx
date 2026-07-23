@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, BookOpen, Send } from "lucide-react";
+import { Plus, BookOpen, Send, Upload } from "lucide-react";
 import CSV from "@/components/QuestionImport/CSV";
 import { useAuth } from "@/contexts/AuthContext";
 import { Footer } from "@/components/Brand/Footer";
@@ -176,70 +176,17 @@ export default function Builder() {
     }
   };
 
-  const onCsvImportSuccess = async (importedIds?: string[], parsedQuestions?: any[]) => {
-    if ((importedIds && importedIds.length > 0) || (parsedQuestions && parsedQuestions.length > 0)) {
-      setLoading(true);
-      try {
-        let freshQuestions: Question[] = [];
-        if (importedIds && importedIds.length > 0) {
-          const { data, error } = await questionsApi.getByIds(importedIds);
-          if (!error && data) {
-            freshQuestions = data as unknown as Question[];
-          }
-        }
-
-        // Fallback / merge with parsed CSV questions to ensure image_url is populated
-        if (parsedQuestions && parsedQuestions.length > 0) {
-          if (freshQuestions.length === 0) {
-            freshQuestions = parsedQuestions.map((q, idx) => ({
-              ...q,
-              id: q.id || `csv_${Date.now()}_${idx}`,
-              question_type: q.question_type || "mcq",
-              marks: q.marks ?? 1,
-            })) as Question[];
-          } else {
-            freshQuestions = freshQuestions.map((fq) => {
-              const matchedCsv = parsedQuestions.find((iq) => 
-                (iq.id && iq.id === fq.id) ||
-                (iq.question_text && fq.question_text && iq.question_text.trim().toLowerCase() === fq.question_text.trim().toLowerCase())
-              );
-              if (matchedCsv && matchedCsv.image_url) {
-                return { ...fq, image_url: matchedCsv.image_url };
-              }
-              return fq;
-            });
-          }
-        }
-
-        if (freshQuestions.length > 0) {
-          setTestData((prev) => {
-            const freshByText = new Map(freshQuestions.map((q) => [q.question_text?.trim().toLowerCase(), q]));
-            const freshById = new Map(freshQuestions.map((q) => [q.id, q]));
-            
-            const updatedExisting = prev.questions.map((q) => {
-              const match = freshById.get(q.id) || freshByText.get(q.question_text?.trim().toLowerCase());
-              if (match) {
-                return { ...q, ...match, image_url: match.image_url || q.image_url };
-              }
-              return q;
-            });
-
-            const brandNew = freshQuestions.filter((q) => 
-              !prev.questions.some((old) => old.id === q.id || (old.question_text && q.question_text && old.question_text.trim().toLowerCase() === q.question_text.trim().toLowerCase()))
-            );
-
-            return {
-              ...prev,
-              questions: [...updatedExisting, ...brandNew],
-            };
-          });
-          toast({ title: "Import Success", description: `${freshQuestions.length} questions imported.` });
-        }
-      } catch (err) {
-        toast({ title: "Import Error", description: "Failed to display imported questions.", variant: "destructive" });
-      } finally {
-        setLoading(false);
+  const onCsvImportSuccess = async () => {
+    setLoading(true);
+    try {
+      if (testId) {
+        await loadTest();
       }
+      toast({ title: "Import Success", description: "CSV questions and sections imported successfully." });
+    } catch (err) {
+      toast({ title: "Import Error", description: "Failed to display imported questions and sections.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
     setCsvDialogOpen(false);
   };
@@ -372,8 +319,6 @@ export default function Builder() {
         testName={testData.test_name} 
         saving={saving} 
         onSave={saveTest} 
-        onImport={() => setCsvDialogOpen(true)} 
-        showImport={features.includes("csv_import")}
       />
 
       <main className="container mx-auto px-6 py-8 flex-1">
@@ -394,9 +339,14 @@ export default function Builder() {
               <div className="flex items-center gap-3">
                 <BookOpen className="h-5 w-5 text-blue-600" />
                 <h2 className="font-black uppercase tracking-tight">Question Palette</h2>
-                <span className="text-[10px] bg-slate-100 px-2 py-0.5 font-bold rounded-full">{testData.questions.length} Items</span>
+                <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-bold rounded-full">{testData.questions.length} Items</span>
               </div>
               <div className="flex gap-2">
+                {(features.length === 0 || features.includes("csv_import")) && (
+                  <Button onClick={() => setCsvDialogOpen(true)} variant="outline" className="border-slate-200 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] rounded-none h-8 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600">
+                    <Upload className="h-3.5 w-3.5 mr-2 text-emerald-600" /> Import CSV
+                  </Button>
+                )}
                 <Button onClick={() => setRepoDialogOpen(true)} variant="outline" className="border-slate-200 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] rounded-none h-8">
                   <BookOpen className="h-3.5 w-3.5 mr-2 text-blue-600" /> From Repository
                 </Button>
@@ -423,10 +373,19 @@ export default function Builder() {
               {testData.questions.length === 0 && (
                 <Card className="border bg-white dark:bg-slate-900 rounded-none py-20">
                   <CardContent className="flex flex-col items-center justify-center text-center">
-                    <Send className="h-12 w-12 text-slate-200 mb-4" />
-                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">Your Palette is Empty</h3>
+                    <Send className="h-12 w-12 text-slate-200 dark:text-slate-700 mb-4" />
+                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Your Palette is Empty</h3>
                     <p className="text-slate-500 text-sm max-w-xs mt-2">Start building your assessment by adding questions or importing from a CSV.</p>
-                    <Button onClick={addQuestion} className="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-none">Add Your First Question</Button>
+                    <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
+                      <Button onClick={addQuestion} className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-none">
+                        Add Your First Question
+                      </Button>
+                      {(features.length === 0 || features.includes("csv_import")) && (
+                        <Button onClick={() => setCsvDialogOpen(true)} variant="outline" className="border-slate-200 dark:border-slate-800 font-black uppercase tracking-widest rounded-none">
+                          <Upload className="h-4 w-4 mr-2 text-emerald-600" /> Import from CSV
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )}

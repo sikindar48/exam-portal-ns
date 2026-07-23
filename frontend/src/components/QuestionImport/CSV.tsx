@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { questionsApi, testQuestionsApi } from "@/services/api/client";
+import { questionsApi, testQuestionsApi, testSectionsApi } from "@/services/api/client";
 import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   parseCSV,
@@ -203,7 +203,8 @@ export default function CSV({
 
     let successCount = 0;
     let failedCount = 0;
-    const idsToLink: string[] = [];
+    // Track items to link along with their parsed section_name
+    const itemsToLink: { questionId: string; sectionName?: string }[] = [];
 
     // Collect skipped duplicate IDs and batch-update image_urls in one call
     const imageUrlUpdates: { id: string; image_url: string }[] = [];
@@ -212,7 +213,7 @@ export default function CSV({
       if (existingKeys.has(key)) {
         const existingId = existingKeyToIdMap[key];
         if (existingId) {
-          idsToLink.push(existingId);
+          itemsToLink.push({ questionId: existingId, sectionName: q.section_name });
           if (q.image_url) {
             imageUrlUpdates.push({ id: existingId, image_url: q.image_url });
           }
@@ -241,8 +242,10 @@ export default function CSV({
           successCount += batch.length;
           if (data) {
             const list = Array.isArray(data) ? data : [data];
-            const newIds = list.map((r: { id: string }) => r.id);
-            idsToLink.push(...newIds);
+            list.forEach((r: { id: string }, idx: number) => {
+              const origQ = batch[idx];
+              itemsToLink.push({ questionId: r.id, sectionName: origQ?.section_name });
+            });
           }
         }
 
@@ -254,12 +257,50 @@ export default function CSV({
 
     setImportProgress(90);
 
-    // If linked to a test, create test_questions rows in one call
-    if (testId && idsToLink.length > 0) {
-      const linkRows = idsToLink.map((qId) => ({
-        test_id: testId,
-        question_id: qId,
-      }));
+    // If linked to a test, handle section resolution and create test_questions rows
+    if (testId && itemsToLink.length > 0) {
+      // 1. Fetch existing test sections
+      const { data: existingSecs } = await testSectionsApi.list(testId).catch(() => ({ data: [] }));
+      const sectionMap: Record<string, string> = {};
+
+      if (existingSecs && Array.isArray(existingSecs)) {
+        existingSecs.forEach((sec: any) => {
+          if (sec.name) sectionMap[sec.name.trim().toLowerCase()] = sec.id;
+        });
+      }
+
+      // 2. Identify unique section_names from CSV that don't exist yet and create them
+      const missingSectionNames = Array.from(
+        new Set(itemsToLink.map((item) => item.sectionName?.trim()).filter(Boolean) as string[])
+      ).filter((name) => !sectionMap[name.toLowerCase()]);
+
+      for (const newSecName of missingSectionNames) {
+        try {
+          const createRes = await testSectionsApi.create({
+            test_id: testId,
+            name: newSecName,
+          });
+          if (createRes.data && createRes.data.id) {
+            sectionMap[newSecName.toLowerCase()] = createRes.data.id;
+          }
+        } catch (secErr) {
+          console.error(`Failed to auto-create section '${newSecName}':`, secErr);
+        }
+      }
+
+      // 3. Build test_questions link rows with correct section_id
+      const linkRows = itemsToLink.map(({ questionId, sectionName }) => {
+        let matchedSecId = sectionId || null;
+        if (sectionName && sectionMap[sectionName.trim().toLowerCase()]) {
+          matchedSecId = sectionMap[sectionName.trim().toLowerCase()];
+        }
+        return {
+          test_id: testId,
+          question_id: questionId,
+          section_id: matchedSecId,
+        };
+      });
+
       await testQuestionsApi.add(testId, linkRows);
     }
 
@@ -285,7 +326,7 @@ export default function CSV({
           failedCount > 0 ? `, ${failedCount} failed` : ""
         }`,
       });
-      onImportSuccess(idsToLink, allQuestions);
+      onImportSuccess(itemsToLink.map(i => i.questionId), allQuestions);
     }
 
     if (failedCount === questionsToInsert.length && questionsToInsert.length > 0) {
@@ -374,7 +415,7 @@ export default function CSV({
             <div className="space-y-1">
               <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest text-[10px]">Supported CSV Columns:</span>
               <p className="text-slate-500 font-mono text-[11px] leading-relaxed">
-                question_text, question_type, option_a–d, correct_answer, marks, negative_marks, difficulty, explanation, image_url
+                section_name (optional), question_text, question_type, option_a–d, correct_answer, marks, negative_marks, difficulty, explanation, image_url
               </p>
             </div>
           </div>
@@ -487,7 +528,8 @@ export default function CSV({
                   <TableHeader className="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10 shadow-sm">
                     <TableRow className="border-b border-slate-200 dark:border-slate-700">
                       <TableHead className="w-12 text-[10px] font-black uppercase tracking-wider text-slate-500">Row</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 min-w-[200px]">Question</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 w-24">Section</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 min-w-[180px]">Question</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 w-16 text-center">Image</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 w-24">Type</TableHead>
                       <TableHead className="text-[10px] font-black uppercase tracking-wider text-slate-500 text-center w-20">Answer</TableHead>
@@ -508,6 +550,15 @@ export default function CSV({
                           className={hasError ? "bg-red-50/50 dark:bg-red-950/20" : "hover:bg-slate-50/50 dark:hover:bg-slate-900/50"}
                         >
                           <TableCell className="font-mono text-xs text-slate-500 font-bold">{q.rowNumber}</TableCell>
+                          <TableCell className="text-xs">
+                            {q.section_name ? (
+                              <span className="inline-block uppercase tracking-wider font-bold text-[9px] px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                                {q.section_name}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-mono">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="max-w-xs truncate text-xs font-medium text-slate-800 dark:text-slate-200">
                             {q.question_text}
                           </TableCell>

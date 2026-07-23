@@ -1,16 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   testName: string;
   saving: boolean;
   onSave: () => void;
-  onImport: () => void;
-  showImport?: boolean;
 }
 
-export function Header({ testName, saving, onSave, onImport, showImport = true }: HeaderProps) {
+export function Header({ testName, saving, onSave }: HeaderProps) {
   const navigate = useNavigate();
 
   return (
@@ -33,16 +31,6 @@ export function Header({ testName, saving, onSave, onImport, showImport = true }
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {showImport && (
-              <Button
-                variant="outline"
-                onClick={onImport}
-                className="rounded transition-colors"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Import CSV
-              </Button>
-            )}
             <Button
               onClick={onSave}
               disabled={saving}

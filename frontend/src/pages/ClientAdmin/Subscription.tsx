@@ -1,7 +1,7 @@
 import { ClientAdminSidebar } from "@/components/ClientAdmin/Sidebar";
 import { ClientAdminHeader } from "@/components/ClientAdmin/Header";
 import { Footer } from "@/components/Brand/Footer";
-import { CreditCard, ShieldCheck, CheckCircle2, AlertCircle, Ticket, Info } from "lucide-react";
+import { CreditCard, ShieldCheck, CheckCircle2, AlertCircle, Ticket, Info, Wallet, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { clientsApi, packagesApi } from "@/services/api/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PLAN_DETAILS: Record<string, { name: string; price: string; features: string[] }> = {
   free: {
@@ -42,7 +43,8 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
       "Up to 200 Questions per Exam",
       "Up to 250 Students per Exam",
       "1 GB Storage Limit",
-      "Everything in Starter, Advanced Analytics",
+      "Custom Brand Logo, CSV Import, XLSX Export",
+      "Advanced Analytics & Basic Proctoring",
     ]
   },
   enterprise: {
@@ -53,7 +55,8 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
       "Unlimited Questions per Exam",
       "5 GB Storage Limit",
       "Camera Proctoring Lite & Custom Branding",
-      "Everything in Growth",
+      "Custom Brand Logo, CSV Import, XLSX Export",
+      "Advanced Analytics & Basic Proctoring",
     ]
   }
 };
@@ -68,6 +71,8 @@ export default function Subscription() {
   const [purchasesLoading, setPurchasesLoading] = useState(true);
   const [viewingPurchaseDetails, setViewingPurchaseDetails] = useState<any | null>(null);
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<string>("");
 
   useEffect(() => {
     async function fetchSubscriptionData() {
@@ -75,9 +80,10 @@ export default function Subscription() {
       try {
         setLoading(true);
         setPurchasesLoading(true);
-        const [clientRes, purchRes] = await Promise.all([
+        const [clientRes, purchRes, availRes] = await Promise.all([
           clientsApi.get(clientId),
-          packagesApi.listPurchases(clientId)
+          packagesApi.listPurchases(clientId),
+          packagesApi.listAvailable()
         ]);
 
         if (!clientRes.error && clientRes.data) {
@@ -89,6 +95,13 @@ export default function Subscription() {
 
         if (!purchRes.error && purchRes.data) {
           setPurchases(purchRes.data);
+        }
+
+        if (!availRes.error && availRes.data) {
+          setAvailablePackages(availRes.data);
+          if (availRes.data.length > 0) {
+            setSelectedPackage(availRes.data[0].id);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -140,9 +153,9 @@ export default function Subscription() {
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       onClick={() => navigate("/client-admin/subscription/plans")}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-none h-9 px-4 shrink-0 transition-colors flex items-center gap-1.5"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded h-9 px-5 shrink-0 transition-all flex items-center gap-2"
                     >
-                      <CreditCard className="h-3.5 w-3.5" />
+                      <Wallet className="h-3.5 w-3.5" />
                       Upgrade Plan / Pay Online
                     </Button>
                   </div>
@@ -157,6 +170,19 @@ export default function Subscription() {
                         {feat}
                       </li>
                     ))}
+                    <li className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350">
+                      {features.includes("camera_proctoring") ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-slate-400 shrink-0" />
+                      )}
+                      <span>Camera Proctoring</span>
+                      {features.includes("camera_proctoring") ? (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 ml-auto sm:ml-0">Active</span>
+                      ) : (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 ml-auto sm:ml-0">Inactive</span>
+                      )}
+                    </li>
                   </ul>
                 </div>
 
@@ -224,34 +250,9 @@ export default function Subscription() {
 
               {/* Sidebar with License & PPT Info */}
               <div className="space-y-6">
-                {/* License list */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl space-y-6">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Gated Features</h3>
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    {loading ? (
-                      <p className="text-xs font-bold text-slate-400">Loading license data...</p>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between p-3 border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-350">Camera Proctoring</span>
-                          {features.includes("camera_proctoring") ? (
-                            <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 border border-green-100 px-2 py-0.5">Active</span>
-                          ) : (
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5">Inactive</span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
                 {/* Enhanced Pay Per Test Credits Card */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl space-y-6 relative overflow-hidden group">
-                  <div className="flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 shadow-xl flex flex-col relative overflow-hidden group h-full">
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <Ticket className="h-5 w-5 text-indigo-600" />
                       <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Pay Per Test</h3>
@@ -261,7 +262,7 @@ export default function Subscription() {
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4 flex-1">
                     <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
                       Host custom high-capacity examinations, placement drives, or specialized tests outside your monthly plan limits.
                     </p>
@@ -279,14 +280,47 @@ export default function Subscription() {
                         <span>Instant online activation via Razorpay</span>
                       </li>
                     </ul>
+
+                    {availablePackages.length > 0 && (
+                      <div className="pt-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Available Packages</label>
+                        <Select value={selectedPackage} onValueChange={setSelectedPackage}>
+                          <SelectTrigger className="w-full h-10 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-none text-xs font-bold text-slate-900 dark:text-white focus:ring-0 focus:ring-offset-0 focus:border-indigo-500 flex justify-between items-center px-3">
+                            <span className="truncate">
+                              {selectedPackage && availablePackages.find(p => p.id === selectedPackage)
+                                ? `${availablePackages.find(p => p.id === selectedPackage)?.name} - ₹${availablePackages.find(p => p.id === selectedPackage)?.price}`
+                                : "Select a package..."}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent className="rounded-none border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+                            {availablePackages.map((pkg) => (
+                              <SelectItem key={pkg.id} value={pkg.id} className="text-xs font-bold cursor-pointer py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <Ticket className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                  <span className="text-slate-900 dark:text-slate-100">{pkg.name}</span>
+                                  <span className="text-slate-300 dark:text-slate-700 mx-1">•</span>
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-black">₹{pkg.price}</span>
+                                  <span className="text-slate-300 dark:text-slate-700 mx-1">•</span>
+                                  <span className="font-medium text-slate-500 flex items-center gap-1.5">
+                                    <Users className="h-3 w-3 text-slate-400" /> {pkg.max_candidates} Students
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
-                  <Button
-                    onClick={() => navigate("/client-admin/subscription/packages")}
-                    className="w-full h-10 rounded-none bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
-                  >
-                    Explore & Buy Packages
-                  </Button>
+                  <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      onClick={() => navigate("/client-admin/subscription/packages")}
+                      className="w-full h-10 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest transition-all"
+                    >
+                      Explore & Buy Packages
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
