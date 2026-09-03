@@ -29,7 +29,7 @@ const DEFAULT_PLANS = [
     name: "Starter Plan",
     price_inr: 1999,
     priceLabel: "₹1,999",
-    billing: "Per year",
+    billing: "Per month",
     features: [
       "Up to 25 Exams per Month",
       "Up to 100 Questions per Exam",
@@ -44,7 +44,7 @@ const DEFAULT_PLANS = [
     name: "Growth Plan",
     price_inr: 3999,
     priceLabel: "₹3,999",
-    billing: "Per year",
+    billing: "Per month",
     features: [
       "Up to 50 Exams per Month",
       "Up to 200 Questions per Exam",
@@ -59,14 +59,15 @@ const DEFAULT_PLANS = [
     name: "Enterprise Plan",
     price_inr: 9999,
     priceLabel: "₹9,999",
-    billing: "Per year",
+    billing: "Per month",
     features: [
-      "Unlimited Exams & Student Enrollment",
-      "Unlimited Questions per Exam",
+      "Up to 100 Exams per Month",
+      "Up to 300 Questions per Exam",
+      "Up to 500 Students per Exam",
       "5 GB Storage Limit",
       "Camera Proctoring Lite & Custom Branding",
       "Custom Brand Logo, CSV Import, XLSX Export",
-      "Advanced Analytics & Basic Proctoring",
+      "Advanced Analytics & Dedicated Support",
     ]
   }
 ];

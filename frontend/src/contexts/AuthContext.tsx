@@ -32,7 +32,7 @@ interface AuthContextType {
     email: string,
     password: string,
     name: string,
-    clientId?: string,
+    orgName: string,
   ) => Promise<{ error: any }>;
   signInWithGoogle: (clientId?: string) => Promise<{ error: any }>;
   signInAnonymously: () => Promise<{ error: any }>;
@@ -189,11 +189,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearCache();
 
       const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
-      await fetchUserRole(firebaseUser);
+      
+      const token = await firebaseUser.getIdToken();
+      const res = await apiClient("/api/user-roles", { token });
+      
+      if (!res || res.length === 0) {
+        // Orphaned Firebase account (setup failed midway)
+        await firebaseUser.delete();
+        await firebaseSignOut(auth);
+        return { error: { message: "Account setup was incomplete. We have reset your email—please sign up again." } };
+      }
+      
+      applyRole(res, firebaseUser.uid);
       return { error: null };
     } catch (err: any) {
       console.error("Sign in error:", err);
-      return { error: { message: friendlyFirebaseError(err.code) } };
+      return { error: { message: friendlyFirebaseError(err.code) || err.message } };
     }
   };
 
@@ -201,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     name: string,
-    clientId?: string,
+    orgName: string,
   ) => {
     try {
       if (!auth) throw new Error("Firebase not initialized");
@@ -214,32 +225,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Set display name in Firebase
       await updateProfile(newUser, { displayName: name });
 
-      // Store profile + role in Turso via backend API
+      // Register Organization in Turso via backend API
       const token = await newUser.getIdToken();
-      await apiClient("/api/profiles", {
+      const response: any = await apiClient("/api/auth/register-client", {
         token,
         method: "POST",
-        body: { id: newUser.uid, name, email, client_id: clientId ?? null },
-      });
-      await apiClient("/api/user-roles", {
-        token,
-        method: "POST",
-        body: {
-          user_id: newUser.uid,
-          role: "student",
-          client_id: clientId ?? null,
-        },
+        body: { id: newUser.uid, name, email, orgName },
       });
 
+      const newClientId = response.client_id;
+
       // Update state and cache immediately to prevent race conditions with routing redirects
-      writeCache("student", clientId ?? null, newUser.uid);
-      setRole("student");
-      setClientId(clientId ?? null);
+      writeCache("clientadmin", newClientId, newUser.uid);
+      setRole("clientadmin");
+      setClientId(newClientId);
 
       return { error: null };
     } catch (err: any) {
       console.error("Sign up error:", err);
-      return { error: { message: friendlyFirebaseError(err.code) } };
+      const message = err.code ? friendlyFirebaseError(err.code) : (err.message || "An unexpected error occurred.");
+      return { error: { message } };
     }
   };
 

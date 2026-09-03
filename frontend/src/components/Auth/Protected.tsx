@@ -70,16 +70,16 @@ export function Protected({
     const isAllowedGuestRoute = window.location.pathname.startsWith("/student/test/") || 
                                window.location.pathname === "/student/submit-success";
     if (!isAllowedGuestRoute) {
-      return <Navigate to="/auth" replace />;
+      return <Navigate to="/login" replace />;
     }
   }
 
   // No session and no cached role → go to login
-  if (!user && !role) return <Navigate to="/auth" replace />;
+  if (!user && !role) return <Navigate to="/login" replace />;
 
   // Wrong or missing role → redirect to their own dashboard or login page
   if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-    return <Navigate to={role ? (ROLE_ROUTES[role] ?? "/auth") : "/auth"} replace />;
+    return <Navigate to={role ? (ROLE_ROUTES[role] ?? "/login") : "/login"} replace />;
   }
 
   return <>{children}</>;

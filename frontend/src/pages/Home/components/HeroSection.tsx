@@ -60,7 +60,7 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row gap-3.5 justify-center items-center mb-10 sm:mb-16">
           <Button
             size="lg"
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate("/register")}
             className="bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs tracking-wider rounded-none px-8 py-5 sm:py-6 w-full sm:w-auto transition-all shadow-xl shadow-blue-900/10 hover:shadow-blue-500/25"
           >
             Get Started Free

@@ -107,9 +107,9 @@ export default async function handler(req: Request, res: Response) {
         const oldSub = currentSub[0] as any;
         const oldPlanId = oldSub?.plan_id || null;
 
-        // Calculate start & expiry dates (default 1 year from now)
+        // Calculate start & expiry dates (default 30 days from now)
         const todayStr = new Date().toISOString().slice(0, 10);
-        const expiryStr = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const expiryStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
         // 2. Perform database update
         await db.execute({

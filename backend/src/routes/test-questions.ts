@@ -85,7 +85,7 @@ export default async function handler(req: Request, res: Response) {
 
     const selectCols = withAnswers
       ? "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_answer, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, q.image_url, tq.section_id, tq.position, tq.id as tq_id, tq.question_id"
-      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, q.question_type, q.options, q.correct_answers, q.negative_marks, q.explanation, q.image_url, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
+      : "q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.marks, q.difficulty, q.question_type, q.options, q.negative_marks, q.image_url, tq.section_id, tq.position, tq.id as tq_id, tq.question_id";
 
     const { rows } = await db.execute({
       sql: `SELECT ${selectCols}
@@ -117,14 +117,14 @@ export default async function handler(req: Request, res: Response) {
         option_b: r.option_b,
         option_c: r.option_c,
         option_d: r.option_d,
-        correct_answer: r.correct_answer,
+        correct_answer: withAnswers ? r.correct_answer : undefined,
         marks: r.marks,
         difficulty: r.difficulty,
         question_type: r.question_type,
         options: r.options,
-        correct_answers: r.correct_answers,
+        correct_answers: withAnswers ? r.correct_answers : undefined,
         negative_marks: r.negative_marks,
-        explanation: r.explanation,
+        explanation: withAnswers ? r.explanation : undefined,
         image_url: imageUrl,
       });
 
@@ -139,16 +139,26 @@ export default async function handler(req: Request, res: Response) {
         difficulty: mappedQ.difficulty,
         question_type: mappedQ.question_type,
         options: mappedQ.options,
-        correct_answers: mappedQ.correct_answers,
         negative_marks: mappedQ.negative_marks,
-        explanation: mappedQ.explanation,
         image_url: imageUrl,
       };
+
+      // Only attach answer key and explanations if explicitly authorized (review after submission or admin)
       if (withAnswers) {
         questionObj.correct_answer = mappedQ.correct_answer;
+        questionObj.correct_answers = mappedQ.correct_answers;
+        questionObj.explanation = mappedQ.explanation;
       }
+
+      const rowClean = { ...r };
+      if (!withAnswers) {
+        delete rowClean.correct_answer;
+        delete rowClean.correct_answers;
+        delete rowClean.explanation;
+      }
+
       return {
-        ...r,
+        ...rowClean,
         image_url: imageUrl,       // ← always explicit, never dropped by JSON.stringify
         option_c: mappedQ.option_c, // ← "" for true_false (not "N/A" from raw DB)
         option_d: mappedQ.option_d, // ← "" for true_false (not "N/A" from raw DB)

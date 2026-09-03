@@ -164,6 +164,7 @@ app.all("/api/subscription-requests", subscriptionRequestsHandler);
 app.all("/api/gcp-stats", gcpStatsHandler);
 app.all("/api/auth/forgot-password", authRoutesHandler);
 app.all("/api/auth/reset-password", authRoutesHandler);
+app.all("/api/auth/register-client", authRoutesHandler);
 
 // Payments — webhook needs raw body BEFORE json parser, so registered with express.raw
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), paymentsHandler);

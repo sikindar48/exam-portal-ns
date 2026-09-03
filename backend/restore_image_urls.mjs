@@ -3,9 +3,10 @@
  */
 import { createClient } from "@libsql/client";
 
+import "dotenv/config";
 const db = createClient({
-  url: "libsql://exam-portal-ns-software-solutions.aws-ap-south-1.turso.io",
-  authToken: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJnaWQiOiJmN2NhZTlkZC01OGU2LTRjOTQtOGI2YS03MjRiMGVhZjFmMjMiLCJpYXQiOjE3ODE1NzY2ODUsInJpZCI6ImQyYzcxZTJlLWY1YzItNDBhMy1hYzIwLTFiZmIyYjAyOTUxMCJ9.3UvMxF5cdcXu7faGg4WakL4w2liOLU67w650zRxB2RY0ccEbrBUrP1vmZyWL63DAs3Q7qfaSnPysx92zsjVxAA",
+  url: process.env.TURSO_DATABASE_URL || "libsql://exam-portal-ns-software-solutions.aws-ap-south-1.turso.io",
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 const TEST_ID = "278e0614-3550-45f5-b42d-9acec8c6423f";

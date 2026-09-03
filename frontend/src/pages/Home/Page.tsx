@@ -87,7 +87,7 @@ export default function Page() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               size="lg"
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/register")}
               className="bg-white hover:bg-slate-100 text-slate-950 font-black uppercase text-xs tracking-wider rounded-none px-8 py-6 w-full sm:w-auto shadow-xl transition-all"
             >
               Start Free

@@ -49,14 +49,15 @@ const PLAN_DETAILS: Record<string, { name: string; price: string; features: stri
   },
   enterprise: {
     name: "Enterprise Plan",
-    price: "Custom Pricing",
+    price: "₹9,999",
     features: [
-      "Unlimited Exams & Student Enrollment",
-      "Unlimited Questions per Exam",
+      "Up to 100 Exams per Month",
+      "Up to 300 Questions per Exam",
+      "Up to 500 Students per Exam",
       "5 GB Storage Limit",
       "Camera Proctoring Lite & Custom Branding",
       "Custom Brand Logo, CSV Import, XLSX Export",
-      "Advanced Analytics & Basic Proctoring",
+      "Advanced Analytics & Dedicated Support",
     ]
   }
 };
@@ -145,8 +146,8 @@ export default function Subscription() {
                     </span>
                     <p className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-4">
                       {activePlan.price}
-                      {client?.plan_id !== "enterprise" && (
-                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider"> / year</span>
+                      {client?.plan_id !== "free" && (
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider"> / month</span>
                       )}
                     </p>
                   </div>

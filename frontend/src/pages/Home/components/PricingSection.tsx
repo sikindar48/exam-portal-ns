@@ -89,7 +89,7 @@ export function PricingSection() {
               </ul>
             </div>
             <Button
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/register")}
               className="mt-8 bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-[10px] tracking-wider rounded-none py-6"
             >
               Get Started Free
@@ -171,7 +171,7 @@ export function PricingSection() {
               </ul>
             </div>
             <Button
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/register")}
               className="mt-8 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-wider rounded-none py-6 shadow-lg shadow-blue-600/15"
             >
               Choose Subscription
@@ -309,7 +309,7 @@ export function PricingSection() {
               </ul>
             </div>
             <Button
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/register")}
               className="mt-8 bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-[10px] tracking-wider rounded-none py-6"
             >
               Buy Test Packages

@@ -21,7 +21,7 @@ async function provisionPlanForClient(
   });
   const oldPlanId = (currentSub[0] as any)?.plan_id || null;
   const todayStr = new Date().toISOString().slice(0, 10);
-  const expiryStr = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const expiryStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   // Upsert subscription
   await db.execute({
@@ -162,7 +162,7 @@ export default async function handler(req: Request, res: Response) {
         if (plan.id === "free") return res.status(400).json({ error: "Free plan requires no payment" });
         amountInPaise = Number(plan.price_inr) * 100;
         if (amountInPaise <= 0) return res.status(400).json({ error: "Plan price not configured. Ask superadmin to set a price." });
-        description = `${plan.name} Subscription (1 Year)`;
+        description = `${plan.name} Subscription (1 Month)`;
         metadata = { plan_id };
       } else {
         if (!package_id) return res.status(400).json({ error: "package_id is required for package payments" });

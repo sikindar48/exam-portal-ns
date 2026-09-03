@@ -30,3 +30,8 @@ dist-ssr
 
 # Mock proctoring images
 public/mock-images/
+
+# Local database and scratch scripts
+*.db
+*.sqlite
+scratch_*.ts

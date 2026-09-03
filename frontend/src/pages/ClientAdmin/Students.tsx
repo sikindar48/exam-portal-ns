@@ -305,7 +305,7 @@ export default function StudentsManagement() {
   const handleResetPassword = async (email: string) => {
     try {
       await sendPasswordResetEmail(auth, email, {
-        url: `${window.location.origin}/auth`,
+        url: `${window.location.origin}/login`,
       });
       toast({
         title: "Reset Request Sent",

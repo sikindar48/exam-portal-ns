@@ -43,3 +43,4 @@ backend/dist/
 *.db
 test-results/
 testing/
+commands

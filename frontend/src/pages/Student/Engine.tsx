@@ -217,20 +217,6 @@ export default function Engine() {
 
     try {
       console.log("Starting submission for attempt:", targetAttemptId);
-      if (isGuest) {
-        // Guest scoring logic (fallback for UI/Local)
-        const { data: tqs } = await testQuestionsApi.list(testId!);
-        let score = 0, total = 0;
-        (tqs || []).forEach(tq => {
-          const q = tq.questions as any;
-          if (!q) return;
-          total += q.marks || 1;
-          if (answers[q.id] === q.correct_answer) score += q.marks || 1;
-          else if (targetTest?.negative_marking && answers[q.id]) score -= targetTest.negative_marks || 0;
-        });
-        localStorage.setItem(`guest_result_${testId}`, JSON.stringify({ testName: targetTest?.test_name, studentName: guestName, score: Math.max(0, score), totalMarks: total }));
-      }
-
       // Universal submission logic for both Guest and Registered students
       // Force-sync any pending answers before RPC call
       await flushDirtyAnswers();
@@ -448,11 +434,6 @@ export default function Engine() {
               { key: "D", val: q.option_d },
             ];
             const shuffledOpts = [...opts].sort(() => Math.random() - 0.5);
-            const originalCorrect = q.correct_answer;
-            const originalCorrectVal = opts.find(o => o.key === originalCorrect)?.val;
-            
-            const newCorrectKey = ["A", "B", "C", "D"][shuffledOpts.findIndex(o => o.val === originalCorrectVal)] as any || "A";
-
             const mapping: Record<string, string> = {
               A: opts.find(o => o.val === shuffledOpts[0].val)?.key || "A",
               B: opts.find(o => o.val === shuffledOpts[1].val)?.key || "B",
@@ -466,7 +447,6 @@ export default function Engine() {
               option_b: shuffledOpts[1].val,
               option_c: shuffledOpts[2].val,
               option_d: shuffledOpts[3].val,
-              correct_answer: newCorrectKey,
               option_mapping: mapping
             };
           });

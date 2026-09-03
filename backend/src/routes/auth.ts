@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { getDb } from "../db/db.js";
+import { getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getUser } from "../auth/auth.js";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 
@@ -42,9 +44,17 @@ export default async function handler(req: Request, res: Response) {
         args: [emailTrimmed, token, expiresAt],
       });
 
-      // Construct Reset Link
-      const origin = process.env.FRONTEND_URL || req.headers.origin || "https://test.nssoftwaresolutions.in";
-      const resetLink = `${origin.replace(/\/$/, "")}/reset-password?token=${token}`;
+      // Construct Reset Link (safeguarded against Origin header injection)
+      const allowedOrigins = [
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "http://localhost:3000",
+        "https://test.nssoftwaresolutions.in",
+        "https://exam-portal-ns-479112457276.asia-south2.run.app",
+      ];
+      const reqOrigin = typeof req.headers.origin === "string" ? req.headers.origin : "";
+      const safeOrigin = process.env.FRONTEND_URL || (allowedOrigins.includes(reqOrigin) ? reqOrigin : "https://test.nssoftwaresolutions.in");
+      const resetLink = `${safeOrigin.replace(/\/$/, "")}/reset-password?token=${token}`;
 
       // Set up Zepto Mail SMTP Transport
       const transporter = nodemailer.createTransport({
@@ -167,9 +177,40 @@ export default async function handler(req: Request, res: Response) {
         return res.status(400).json({ error: "Invalid or expired reset token." });
       }
 
-      // Update password in Firebase Auth using the Admin SDK
-      const userRecord = await getAuth().getUserByEmail(email);
-      await getAuth().updateUser(userRecord.uid, { password });
+      // Update password in Firebase Auth (Admin SDK if initialized, or REST API fallback)
+      if (getApps().length > 0) {
+        const userRecord = await getAuth().getUserByEmail(email);
+        await getAuth().updateUser(userRecord.uid, { password });
+      } else if (process.env.FIREBASE_API_KEY) {
+        const lookupRes = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.FIREBASE_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: [email] }),
+          }
+        );
+        const lookupData = (await lookupRes.json()) as any;
+        const uid = lookupData.users?.[0]?.localId;
+        if (!uid) {
+          return res.status(404).json({ error: "User not found in Firebase." });
+        }
+
+        const updateRes = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${process.env.FIREBASE_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ localId: uid, password }),
+          }
+        );
+        const updateData = (await updateRes.json()) as any;
+        if (updateData.error) {
+          throw new Error(updateData.error.message || "Failed to update password in Firebase.");
+        }
+      } else {
+        throw new Error("Firebase is not configured to update passwords.");
+      }
 
       // Clean up verification token from database
       await db.execute({
@@ -181,6 +222,76 @@ export default async function handler(req: Request, res: Response) {
     } catch (err: any) {
       console.error("Reset password error:", err);
       return res.status(500).json({ error: err.message || "Failed to update password." });
+    }
+  }
+
+  // ── POST /api/auth/register-client ──────────────────────────────────────────
+  if (req.method === "POST" && req.path.endsWith("/register-client")) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing or invalid authorization header" });
+    }
+
+    const token = authHeader.split("Bearer ")[1];
+    const { id, name, email, orgName } = req.body;
+
+    if (!id || !name || !email || !orgName) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    try {
+      // Verify token
+      const authUser = await getUser(req);
+      if (!authUser || authUser.id !== id) {
+        return res.status(403).json({ error: "Token mismatch" });
+      }
+
+      // Generate new client ID
+      const clientId = crypto.randomUUID();
+
+      // Begin transaction for client creation
+      const transaction = await db.transaction("write");
+      try {
+        // 1. Create Client
+        await transaction.execute({
+          sql: "INSERT INTO clients (id, name, active_status, created_at, updated_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+          args: [clientId, orgName],
+        });
+
+        // 2. Create Profile
+        await transaction.execute({
+          sql: "INSERT INTO profiles (id, email, name, client_id, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+          args: [id, email, name, clientId],
+        });
+
+        // 3. Assign Role (Client Admin)
+        await transaction.execute({
+          sql: "INSERT INTO user_roles (id, user_id, client_id, role) VALUES (?, ?, ?, 'clientadmin')",
+          args: [crypto.randomUUID(), id, clientId],
+        });
+
+        // 4. Assign Default Free Subscription
+        await transaction.execute({
+          sql: "INSERT INTO client_subscriptions (client_id, plan_id, status, start_date, expiry_date, renewal_status, updated_at) VALUES (?, 'free', 'active', CURRENT_TIMESTAMP, datetime(CURRENT_TIMESTAMP, '+10 years'), 'manual', CURRENT_TIMESTAMP)",
+          args: [clientId],
+        });
+
+        // 5. Assign Default Free Plan Limits (3 exams/mo, 20 students, 50 questions, 25 MB)
+        await transaction.execute({
+          sql: "INSERT INTO client_limits (client_id, max_exams_per_month, max_students_per_exam, max_questions_per_exam, max_storage_mb) VALUES (?, 3, 20, 50, 25)",
+          args: [clientId],
+        });
+
+        await transaction.commit();
+        
+        return res.status(200).json({ success: true, client_id: clientId });
+      } catch (err: any) {
+        await transaction.rollback();
+        throw err;
+      }
+    } catch (err: any) {
+      console.error("Register client error:", err);
+      return res.status(500).json({ error: err.message || "Failed to register organization." });
     }
   }
 

@@ -334,7 +334,7 @@ export default function Join() {
                         </p>
                         <Button
                           variant="outline"
-                          onClick={() => navigate(`/auth?redirect=/join/${test?.share_code}`)}
+                          onClick={() => navigate(`/login?redirect=/join/${test?.share_code}`)}
                           className="w-full border-slate-200 dark:border-slate-800 text-xs font-bold uppercase tracking-wider h-11 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-950"
                         >
                           <LogIn className="mr-2 h-4 w-4 shrink-0" />
